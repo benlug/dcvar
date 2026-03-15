@@ -3,17 +3,17 @@
 \name{latent_states}
 \alias{latent_states}
 \alias{latent_states.default}
-\alias{latent_states.dcVar_sem_fit}
+\alias{latent_states.dcvar_sem_fit}
 \title{Extract latent states from a SEM fit}
 \usage{
 latent_states(object, ...)
 
 \method{latent_states}{default}(object, ...)
 
-\method{latent_states}{dcVar_sem_fit}(object, probs = c(0.025, 0.5, 0.975), ...)
+\method{latent_states}{dcvar_sem_fit}(object, probs = c(0.025, 0.5, 0.975), ...)
 }
 \arguments{
-\item{object}{A \code{dcVar_sem_fit} object.}
+\item{object}{A \code{dcvar_sem_fit} object.}
 
 \item{...}{Additional arguments (unused).}
 

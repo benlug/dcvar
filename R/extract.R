@@ -7,14 +7,14 @@
 #' Returns a data frame with the posterior mean, SD, and quantiles of the
 #' time-varying correlation at each time point.
 #'
-#' @param object A fitted model object (`dcVar_fit`, `dcVar_hmm_fit`, or
-#'   `dcVar_constant_fit`).
+#' @param object A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
+#'   `dcvar_constant_fit`).
 #' @param probs Numeric vector of quantile probabilities (default: `c(0.025, 0.1, 0.5, 0.9, 0.975)`).
 #' @param ... Additional arguments (unused).
 #'
 #' @return A data frame with columns `time`, `mean`, `sd`, and one column per
 #'   quantile (e.g., `q2.5`, `q10`, `q50`, `q90`, `q97.5`). For
-#'   `dcVar_constant_fit` objects, the constant rho is expanded to all T-1
+#'   `dcvar_constant_fit` objects, the constant rho is expanded to all T-1
 #'   time points for consistency with the time-varying models.
 #'
 #' @seealso [plot_rho()] to visualise the trajectory,
@@ -80,14 +80,14 @@ rho_trajectory.default <- function(object, ...) {
 
 #' @rdname rho_trajectory
 #' @export
-rho_trajectory.dcVar_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+rho_trajectory.dcvar_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
   rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
 
 #' @rdname rho_trajectory
 #' @export
-rho_trajectory.dcVar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
   rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho_hmm"))
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
@@ -124,7 +124,7 @@ rho_trajectory.dcVar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
 
 #' @rdname rho_trajectory
 #' @export
-rho_trajectory.dcVar_constant_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+rho_trajectory.dcvar_constant_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
   .rho_trajectory_constant_impl(object, probs)
 }
 
@@ -152,7 +152,7 @@ var_params.default <- function(object, ...) {
 
 #' @rdname var_params
 #' @export
-var_params.dcVar_model_fit <- function(object, ...) {
+var_params.dcvar_model_fit <- function(object, ...) {
   summ <- object$fit$summary(
     variables = NULL,
     mean, sd,
@@ -211,7 +211,7 @@ var_params.dcVar_model_fit <- function(object, ...) {
 #' Returns state posteriors, Viterbi path, state-specific rho values,
 #' and the transition matrix from an HMM copula fit.
 #'
-#' @param object A `dcVar_hmm_fit` object.
+#' @param object A `dcvar_hmm_fit` object.
 #' @param ... Additional arguments (unused).
 #'
 #' @return A named list with:
@@ -233,7 +233,7 @@ hmm_states.default <- function(object, ...) {
 
 #' @rdname hmm_states
 #' @export
-hmm_states.dcVar_hmm_fit <- function(object, ...) {
+hmm_states.dcvar_hmm_fit <- function(object, ...) {
   K <- object$K
   T_eff <- object$stan_data$T - 1
 
@@ -314,7 +314,7 @@ hmm_states.dcVar_hmm_fit <- function(object, ...) {
 #'
 #' Returns posterior summaries for unit-specific VAR coefficients.
 #'
-#' @param object A `dcVar_multilevel_fit` object.
+#' @param object A `dcvar_multilevel_fit` object.
 #' @param ... Additional arguments (unused).
 #'
 #' @return A data frame with columns `unit`, `parameter`, `mean`, `sd`,
@@ -332,7 +332,7 @@ random_effects.default <- function(object, ...) {
 
 #' @rdname random_effects
 #' @export
-random_effects.dcVar_multilevel_fit <- function(object, ...) {
+random_effects.dcvar_multilevel_fit <- function(object, ...) {
   N <- object$N
   unit_ids <- attr(object$stan_data, "ids")
   if (is.null(unit_ids)) {
@@ -377,7 +377,7 @@ random_effects.dcVar_multilevel_fit <- function(object, ...) {
 #' (innovation SDs), and `rho` (copula correlation). These correspond to
 #' `Phi`, `sigma_eps`, and `rho` in single-level models.
 #' @export
-var_params.dcVar_multilevel_fit <- function(object, ...) {
+var_params.dcvar_multilevel_fit <- function(object, ...) {
   summ <- object$fit$summary(
     variables = NULL,
     mean, sd,
@@ -407,7 +407,7 @@ var_params.dcVar_multilevel_fit <- function(object, ...) {
 
 #' @rdname rho_trajectory
 #' @export
-rho_trajectory.dcVar_multilevel_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+rho_trajectory.dcvar_multilevel_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
   .rho_trajectory_constant_impl(object, probs)
 }
 
@@ -417,7 +417,7 @@ rho_trajectory.dcVar_multilevel_fit <- function(object, probs = c(0.025, 0.1, 0.
 #' Returns posterior summaries for the estimated latent states at each
 #' time point.
 #'
-#' @param object A `dcVar_sem_fit` object.
+#' @param object A `dcvar_sem_fit` object.
 #' @param probs Numeric vector of quantile probabilities.
 #' @param ... Additional arguments (unused).
 #'
@@ -436,7 +436,7 @@ latent_states.default <- function(object, ...) {
 
 #' @rdname latent_states
 #' @export
-latent_states.dcVar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
   if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
     cli_abort("{.arg probs} must be numeric values in [0, 1].")
   }
@@ -475,7 +475,7 @@ latent_states.dcVar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
 
 #' @rdname var_params
 #' @export
-var_params.dcVar_sem_fit <- function(object, ...) {
+var_params.dcvar_sem_fit <- function(object, ...) {
   summ <- object$fit$summary(
     variables = NULL,
     mean, sd,
@@ -505,7 +505,7 @@ var_params.dcVar_sem_fit <- function(object, ...) {
 
 #' @rdname rho_trajectory
 #' @export
-rho_trajectory.dcVar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+rho_trajectory.dcvar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
   # SEM has constant rho, expand to all T-1 time points
   rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
   T_obs <- object$stan_data$T
@@ -554,6 +554,6 @@ draws.default <- function(object, ...) {
 
 #' @rdname draws
 #' @export
-draws.dcVar_model_fit <- function(object, variable = NULL, format = "draws_array", ...) {
+draws.dcvar_model_fit <- function(object, variable = NULL, format = "draws_array", ...) {
   object$fit$draws(variables = variable, format = format, ...)
 }

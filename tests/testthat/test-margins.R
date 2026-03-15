@@ -53,8 +53,8 @@ test_that(".margin_stan_suffix returns correct suffix for each margin type", {
 test_that(".margin_stan_file returns correct filename for normal margins", {
   expect_equal(.margin_stan_file("constant", "normal"),
                "constant_copula_var.stan")
-  expect_equal(.margin_stan_file("dcVar", "normal"),
-               "dcVar_model_ncp.stan")
+  expect_equal(.margin_stan_file("dcvar", "normal"),
+               "dcvar_model_ncp.stan")
   expect_equal(.margin_stan_file("hmm", "normal"),
                "hmm_copula_model.stan")
 })
@@ -62,13 +62,13 @@ test_that(".margin_stan_file returns correct filename for normal margins", {
 test_that(".margin_stan_file returns correct filename for non-normal margins", {
   expect_equal(.margin_stan_file("constant", "exponential"),
                "constant_EG.stan")
-  expect_equal(.margin_stan_file("dcVar", "exponential"),
-               "dcVar_EG_ncp.stan")
+  expect_equal(.margin_stan_file("dcvar", "exponential"),
+               "dcvar_EG_ncp.stan")
   expect_equal(.margin_stan_file("hmm", "exponential"),
                "hmm_EG.stan")
 
-  expect_equal(.margin_stan_file("dcVar", "skew_normal"),
-               "dcVar_SNG_ncp.stan")
+  expect_equal(.margin_stan_file("dcvar", "skew_normal"),
+               "dcvar_SNG_ncp.stan")
   expect_equal(.margin_stan_file("hmm", "gamma"),
                "hmm_GG.stan")
 })
@@ -76,12 +76,12 @@ test_that(".margin_stan_file returns correct filename for non-normal margins", {
 test_that(".margin_cache_key returns expected cache key", {
   expect_equal(.margin_cache_key("constant", "normal"),
                "constant_model")
-  expect_equal(.margin_cache_key("dcVar", "normal"),
-               "dcVar_model")
+  expect_equal(.margin_cache_key("dcvar", "normal"),
+               "dcvar_model")
   expect_equal(.margin_cache_key("hmm", "exponential"),
                "hmm_EG_model")
-  expect_equal(.margin_cache_key("dcVar", "skew_normal"),
-               "dcVar_SNG_model")
+  expect_equal(.margin_cache_key("dcvar", "skew_normal"),
+               "dcvar_SNG_model")
   expect_equal(.margin_cache_key("constant", "gamma"),
                "constant_GG_model")
 })

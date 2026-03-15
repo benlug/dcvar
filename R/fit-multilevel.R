@@ -29,23 +29,23 @@
 #' @param stan_file Custom Stan file path or `NULL`.
 #' @param ... Additional arguments passed to `cmdstanr::CmdStanModel$sample()`.
 #'
-#' @return A `dcVar_multilevel_fit` object.
+#' @return A `dcvar_multilevel_fit` object.
 #'
 #' @details `adapt_delta` defaults to 0.90 and `max_treedepth` to 14 because
 #'   the hierarchical structure with random effects benefits from deeper trees
 #'   but does not require aggressive step-size adaptation.
 #'
 #' @note This model currently supports normal marginal distributions only.
-#'   For non-normal margins, use [dcVar()], [dcVar_constant()], or [dcVar_hmm()].
+#'   For non-normal margins, use [dcvar()], [dcvar_constant()], or [dcvar_hmm()].
 #'
 #' @note The bundled multilevel Stan program is defined for person-mean
 #'   centered data and omits intercept terms. With the bundled model,
 #'   `center = FALSE` is therefore not supported.
 #'
 #' @seealso [random_effects()] for extracting unit-specific coefficients,
-#'   [simulate_dcVar_multilevel()] for data generation.
+#'   [simulate_dcvar_multilevel()] for data generation.
 #' @export
-dcVar_multilevel <- function(data, vars,
+dcvar_multilevel <- function(data, vars,
                              id_var = "id",
                              time_var = "time",
                              center = TRUE,
@@ -113,7 +113,7 @@ dcVar_multilevel <- function(data, vars,
 
   .report_sampling_outcome(fit, "Multilevel copula VAR", chains = chains)
 
-  new_dcVar_multilevel_fit(
+  new_dcvar_multilevel_fit(
     fit = fit,
     stan_data = stan_data,
     N = N,

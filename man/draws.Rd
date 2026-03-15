@@ -3,14 +3,14 @@
 \name{draws}
 \alias{draws}
 \alias{draws.default}
-\alias{draws.dcVar_model_fit}
+\alias{draws.dcvar_model_fit}
 \title{Extract posterior draws}
 \usage{
 draws(object, ...)
 
 \method{draws}{default}(object, ...)
 
-\method{draws}{dcVar_model_fit}(object, variable = NULL, format = "draws_array", ...)
+\method{draws}{dcvar_model_fit}(object, variable = NULL, format = "draws_array", ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

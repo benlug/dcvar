@@ -7,7 +7,7 @@
 plot_hmm_states(object, show_viterbi = TRUE, ...)
 }
 \arguments{
-\item{object}{A \code{dcVar_hmm_fit} object.}
+\item{object}{A \code{dcvar_hmm_fit} object.}
 
 \item{show_viterbi}{Logical; overlay the Viterbi (MAP) state sequence
 (default: \code{TRUE}).}

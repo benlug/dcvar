@@ -18,14 +18,14 @@
 #'   - `min_ess_tail`: smallest tail ESS
 #'   - `mean_accept_prob`: mean acceptance probability
 #' @export
-dcVar_diagnostics <- function(object, ...) {
-  UseMethod("dcVar_diagnostics")
+dcvar_diagnostics <- function(object, ...) {
+  UseMethod("dcvar_diagnostics")
 }
 
-#' @rdname dcVar_diagnostics
+#' @rdname dcvar_diagnostics
 #' @export
-dcVar_diagnostics.default <- function(object, ...) {
-  cli_abort("{.fun dcVar_diagnostics} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+dcvar_diagnostics.default <- function(object, ...) {
+  cli_abort("{.fun dcvar_diagnostics} is not defined for objects of class {.cls {class(object)[[1]]}}.")
 }
 
 #' Internal: extract common diagnostics from a CmdStanMCMC fit
@@ -85,15 +85,15 @@ dcVar_diagnostics.default <- function(object, ...) {
     cli_warn(c(
       "{model_label} sampling finished with diagnostic issues.",
       setNames(issues, rep("!", length(issues))),
-      "i" = "Inspect {.fun dcVar_diagnostics} before using this fit for inference."
+      "i" = "Inspect {.fun dcvar_diagnostics} before using this fit for inference."
     ))
   }
 
   invisible(diag)
 }
 
-#' @rdname dcVar_diagnostics
+#' @rdname dcvar_diagnostics
 #' @export
-dcVar_diagnostics.dcVar_model_fit <- function(object, ...) {
+dcvar_diagnostics.dcvar_model_fit <- function(object, ...) {
   .sampling_diagnostics_from_fit(object$fit)
 }

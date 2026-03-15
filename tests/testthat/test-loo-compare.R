@@ -1,7 +1,7 @@
 test_that("loo() works for supported model types", {
   skip_if_no_cmdstanr()
 
-  loo_dc <- loo(get_dcVar_fit())
+  loo_dc <- loo(get_dcvar_fit())
   loo_hmm <- loo(get_hmm_fit())
   loo_con <- loo(get_constant_fit())
 
@@ -23,11 +23,11 @@ test_that("loo() rejects multilevel and SEM fits with informative errors", {
   )
 })
 
-test_that("dcVar_compare() works with named fits", {
+test_that("dcvar_compare() works with named fits", {
   skip_if_no_cmdstanr()
 
-  result <- dcVar_compare(
-    dcVar = get_dcVar_fit(),
+  result <- dcvar_compare(
+    dcvar = get_dcvar_fit(),
     constant = get_constant_fit()
   )
 
@@ -36,33 +36,33 @@ test_that("dcVar_compare() works with named fits", {
   expect_true("elpd_diff" %in% colnames(result))
 })
 
-test_that("dcVar_compare() rejects unnamed arguments", {
+test_that("dcvar_compare() rejects unnamed arguments", {
   skip_if_no_cmdstanr()
 
   expect_error(
-    dcVar_compare(get_dcVar_fit(), get_constant_fit()),
+    dcvar_compare(get_dcvar_fit(), get_constant_fit()),
     "must be named"
   )
 })
 
-test_that("dcVar_compare() rejects non-fit objects", {
+test_that("dcvar_compare() rejects non-fit objects", {
   skip_if_no_cmdstanr()
 
   expect_error(
-    dcVar_compare(dcVar = get_dcVar_fit(), bad = "not a fit"),
-    "not a dcVar model fit"
+    dcvar_compare(dcvar = get_dcvar_fit(), bad = "not a fit"),
+    "not a dcvar model fit"
   )
 })
 
-test_that("dcVar_compare() rejects unsupported LOO targets", {
+test_that("dcvar_compare() rejects unsupported LOO targets", {
   skip_if_no_cmdstanr()
 
   expect_error(
-    dcVar_compare(dcVar = get_dcVar_fit(), multilevel = get_multilevel_fit()),
+    dcvar_compare(dcvar = get_dcvar_fit(), multilevel = get_multilevel_fit()),
     "does not support SEM or multilevel"
   )
   expect_error(
-    dcVar_compare(dcVar = get_dcVar_fit(), sem = get_sem_fit()),
+    dcvar_compare(dcvar = get_dcvar_fit(), sem = get_sem_fit()),
     "does not support SEM or multilevel"
   )
 })

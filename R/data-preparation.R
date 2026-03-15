@@ -228,7 +228,7 @@
 #'
 #' @return A named list suitable as Stan data input.
 #' @export
-prepare_dcVar_data <- function(data, vars, time_var = "time",
+prepare_dcvar_data <- function(data, vars, time_var = "time",
                                standardize = TRUE,
                                margins = "normal",
                                skew_direction = NULL,
@@ -286,7 +286,7 @@ prepare_dcVar_data <- function(data, vars, time_var = "time",
 #' Transforms a data frame into a list suitable for the HMM copula Stan model.
 #' Includes HMM-specific prior hyperparameters.
 #'
-#' @inheritParams prepare_dcVar_data
+#' @inheritParams prepare_dcvar_data
 #' @param K Number of hidden states (default: 2).
 #' @param prior_kappa Sticky Dirichlet self-transition concentration (default: 10).
 #' @param prior_alpha_off Sticky Dirichlet off-diagonal concentration (default: 1).
@@ -553,7 +553,7 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
 #'
 #' Transforms a data frame into a list suitable for the constant copula Stan model.
 #'
-#' @inheritParams prepare_dcVar_data
+#' @inheritParams prepare_dcvar_data
 #' @param prior_z_rho_sd Prior SD for rho on Fisher-z scale (default: 1.0).
 #'
 #' @return A named list suitable as Stan data input.

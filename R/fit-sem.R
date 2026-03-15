@@ -32,11 +32,11 @@
 #' @param stan_file Custom Stan file path or `NULL`.
 #' @param ... Additional arguments passed to `cmdstanr::CmdStanModel$sample()`.
 #'
-#' @return A `dcVar_sem_fit` object.
+#' @return A `dcvar_sem_fit` object.
 #'
 #' @details
 #' **Boundary constraints.** The SEM model constrains each VAR coefficient
-#' (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcVar models
+#' (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcvar models
 #' where Phi is unconstrained. Very strong autoregressive or cross-lag
 #' dynamics near \eqn{\pm 1} cannot be captured by this variant.
 #'
@@ -47,19 +47,19 @@
 #'
 #' **Margins.** The SEM model currently supports only normal marginal
 #' distributions. Non-normal margins (e.g., exponential, gamma) are not
-#' available; use [dcVar()], [dcVar_constant()], or [dcVar_hmm()] instead.
+#' available; use [dcvar()], [dcvar_constant()], or [dcvar_hmm()] instead.
 #'
 #' **Post-estimation.** `fitted()` and `predict()` are not yet implemented
 #' for SEM models. Use [latent_states()] to extract estimated latent
 #' trajectories.
 #'
 #' @note This model currently supports normal marginal distributions only.
-#'   For non-normal margins, use [dcVar()], [dcVar_constant()], or [dcVar_hmm()].
+#'   For non-normal margins, use [dcvar()], [dcvar_constant()], or [dcvar_hmm()].
 #'
 #' @seealso [latent_states()] for extracting estimated latent states,
-#'   [simulate_dcVar_sem()] for data generation.
+#'   [simulate_dcvar_sem()] for data generation.
 #' @export
-dcVar_sem <- function(data, indicators, J, lambda, sigma_e,
+dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
                       time_var = "time",
                       prior_mu_sd = 0.25,
                       prior_phi_sd = 0.5,
@@ -121,7 +121,7 @@ dcVar_sem <- function(data, indicators, J, lambda, sigma_e,
 
   .report_sampling_outcome(fit, "SEM copula VAR", chains = chains)
 
-  new_dcVar_sem_fit(
+  new_dcvar_sem_fit(
     fit = fit,
     stan_data = stan_data,
     vars = vars,

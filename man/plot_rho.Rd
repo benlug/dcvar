@@ -15,7 +15,7 @@ plot_rho(
 )
 }
 \arguments{
-\item{object}{A \code{dcVar_fit} or \code{dcVar_hmm_fit} object.}
+\item{object}{A \code{dcvar_fit} or \code{dcvar_hmm_fit} object.}
 
 \item{show_ci}{Logical; show credible interval ribbons (default: \code{TRUE}).}
 

@@ -1,4 +1,4 @@
 library(testthat)
-library(dcVar)
+library(dcvar)
 
-test_check("dcVar")
+test_check("dcvar")

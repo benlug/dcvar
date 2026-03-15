@@ -2,13 +2,13 @@
 # as.data.frame methods for fit objects
 # ============================================================================
 
-#' Convert a dcVar fit summary to a data frame
+#' Convert a dcvar fit summary to a data frame
 #'
 #' Returns the full cmdstanr parameter summary as a tidy data frame with
 #' correct 2.5%/97.5% quantiles.
 #'
-#' @param x A fitted model object (`dcVar_fit`, `dcVar_hmm_fit`, or
-#'   `dcVar_constant_fit`).
+#' @param x A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
+#'   `dcvar_constant_fit`).
 #' @param row.names Ignored.
 #' @param optional Ignored.
 #' @param ... Additional arguments (unused).
@@ -16,7 +16,7 @@
 #' @return A data frame with columns `variable`, `mean`, `sd`, `q2.5`,
 #'   `q97.5`, `rhat`, `ess_bulk`, `ess_tail`.
 #' @export
-as.data.frame.dcVar_model_fit <- function(x, row.names = NULL, optional = FALSE, ...) {
+as.data.frame.dcvar_model_fit <- function(x, row.names = NULL, optional = FALSE, ...) {
   summ <- x$fit$summary(
     variables = NULL,
     mean = mean,

@@ -3,20 +3,20 @@
 \name{var_params}
 \alias{var_params}
 \alias{var_params.default}
-\alias{var_params.dcVar_model_fit}
-\alias{var_params.dcVar_multilevel_fit}
-\alias{var_params.dcVar_sem_fit}
+\alias{var_params.dcvar_model_fit}
+\alias{var_params.dcvar_multilevel_fit}
+\alias{var_params.dcvar_sem_fit}
 \title{Extract VAR(1) parameter summaries}
 \usage{
 var_params(object, ...)
 
 \method{var_params}{default}(object, ...)
 
-\method{var_params}{dcVar_model_fit}(object, ...)
+\method{var_params}{dcvar_model_fit}(object, ...)
 
-\method{var_params}{dcVar_multilevel_fit}(object, ...)
+\method{var_params}{dcvar_multilevel_fit}(object, ...)
 
-\method{var_params}{dcVar_sem_fit}(object, ...)
+\method{var_params}{dcvar_sem_fit}(object, ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

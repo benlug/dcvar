@@ -1,17 +1,17 @@
-test_that("dcVar_stan_path returns valid file paths", {
-  for (m in c("dcVar", "hmm", "constant", "multilevel", "sem")) {
-    path <- dcVar_stan_path(m)
+test_that("dcvar_stan_path returns valid file paths", {
+  for (m in c("dcvar", "hmm", "constant", "multilevel", "sem")) {
+    path <- dcvar_stan_path(m)
     expect_true(file.exists(path), info = paste("model:", m))
     expect_true(grepl("\\.stan$", path), info = paste("model:", m))
   }
 })
 
-test_that("dcVar_stan_path rejects invalid model names", {
-  expect_error(dcVar_stan_path("invalid"))
+test_that("dcvar_stan_path rejects invalid model names", {
+  expect_error(dcvar_stan_path("invalid"))
 })
 
 test_that(".compiled_exe_path uses the correct platform suffix", {
-  path <- .compiled_exe_path(tempdir(), "dcVar-model")
+  path <- .compiled_exe_path(tempdir(), "dcvar-model")
 
   if (.Platform$OS.type == "windows") {
     expect_match(path, "\\.exe$")
@@ -24,7 +24,7 @@ test_that("all bundled top-level Stan files translate successfully", {
   skip_if_no_cmdstanr()
 
   stanc <- file.path(cmdstanr::cmdstan_path(), "bin", "stanc")
-  stan_dir <- system.file("stan", package = "dcVar")
+  stan_dir <- system.file("stan", package = "dcvar")
   stan_files <- list.files(stan_dir, pattern = "\\.stan$", full.names = TRUE, recursive = TRUE)
   stan_files <- stan_files[!grepl("/functions/", stan_files, fixed = TRUE)]
 

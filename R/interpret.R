@@ -15,8 +15,8 @@
 #' Generates a human-readable interpretation of the estimated rho trajectory,
 #' describing the overall trend, magnitude of change, and key features.
 #'
-#' @param object A fitted model object (`dcVar_fit`, `dcVar_hmm_fit`, or
-#'   `dcVar_constant_fit`).
+#' @param object A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
+#'   `dcvar_constant_fit`).
 #' @param threshold Minimum absolute change in posterior-mean rho to be
 #'   considered "meaningful" (default: 0.1).
 #' @param strength_breaks Named numeric vector of thresholds for classifying
@@ -35,8 +35,8 @@
 #'
 #' @examples
 #' \dontrun{
-#' sim <- simulate_dcVar(T = 100, rho_trajectory = rho_decreasing(100))
-#' fit <- dcVar(sim$Y_df, vars = c("y1", "y2"))
+#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_decreasing(100))
+#' fit <- dcvar(sim$Y_df, vars = c("y1", "y2"))
 #' interpret_rho_trajectory(fit)
 #' }
 interpret_rho_trajectory <- function(object, threshold = 0.1,
@@ -98,7 +98,7 @@ interpret_rho_trajectory <- function(object, threshold = 0.1,
   }
 
   model_label <- switch(object$model,
-    dcVar = "DC-VAR",
+    dcvar = "DC-VAR",
     hmm = "HMM Copula",
     multilevel = "Multilevel Copula VAR",
     sem = "SEM Copula VAR",

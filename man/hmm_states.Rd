@@ -3,17 +3,17 @@
 \name{hmm_states}
 \alias{hmm_states}
 \alias{hmm_states.default}
-\alias{hmm_states.dcVar_hmm_fit}
+\alias{hmm_states.dcvar_hmm_fit}
 \title{Extract HMM state information}
 \usage{
 hmm_states(object, ...)
 
 \method{hmm_states}{default}(object, ...)
 
-\method{hmm_states}{dcVar_hmm_fit}(object, ...)
+\method{hmm_states}{dcvar_hmm_fit}(object, ...)
 }
 \arguments{
-\item{object}{A \code{dcVar_hmm_fit} object.}
+\item{object}{A \code{dcvar_hmm_fit} object.}
 
 \item{...}{Additional arguments (unused).}
 }

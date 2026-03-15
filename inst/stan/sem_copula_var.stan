@@ -24,8 +24,8 @@ parameters {
   vector[2] mu;
   // VAR coefficient bounds: each phi is restricted to (-0.99, 0.99) to prevent
   // the sampler from approaching the non-stationary boundary of the VAR process.
-  // This is more restrictive than other dcVar models (dcVar, dcVar_constant,
-  // dcVar_hmm), where Phi elements are unconstrained. As a consequence, models
+  // This is more restrictive than other dcvar models (dcvar, dcvar_constant,
+  // dcvar_hmm), where Phi elements are unconstrained. As a consequence, models
   // with very strong autoregressive or cross-lag effects near +-1 cannot be
   // estimated with the SEM variant.
   real<lower=-0.99, upper=0.99> phi11;
@@ -45,7 +45,7 @@ transformed parameters {
   // Map rho_raw in (-Inf, Inf) to rho in (-0.97, 0.97) via scaled tanh.
   // The 0.97 scaling prevents boundary singularity in the Gaussian copula
   // density at rho = +-1, where the log-density diverges. This is slightly
-  // more restrictive than other dcVar models, which use tanh without scaling
+  // more restrictive than other dcvar models, which use tanh without scaling
   // and allow rho to approach +-1 more closely.
   rho = 0.97 * tanh(rho_raw);
   B[1, 1] = phi11; B[1, 2] = phi12;

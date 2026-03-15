@@ -5,7 +5,7 @@
 #' Simulate data with a breakpoint rho trajectory
 #'
 #' Convenience wrapper that combines [rho_step()] or [rho_double_step()] with
-#' [simulate_dcVar()] for quick breakpoint simulation studies.
+#' [simulate_dcvar()] for quick breakpoint simulation studies.
 #'
 #' @param T Number of time points.
 #' @param type Character; one of `"single"` (single breakpoint) or `"double"`
@@ -24,7 +24,7 @@
 #' @param sigma_eps Innovation SDs, length 2 (default: `c(1, 1)`).
 #' @param seed Random seed.
 #'
-#' @return A named list as returned by [simulate_dcVar()].
+#' @return A named list as returned by [simulate_dcvar()].
 #' @export
 #'
 #' @examples
@@ -53,6 +53,6 @@ simulate_breakpoint_data <- function(T,
                     transition_width = transition_width)
   }
 
-  simulate_dcVar(T = T, rho_trajectory = rho_traj,
+  simulate_dcvar(T = T, rho_trajectory = rho_traj,
                  mu = mu, Phi = Phi, sigma_eps = sigma_eps, seed = seed)
 }

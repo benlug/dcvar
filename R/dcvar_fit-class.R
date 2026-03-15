@@ -1,17 +1,17 @@
 # ============================================================================
-# S3 Class: dcVar_fit
+# S3 Class: dcvar_fit
 # ============================================================================
 
-#' Construct a dcVar_fit object
+#' Construct a dcvar_fit object
 #' @noRd
-new_dcVar_fit <- function(fit, stan_data, vars, standardized,
+new_dcvar_fit <- function(fit, stan_data, vars, standardized,
                           margins = "normal", skew_direction = NULL,
                           priors, meta) {
   structure(
     list(
       fit = fit,
       stan_data = stan_data,
-      model = "dcVar",
+      model = "dcvar",
       vars = vars,
       standardized = standardized,
       margins = margins,
@@ -19,23 +19,23 @@ new_dcVar_fit <- function(fit, stan_data, vars, standardized,
       priors = priors,
       meta = meta
     ),
-    class = c("dcVar_fit", "dcVar_model_fit")
+    class = c("dcvar_fit", "dcvar_model_fit")
   )
 }
 
 
-#' S3 methods for dcVar_fit objects
+#' S3 methods for dcvar_fit objects
 #'
-#' @param x,object A `dcVar_fit` object.
+#' @param x,object A `dcvar_fit` object.
 #' @param ... Additional arguments (unused).
 #'
-#' @name dcVar_fit-methods
+#' @name dcvar_fit-methods
 NULL
 
-#' @describeIn dcVar_fit-methods Print a concise overview of the DC-VAR fit.
+#' @describeIn dcvar_fit-methods Print a concise overview of the DC-VAR fit.
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_fit <- function(x, ...) {
+print.dcvar_fit <- function(x, ...) {
   .print_fit_header(x, "DC-VAR Model Fit")
   cat(sprintf("T = %d, D = %d\n", x$stan_data$T, x$stan_data$D))
   .print_fit_footer(x)
@@ -47,19 +47,19 @@ print.dcVar_fit <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_fit-methods Produce a detailed summary including rho
+#' @describeIn dcvar_fit-methods Produce a detailed summary including rho
 #'   trajectory, VAR parameters, and diagnostics.
 #' @param probs Numeric vector of quantile probabilities for the rho trajectory
 #'   (default: `c(0.025, 0.5, 0.975)`).
-#' @return A `dcVar_summary` object (a list).
+#' @return A `dcvar_summary` object (a list).
 #' @export
-summary.dcVar_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+summary.dcvar_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
   rho_df <- rho_trajectory(object, probs = probs)
   vp <- var_params(object)
-  diag <- dcVar_diagnostics(object)
+  diag <- dcvar_diagnostics(object)
 
   out <- list(
-    model = "dcVar",
+    model = "dcvar",
     T = object$stan_data$T,
     D = object$stan_data$D,
     rho_trajectory = rho_df,
@@ -77,18 +77,18 @@ summary.dcVar_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
     var_params = vp,
     diagnostics = diag
   )
-  class(out) <- "dcVar_summary"
+  class(out) <- "dcvar_summary"
   out
 }
 
 
-#' Print a dcVar_summary object
+#' Print a dcvar_summary object
 #'
-#' @param x A `dcVar_summary` object as returned by [summary.dcVar_fit()].
+#' @param x A `dcvar_summary` object as returned by [summary.dcvar_fit()].
 #' @param ... Additional arguments (unused).
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_summary <- function(x, ...) {
+print.dcvar_summary <- function(x, ...) {
   cat("DC-VAR Model Summary\n")
   cat(strrep("=", 50), "\n")
   cat(sprintf("T = %d, D = %d\n\n", x$T, x$D))
@@ -117,11 +117,11 @@ print.dcVar_summary <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_fit-methods Extract posterior means of model coefficients.
+#' @describeIn dcvar_fit-methods Extract posterior means of model coefficients.
 #' @return A named list with elements `mu`, `Phi`, `sigma_eps`, and
 #'   `sigma_omega`.
 #' @export
-coef.dcVar_fit <- function(object, ...) {
+coef.dcvar_fit <- function(object, ...) {
   summ <- object$fit$summary()
   result <- list(
     mu = .extract_coef(summ, "^mu\\["),
@@ -135,13 +135,13 @@ coef.dcVar_fit <- function(object, ...) {
 }
 
 
-#' @describeIn dcVar_fit-methods Dispatch to a plot type: `"rho"`, `"phi"`,
+#' @describeIn dcvar_fit-methods Dispatch to a plot type: `"rho"`, `"phi"`,
 #'   `"diagnostics"`, `"ppc"`, or `"pit"`.
 #' @param type Character; one of `"rho"`, `"phi"`, `"diagnostics"`, `"ppc"`,
 #'   or `"pit"`.
 #' @return A ggplot object.
 #' @export
-plot.dcVar_fit <- function(x, type = c("rho", "phi", "diagnostics", "ppc", "pit"), ...) {
+plot.dcvar_fit <- function(x, type = c("rho", "phi", "diagnostics", "ppc", "pit"), ...) {
   type <- match.arg(type)
   switch(type,
     rho = plot_rho(x, ...),

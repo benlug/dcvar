@@ -1,10 +1,10 @@
 # ============================================================================
-# S3 Class: dcVar_sem_fit
+# S3 Class: dcvar_sem_fit
 # ============================================================================
 
-#' Construct a dcVar_sem_fit object
+#' Construct a dcvar_sem_fit object
 #' @noRd
-new_dcVar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
+new_dcvar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
                                indicators, priors, meta) {
   structure(
     list(
@@ -21,23 +21,23 @@ new_dcVar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
       priors = priors,
       meta = meta
     ),
-    class = c("dcVar_sem_fit", "dcVar_model_fit")
+    class = c("dcvar_sem_fit", "dcvar_model_fit")
   )
 }
 
 
-#' S3 methods for dcVar_sem_fit objects
+#' S3 methods for dcvar_sem_fit objects
 #'
-#' @param x,object A `dcVar_sem_fit` object.
+#' @param x,object A `dcvar_sem_fit` object.
 #' @param ... Additional arguments (unused).
 #'
-#' @name dcVar_sem_fit-methods
+#' @name dcvar_sem_fit-methods
 NULL
 
-#' @describeIn dcVar_sem_fit-methods Print a concise overview.
+#' @describeIn dcvar_sem_fit-methods Print a concise overview.
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_sem_fit <- function(x, ...) {
+print.dcvar_sem_fit <- function(x, ...) {
   .print_fit_header(x, "SEM Copula VAR Model Fit")
   cat(sprintf("T = %d, J = %d indicators per latent\n", x$stan_data$T, x$J))
   .print_fit_footer(x)
@@ -51,12 +51,12 @@ print.dcVar_sem_fit <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_sem_fit-methods Produce a detailed summary.
-#' @return A `dcVar_sem_summary` object (a list).
+#' @describeIn dcvar_sem_fit-methods Produce a detailed summary.
+#' @return A `dcvar_sem_summary` object (a list).
 #' @export
-summary.dcVar_sem_fit <- function(object, ...) {
+summary.dcvar_sem_fit <- function(object, ...) {
   vp <- var_params(object)
-  diag <- dcVar_diagnostics(object)
+  diag <- dcvar_diagnostics(object)
 
   out <- list(
     model = "sem",
@@ -67,17 +67,17 @@ summary.dcVar_sem_fit <- function(object, ...) {
     var_params = vp,
     diagnostics = diag
   )
-  class(out) <- "dcVar_sem_summary"
+  class(out) <- "dcvar_sem_summary"
   out
 }
 
 
-#' Print a dcVar_sem_summary object
-#' @param x A `dcVar_sem_summary` object.
+#' Print a dcvar_sem_summary object
+#' @param x A `dcvar_sem_summary` object.
 #' @param ... Additional arguments (unused).
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_sem_summary <- function(x, ...) {
+print.dcvar_sem_summary <- function(x, ...) {
   cat("SEM Copula VAR Model Summary\n")
   cat(strrep("=", 50), "\n")
   cat(sprintf("T = %d, J = %d indicators per latent\n", x$T, x$J))
@@ -111,11 +111,11 @@ print.dcVar_sem_summary <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_sem_fit-methods Extract posterior means of
+#' @describeIn dcvar_sem_fit-methods Extract posterior means of
 #'   latent VAR coefficients.
 #' @return A named list of posterior means.
 #' @export
-coef.dcVar_sem_fit <- function(object, ...) {
+coef.dcvar_sem_fit <- function(object, ...) {
   summ <- object$fit$summary()
   list(
     mu = .extract_coef(summ, "^mu\\["),
@@ -126,11 +126,11 @@ coef.dcVar_sem_fit <- function(object, ...) {
 }
 
 
-#' @describeIn dcVar_sem_fit-methods Dispatch to a plot type.
+#' @describeIn dcvar_sem_fit-methods Dispatch to a plot type.
 #' @param type Character; one of `"latent_states"`, `"rho"`, `"diagnostics"`.
 #' @return A ggplot object.
 #' @export
-plot.dcVar_sem_fit <- function(x,
+plot.dcvar_sem_fit <- function(x,
                                 type = c("latent_states", "rho", "diagnostics"),
                                 ...) {
   type <- match.arg(type)

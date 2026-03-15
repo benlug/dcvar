@@ -9,10 +9,10 @@
 #'
 #' @return A `loo` object from the loo package.
 #' @importFrom loo loo
-#' @name loo.dcVar
+#' @name loo.dcvar
 NULL
 
-.loo_dcVar <- function(x, ...) {
+.loo_dcvar <- function(x, ...) {
   log_lik <- x$fit$draws("log_lik", format = "draws_array")
   r_eff <- loo::relative_eff(exp(log_lik))
   loo::loo(log_lik, r_eff = r_eff, ...)
@@ -20,8 +20,8 @@ NULL
 
 .abort_unsupported_loo <- function(x, reason) {
   model_label <- switch(class(x)[[1]],
-    dcVar_multilevel_fit = "multilevel",
-    dcVar_sem_fit = "SEM",
+    dcvar_multilevel_fit = "multilevel",
+    dcvar_sem_fit = "SEM",
     x$model %||% class(x)[[1]]
   )
 
@@ -32,28 +32,28 @@ NULL
 }
 
 .is_supported_loo_fit <- function(x) {
-  !inherits(x, c("dcVar_multilevel_fit", "dcVar_sem_fit"))
+  !inherits(x, c("dcvar_multilevel_fit", "dcvar_sem_fit"))
 }
 
-#' @rdname loo.dcVar
-#' @method loo dcVar_fit
+#' @rdname loo.dcvar
+#' @method loo dcvar_fit
 #' @export
-loo.dcVar_fit <- function(x, ...) .loo_dcVar(x, ...)
+loo.dcvar_fit <- function(x, ...) .loo_dcvar(x, ...)
 
-#' @rdname loo.dcVar
-#' @method loo dcVar_hmm_fit
+#' @rdname loo.dcvar
+#' @method loo dcvar_hmm_fit
 #' @export
-loo.dcVar_hmm_fit <- function(x, ...) .loo_dcVar(x, ...)
+loo.dcvar_hmm_fit <- function(x, ...) .loo_dcvar(x, ...)
 
-#' @rdname loo.dcVar
-#' @method loo dcVar_constant_fit
+#' @rdname loo.dcvar
+#' @method loo dcvar_constant_fit
 #' @export
-loo.dcVar_constant_fit <- function(x, ...) .loo_dcVar(x, ...)
+loo.dcvar_constant_fit <- function(x, ...) .loo_dcvar(x, ...)
 
-#' @rdname loo.dcVar
-#' @method loo dcVar_multilevel_fit
+#' @rdname loo.dcvar
+#' @method loo dcvar_multilevel_fit
 #' @export
-loo.dcVar_multilevel_fit <- function(x, ...) {
+loo.dcvar_multilevel_fit <- function(x, ...) {
   .abort_unsupported_loo(
     x,
     paste(
@@ -63,10 +63,10 @@ loo.dcVar_multilevel_fit <- function(x, ...) {
   )
 }
 
-#' @rdname loo.dcVar
-#' @method loo dcVar_sem_fit
+#' @rdname loo.dcvar
+#' @method loo dcvar_sem_fit
 #' @export
-loo.dcVar_sem_fit <- function(x, ...) {
+loo.dcvar_sem_fit <- function(x, ...) {
   .abort_unsupported_loo(
     x,
     paste(
@@ -80,41 +80,41 @@ loo.dcVar_sem_fit <- function(x, ...) {
 #' Compare multiple fitted models using LOO-CV
 #'
 #' Convenience wrapper around [loo::loo_compare()] that accepts named
-#' dcVar model fits.
+#' dcvar model fits.
 #'
-#' @param ... Named fitted model objects (e.g., `dcVar = fit1, hmm = fit2`).
+#' @param ... Named fitted model objects (e.g., `dcvar = fit1, hmm = fit2`).
 #'
 #' @return A `loo_compare` matrix.
 #'
 #' @seealso [loo::loo_compare()] for details on the comparison method,
-#'   [dcVar()], [dcVar_hmm()], [dcVar_constant()] for fitting models.
+#'   [dcvar()], [dcvar_hmm()], [dcvar_constant()] for fitting models.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' dcVar_compare(dcVar = fit1, hmm = fit2, constant = fit3)
+#' dcvar_compare(dcvar = fit1, hmm = fit2, constant = fit3)
 #' }
-dcVar_compare <- function(...) {
+dcvar_compare <- function(...) {
   fits <- list(...)
   if (is.null(names(fits)) || any(names(fits) == "")) {
     unnamed <- which(names(fits) == "" | is.na(names(fits)))
     cli_abort(c(
       "All arguments must be named.",
       "i" = "Unnamed argument{?s} at position{?s}: {.val {unnamed}}.",
-      "i" = "Example: {.code dcVar_compare(dcVar = fit1, hmm = fit2)}"
+      "i" = "Example: {.code dcvar_compare(dcvar = fit1, hmm = fit2)}"
     ))
   }
 
   for (nm in names(fits)) {
-    if (!inherits(fits[[nm]], "dcVar_model_fit")) {
-      cli_abort("Argument {.val {nm}} is not a dcVar model fit object.")
+    if (!inherits(fits[[nm]], "dcvar_model_fit")) {
+      cli_abort("Argument {.val {nm}} is not a dcvar model fit object.")
     }
   }
 
   unsupported <- names(fits)[!vapply(fits, .is_supported_loo_fit, logical(1))]
   if (length(unsupported) > 0) {
     cli_abort(c(
-      "{.fun dcVar_compare} does not support SEM or multilevel fits.",
+      "{.fun dcvar_compare} does not support SEM or multilevel fits.",
       "i" = "Unsupported argument{?s}: {.val {unsupported}}.",
       "i" = paste(
         "These models store {.code log_lik} targets that are not valid, comparable",

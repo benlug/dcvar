@@ -3,17 +3,17 @@
 \name{random_effects}
 \alias{random_effects}
 \alias{random_effects.default}
-\alias{random_effects.dcVar_multilevel_fit}
+\alias{random_effects.dcvar_multilevel_fit}
 \title{Extract random effects from a multilevel fit}
 \usage{
 random_effects(object, ...)
 
 \method{random_effects}{default}(object, ...)
 
-\method{random_effects}{dcVar_multilevel_fit}(object, ...)
+\method{random_effects}{dcvar_multilevel_fit}(object, ...)
 }
 \arguments{
-\item{object}{A \code{dcVar_multilevel_fit} object.}
+\item{object}{A \code{dcvar_multilevel_fit} object.}
 
 \item{...}{Additional arguments (unused).}
 }

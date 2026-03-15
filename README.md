@@ -1,4 +1,4 @@
-# dcVar: Dynamic Copula VAR Models for Time-Varying Dependence
+# dcvar: Dynamic Copula VAR Models for Time-Varying Dependence
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/benlug/dcvar/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/benlug/dcvar/actions/workflows/R-CMD-check.yaml)
@@ -6,20 +6,20 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 <!-- badges: end -->
 
-**dcVar** fits Bayesian copula VAR(1) models for bivariate time series, estimating how dependence between two processes evolves over time. Estimation is via Hamiltonian Monte Carlo through [CmdStan](https://mc-stan.org/users/interfaces/cmdstan).
+**dcvar** fits Bayesian copula VAR(1) models for bivariate time series, estimating how dependence between two processes evolves over time. Estimation is via Hamiltonian Monte Carlo through [CmdStan](https://mc-stan.org/users/interfaces/cmdstan).
 
 ## Models
 
 | Model | Function | Dependence Structure |
 |---|---|---|
-| **DC-VAR** | `dcVar()` | Continuous random-walk on Fisher-z scale |
-| **HMM Copula** | `dcVar_hmm()` | Discrete regime-switching with K states |
-| **Constant Copula** | `dcVar_constant()` | Time-invariant baseline |
-| **Multilevel** | `dcVar_multilevel()` | Random VAR coefficients for panel data |
-| **SEM** | `dcVar_sem()` | Fixed measurement model for latent processes |
+| **DC-VAR** | `dcvar()` | Continuous random-walk on Fisher-z scale |
+| **HMM Copula** | `dcvar_hmm()` | Discrete regime-switching with K states |
+| **Constant Copula** | `dcvar_constant()` | Time-invariant baseline |
+| **Multilevel** | `dcvar_multilevel()` | Random VAR coefficients for panel data |
+| **SEM** | `dcvar_sem()` | Fixed measurement model for latent processes |
 
-All models use Gaussian copulas. The core three time-series models (`dcVar()`,
-`dcVar_hmm()`, and `dcVar_constant()`) support four marginal distributions:
+All models use Gaussian copulas. The core three time-series models (`dcvar()`,
+`dcvar_hmm()`, and `dcvar_constant()`) support four marginal distributions:
 **normal**, **exponential**, **skew-normal**, and **gamma**. The multilevel and
 SEM variants currently support normal margins only.
 
@@ -40,7 +40,7 @@ cmdstanr::install_cmdstan()
 # install remotes for GitHub installation
 install.packages("remotes")
 
-# install dcVar from GitHub
+# install dcvar from GitHub
 remotes::install_github("benlug/dcvar")
 
 # optional: for skew-normal margins
@@ -50,25 +50,25 @@ install.packages("sn")
 ## Quick Start
 
 ```r
-library(dcVar)
+library(dcvar)
 
 # simulate data with decreasing coupling
-sim <- simulate_dcVar(
+sim <- simulate_dcvar(
   T = 150,
   rho_trajectory = rho_decreasing(150, rho_start = 0.7, rho_end = 0.3)
 )
 
 # fit the DC-VAR model
-fit <- dcVar(sim$Y_df, vars = c("y1", "y2"))
+fit <- dcvar(sim$Y_df, vars = c("y1", "y2"))
 
 # inspect results
 summary(fit)
 plot_rho(fit, true_rho = sim$true_params$rho)
 
 # compare models via LOO-CV
-fit_hmm <- dcVar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2)
-fit_con <- dcVar_constant(sim$Y_df, vars = c("y1", "y2"))
-dcVar_compare(dcVar = fit, hmm = fit_hmm, constant = fit_con)
+fit_hmm <- dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2)
+fit_con <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"))
+dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 ```
 
 ## Learning More
@@ -79,10 +79,10 @@ dcVar_compare(dcVar = fit, hmm = fit_hmm, constant = fit_con)
 
 ## Citation
 
-If you use dcVar in your research, please cite it:
+If you use dcvar in your research, please cite it:
 
 ```r
-citation("dcVar")
+citation("dcvar")
 ```
 
 ## Getting Help

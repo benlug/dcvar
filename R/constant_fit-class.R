@@ -1,10 +1,10 @@
 # ============================================================================
-# S3 Class: dcVar_constant_fit
+# S3 Class: dcvar_constant_fit
 # ============================================================================
 
-#' Construct a dcVar_constant_fit object
+#' Construct a dcvar_constant_fit object
 #' @noRd
-new_dcVar_constant_fit <- function(fit, stan_data, vars, standardized,
+new_dcvar_constant_fit <- function(fit, stan_data, vars, standardized,
                                    margins = "normal", skew_direction = NULL,
                                    priors, meta) {
   structure(
@@ -19,24 +19,24 @@ new_dcVar_constant_fit <- function(fit, stan_data, vars, standardized,
       priors = priors,
       meta = meta
     ),
-    class = c("dcVar_constant_fit", "dcVar_model_fit")
+    class = c("dcvar_constant_fit", "dcvar_model_fit")
   )
 }
 
 
-#' S3 methods for dcVar_constant_fit objects
+#' S3 methods for dcvar_constant_fit objects
 #'
-#' @param x,object A `dcVar_constant_fit` object.
+#' @param x,object A `dcvar_constant_fit` object.
 #' @param ... Additional arguments (unused).
 #'
-#' @name dcVar_constant_fit-methods
+#' @name dcvar_constant_fit-methods
 NULL
 
-#' @describeIn dcVar_constant_fit-methods Print a concise overview of the
+#' @describeIn dcvar_constant_fit-methods Print a concise overview of the
 #'   constant copula fit.
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_constant_fit <- function(x, ...) {
+print.dcvar_constant_fit <- function(x, ...) {
   .print_fit_header(x, "Constant Copula Model Fit")
   cat(sprintf("T = %d, D = %d\n", x$stan_data$T, x$stan_data$D))
   .print_fit_footer(x)
@@ -48,16 +48,16 @@ print.dcVar_constant_fit <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_constant_fit-methods Produce a detailed summary including
+#' @describeIn dcvar_constant_fit-methods Produce a detailed summary including
 #'   constant rho, VAR parameters, and diagnostics.
 #' @param probs Numeric vector of quantile probabilities for the rho estimate
 #'   (default: `c(0.025, 0.5, 0.975)`).
-#' @return A `dcVar_constant_summary` object (a list).
+#' @return A `dcvar_constant_summary` object (a list).
 #' @export
-summary.dcVar_constant_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+summary.dcvar_constant_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
   rho_df <- rho_trajectory(object, probs = probs)
   vp <- var_params(object)
-  diag <- dcVar_diagnostics(object)
+  diag <- dcvar_diagnostics(object)
 
   out <- list(
     model = "constant",
@@ -67,19 +67,19 @@ summary.dcVar_constant_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...
     var_params = vp,
     diagnostics = diag
   )
-  class(out) <- "dcVar_constant_summary"
+  class(out) <- "dcvar_constant_summary"
   out
 }
 
 
-#' Print a dcVar_constant_summary object
+#' Print a dcvar_constant_summary object
 #'
-#' @param x A `dcVar_constant_summary` object as returned by
-#'   [summary.dcVar_constant_fit()].
+#' @param x A `dcvar_constant_summary` object as returned by
+#'   [summary.dcvar_constant_fit()].
 #' @param ... Additional arguments (unused).
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_constant_summary <- function(x, ...) {
+print.dcvar_constant_summary <- function(x, ...) {
   quantile_cols <- grep("^q", names(x$rho), value = TRUE)
   lower_col <- quantile_cols[1]
   upper_col <- quantile_cols[length(quantile_cols)]
@@ -110,11 +110,11 @@ print.dcVar_constant_summary <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_constant_fit-methods Extract posterior means of model
+#' @describeIn dcvar_constant_fit-methods Extract posterior means of model
 #'   coefficients.
 #' @return A named list with elements `mu`, `Phi`, `sigma_eps`, and `rho`.
 #' @export
-coef.dcVar_constant_fit <- function(object, ...) {
+coef.dcvar_constant_fit <- function(object, ...) {
   summ <- object$fit$summary()
   result <- list(
     mu = .extract_coef(summ, "^mu\\["),
@@ -128,13 +128,13 @@ coef.dcVar_constant_fit <- function(object, ...) {
 }
 
 
-#' @describeIn dcVar_constant_fit-methods Dispatch to a plot type: `"rho"`,
+#' @describeIn dcvar_constant_fit-methods Dispatch to a plot type: `"rho"`,
 #'   `"phi"`, `"diagnostics"`, `"ppc"`, or `"pit"`.
 #' @param type Character; one of `"rho"`, `"phi"`, `"diagnostics"`, `"ppc"`,
 #'   `"pit"`.
 #' @return A ggplot object.
 #' @export
-plot.dcVar_constant_fit <- function(x, type = c("rho", "phi", "diagnostics", "ppc", "pit"), ...) {
+plot.dcvar_constant_fit <- function(x, type = c("rho", "phi", "diagnostics", "ppc", "pit"), ...) {
   type <- match.arg(type)
   switch(type,
     rho = plot_rho(x, ...),

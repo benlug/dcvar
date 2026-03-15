@@ -1,10 +1,10 @@
 # ============================================================================
-# S3 Class: dcVar_multilevel_fit
+# S3 Class: dcvar_multilevel_fit
 # ============================================================================
 
-#' Construct a dcVar_multilevel_fit object
+#' Construct a dcvar_multilevel_fit object
 #' @noRd
-new_dcVar_multilevel_fit <- function(fit, stan_data, N, vars, centered,
+new_dcvar_multilevel_fit <- function(fit, stan_data, N, vars, centered,
                                      person_means, priors, meta,
                                      standardized = FALSE,
                                      margins = "normal") {
@@ -22,23 +22,23 @@ new_dcVar_multilevel_fit <- function(fit, stan_data, N, vars, centered,
       priors = priors,
       meta = meta
     ),
-    class = c("dcVar_multilevel_fit", "dcVar_model_fit")
+    class = c("dcvar_multilevel_fit", "dcvar_model_fit")
   )
 }
 
 
-#' S3 methods for dcVar_multilevel_fit objects
+#' S3 methods for dcvar_multilevel_fit objects
 #'
-#' @param x,object A `dcVar_multilevel_fit` object.
+#' @param x,object A `dcvar_multilevel_fit` object.
 #' @param ... Additional arguments (unused).
 #'
-#' @name dcVar_multilevel_fit-methods
+#' @name dcvar_multilevel_fit-methods
 NULL
 
-#' @describeIn dcVar_multilevel_fit-methods Print a concise overview.
+#' @describeIn dcvar_multilevel_fit-methods Print a concise overview.
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_multilevel_fit <- function(x, ...) {
+print.dcvar_multilevel_fit <- function(x, ...) {
   .print_fit_header(x, "Multilevel Copula VAR Model Fit")
   cat(sprintf("N = %d units, T = %d per unit\n", x$N, x$stan_data$T))
   .print_fit_footer(x)
@@ -52,12 +52,12 @@ print.dcVar_multilevel_fit <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_multilevel_fit-methods Produce a detailed summary.
-#' @return A `dcVar_multilevel_summary` object (a list).
+#' @describeIn dcvar_multilevel_fit-methods Produce a detailed summary.
+#' @return A `dcvar_multilevel_summary` object (a list).
 #' @export
-summary.dcVar_multilevel_fit <- function(object, ...) {
+summary.dcvar_multilevel_fit <- function(object, ...) {
   vp <- var_params(object)
-  diag <- dcVar_diagnostics(object)
+  diag <- dcvar_diagnostics(object)
   re <- random_effects(object)
 
   out <- list(
@@ -68,17 +68,17 @@ summary.dcVar_multilevel_fit <- function(object, ...) {
     random_effects = re,
     diagnostics = diag
   )
-  class(out) <- "dcVar_multilevel_summary"
+  class(out) <- "dcvar_multilevel_summary"
   out
 }
 
 
-#' Print a dcVar_multilevel_summary object
-#' @param x A `dcVar_multilevel_summary` object.
+#' Print a dcvar_multilevel_summary object
+#' @param x A `dcvar_multilevel_summary` object.
 #' @param ... Additional arguments (unused).
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_multilevel_summary <- function(x, ...) {
+print.dcvar_multilevel_summary <- function(x, ...) {
   cat("Multilevel Copula VAR Model Summary\n")
   cat(strrep("=", 50), "\n")
   cat(sprintf("N = %d units, T = %d per unit\n\n", x$N, x$T))
@@ -110,7 +110,7 @@ print.dcVar_multilevel_summary <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_multilevel_fit-methods Extract posterior means of
+#' @describeIn dcvar_multilevel_fit-methods Extract posterior means of
 #'   population-level coefficients.
 #' @details
 #' Unlike single-level models (where `coef()` returns `$Phi`), the multilevel
@@ -125,7 +125,7 @@ print.dcVar_multilevel_summary <- function(x, ...) {
 #' Use [random_effects()] to obtain unit-specific VAR coefficients.
 #' @return A named list of posterior means.
 #' @export
-coef.dcVar_multilevel_fit <- function(object, ...) {
+coef.dcvar_multilevel_fit <- function(object, ...) {
   summ <- object$fit$summary()
   list(
     phi_bar = .extract_coef(summ, "^phi_bar\\["),
@@ -136,11 +136,11 @@ coef.dcVar_multilevel_fit <- function(object, ...) {
 }
 
 
-#' @describeIn dcVar_multilevel_fit-methods Dispatch to a plot type.
+#' @describeIn dcvar_multilevel_fit-methods Dispatch to a plot type.
 #' @param type Character; one of `"random_effects"`, `"diagnostics"`.
 #' @return A ggplot object.
 #' @export
-plot.dcVar_multilevel_fit <- function(x,
+plot.dcvar_multilevel_fit <- function(x,
                                       type = c("random_effects", "diagnostics"),
                                       ...) {
   type <- match.arg(type)

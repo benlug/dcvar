@@ -1,7 +1,7 @@
-test_that("fitted() returns correct structure for dcVar", {
+test_that("fitted() returns correct structure for dcvar", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   fit_df <- fitted(fit)
 
   expect_s3_class(fit_df, "data.frame")
@@ -33,7 +33,7 @@ test_that("fitted() returns correct structure for constant", {
 test_that("predict() returns correct structure", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   pred_df <- predict(fit)
 
   expect_s3_class(pred_df, "data.frame")
@@ -47,7 +47,7 @@ test_that("predict() returns correct structure", {
 test_that("predict() respects ci_level parameter", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   pred_95 <- predict(fit, ci_level = 0.95)
   pred_80 <- predict(fit, ci_level = 0.80)
 
@@ -72,7 +72,7 @@ test_that("predict() works for hmm and constant", {
 test_that("fitted() works and predict() errors for non-normal fits", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_exponential_fit()
+  fit <- get_dcvar_exponential_fit()
   fit_df <- fitted(fit)
 
   expect_s3_class(fit_df, "data.frame")
@@ -84,7 +84,7 @@ test_that("fitted() works and predict() errors for non-normal fits", {
 
 test_that("fitted() type='response' unstandardizes correctly", {
   skip_if_no_cmdstanr()
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   if (!isTRUE(fit$standardized)) skip("fit not standardized")
 
   fit_link <- fitted(fit, type = "link")
@@ -99,7 +99,7 @@ test_that("fitted() type='response' unstandardizes correctly", {
 
 test_that("fitted() default type='link' is backward compatible", {
   skip_if_no_cmdstanr()
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
 
   # Default should be same as explicit "link"
   fit_default <- fitted(fit)
@@ -109,7 +109,7 @@ test_that("fitted() default type='link' is backward compatible", {
 
 test_that("predict() type='response' unstandardizes correctly", {
   skip_if_no_cmdstanr()
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   if (!isTRUE(fit$standardized)) skip("fit not standardized")
 
   pred_link <- predict(fit, type = "link")
@@ -121,7 +121,7 @@ test_that("predict() type='response' unstandardizes correctly", {
 test_that("fitted() and predict() honor preserved time values", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   attr(fit$stan_data, "time_values") <- seq.Date(
     as.Date("2021-01-01"),
     by = "day",

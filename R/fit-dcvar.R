@@ -19,15 +19,15 @@
 #' @param prior_mu_sd Prior SD for intercepts: `mu ~ normal(0, prior_mu_sd)`.
 #' @param prior_phi_sd Prior SD for VAR coefficients: `Phi ~ normal(0, prior_phi_sd)`.
 #' @param prior_sigma_eps_rate Prior mean for innovation SDs (see
-#'   [prepare_dcVar_data()]).
+#'   [prepare_dcvar_data()]).
 #' @param prior_sigma_omega_rate Prior mean for rho process SD (see
-#'   [prepare_dcVar_data()]).
+#'   [prepare_dcvar_data()]).
 #' @param prior_rho_init_sd Prior SD for initial rho on Fisher-z scale.
 #' @param chains Number of MCMC chains (default: 4).
 #' @param iter_warmup Warmup iterations per chain (default: 2000).
 #' @param iter_sampling Sampling iterations per chain (default: 4000).
 #' @param adapt_delta Target acceptance rate (default: 0.99). The DC-VAR model
-#'   uses a lower default than `dcVar_constant()` (0.999) because the
+#'   uses a lower default than `dcvar_constant()` (0.999) because the
 #'   non-centered parameterisation already handles posterior geometry well.
 #' @param max_treedepth Maximum tree depth (default: 12).
 #' @param seed Random seed.
@@ -39,23 +39,23 @@
 #'   model.
 #' @param ... Additional arguments passed to `cmdstanr::CmdStanModel$sample()`.
 #'
-#' @return A `dcVar_fit` object.
+#' @return A `dcvar_fit` object.
 #'
-#' @seealso [dcVar_constant()] for the time-invariant baseline,
-#'   [dcVar_hmm()] for the regime-switching model,
-#'   [dcVar_compare()] for LOO-CV model comparison,
+#' @seealso [dcvar_constant()] for the time-invariant baseline,
+#'   [dcvar_hmm()] for the regime-switching model,
+#'   [dcvar_compare()] for LOO-CV model comparison,
 #'   [rho_trajectory()] and [plot_rho()] for inspecting results.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' sim <- simulate_dcVar(T = 100, rho_trajectory = rho_decreasing(100))
-#' fit <- dcVar(sim$Y_df, vars = c("y1", "y2"))
+#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_decreasing(100))
+#' fit <- dcvar(sim$Y_df, vars = c("y1", "y2"))
 #' print(fit)
 #' summary(fit)
 #' plot(fit)
 #' }
-dcVar <- function(data, vars, time_var = "time",
+dcvar <- function(data, vars, time_var = "time",
                   standardize = TRUE,
                   margins = "normal",
                   skew_direction = NULL,
@@ -82,7 +82,7 @@ dcVar <- function(data, vars, time_var = "time",
   .validate_margins(margins, skew_direction)
 
   # Prepare data
-  stan_data <- prepare_dcVar_data(
+  stan_data <- prepare_dcvar_data(
     data, vars, time_var, standardize, margins, skew_direction,
     prior_mu_sd, prior_phi_sd, prior_sigma_eps_rate,
     prior_sigma_omega_rate, prior_rho_init_sd,
@@ -93,13 +93,13 @@ dcVar <- function(data, vars, time_var = "time",
   cli_inform("Fitting DC-VAR model{margins_label} (T = {stan_data$T}, D = {stan_data$D})...")
 
   # Compile model
-  model <- .compile_model("dcVar", margins = margins, stan_file = stan_file)
+  model <- .compile_model("dcvar", margins = margins, stan_file = stan_file)
 
   # Default init
   if (is.null(init)) {
     D <- stan_data$D
     T_obs <- stan_data$T
-    init <- function() .init_dcVar_params(D, T_obs, margins)
+    init <- function() .init_dcvar_params(D, T_obs, margins)
   }
 
   if (is.null(cores)) cores <- parallel::detectCores(logical = FALSE)
@@ -122,7 +122,7 @@ dcVar <- function(data, vars, time_var = "time",
   .report_sampling_outcome(fit, "DC-VAR", chains = chains)
 
   # Wrap in S3 class
-  new_dcVar_fit(
+  new_dcvar_fit(
     fit = fit,
     stan_data = stan_data,
     vars = vars,

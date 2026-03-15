@@ -7,7 +7,7 @@
 plot_latent_states(object, true_states = NULL, ...)
 }
 \arguments{
-\item{object}{A \code{dcVar_sem_fit} object.}
+\item{object}{A \code{dcvar_sem_fit} object.}
 
 \item{true_states}{Optional T x 2 matrix of true latent states for overlay.}
 

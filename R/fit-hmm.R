@@ -4,7 +4,7 @@
 #' state-specific correlations. Uses ordered z_rho constraint to prevent
 #' label switching and a sticky Dirichlet prior to encourage state persistence.
 #'
-#' @inheritParams dcVar
+#' @inheritParams dcvar
 #' @param margins Character string specifying the marginal distribution.
 #'   One of `"normal"` (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
 #' @param skew_direction Integer vector of length D indicating skew direction
@@ -15,22 +15,22 @@
 #' @param prior_alpha_off Sticky Dirichlet off-diagonal concentration (default: 1).
 #' @param prior_z_rho_sd Prior SD for state-specific z_rho (default: 1.0).
 #'
-#' @return A `dcVar_hmm_fit` object.
+#' @return A `dcvar_hmm_fit` object.
 #'
-#' @seealso [dcVar()] for the smooth time-varying model,
-#'   [dcVar_constant()] for the time-invariant baseline,
+#' @seealso [dcvar()] for the smooth time-varying model,
+#'   [dcvar_constant()] for the time-invariant baseline,
 #'   [hmm_states()] for state extraction, [plot_hmm_states()] for visualisation,
-#'   [dcVar_compare()] for LOO-CV model comparison.
+#'   [dcvar_compare()] for LOO-CV model comparison.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' sim <- simulate_dcVar(T = 100, rho_trajectory = rho_step(100))
-#' fit <- dcVar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2)
+#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_step(100))
+#' fit <- dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2)
 #' print(fit)
 #' hmm_states(fit)
 #' }
-dcVar_hmm <- function(data, vars, K = 2,
+dcvar_hmm <- function(data, vars, K = 2,
                       time_var = "time",
                       standardize = TRUE,
                       margins = "normal",
@@ -102,7 +102,7 @@ dcVar_hmm <- function(data, vars, K = 2,
   .report_sampling_outcome(fit, "HMM copula", chains = chains)
 
   # Wrap in S3 class
-  new_dcVar_hmm_fit(
+  new_dcvar_hmm_fit(
     fit = fit,
     stan_data = stan_data,
     K = K,

@@ -1,7 +1,7 @@
-test_that("plot_rho() returns ggplot for dcVar", {
+test_that("plot_rho() returns ggplot for dcvar", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   p <- plot_rho(fit)
   expect_s3_class(p, "ggplot")
 })
@@ -25,15 +25,15 @@ test_that("plot_rho() returns ggplot for constant", {
 test_that("plot_phi() returns ggplot", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   p <- plot_phi(fit)
   expect_s3_class(p, "ggplot")
 })
 
-test_that("plot_diagnostics() works for dcVar", {
+test_that("plot_diagnostics() works for dcvar", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   p <- plot_diagnostics(fit)
   expect_true(inherits(p, "patchwork") || inherits(p, "ggplot"))
 })
@@ -64,10 +64,10 @@ test_that("plot_hmm_states() returns ggplot with expected structure", {
   expect_true(nrow(p$data) > 0)
 })
 
-test_that("plot_ppc() returns ggplot for dcVar", {
+test_that("plot_ppc() returns ggplot for dcvar", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   expect_no_warning(p <- plot_ppc(fit))
   expect_s3_class(p, "ggplot")
   expect_false(all(is.na(p$data$cor)))
@@ -94,15 +94,15 @@ test_that("plot_ppc() returns ggplot for constant", {
 test_that("plot_ppc() works for exponential fits", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_exponential_fit()
+  fit <- get_dcvar_exponential_fit()
   expect_no_warning(p <- plot_ppc(fit))
   expect_s3_class(p, "ggplot")
   expect_false(all(is.na(p$data$cor)))
 })
 
 test_that("plot_ppc() rejects unsupported non-normal margins", {
-  gamma_fit <- structure(list(margins = "gamma"), class = "dcVar_fit")
-  skew_fit <- structure(list(margins = "skew_normal"), class = "dcVar_fit")
+  gamma_fit <- structure(list(margins = "gamma"), class = "dcvar_fit")
+  skew_fit <- structure(list(margins = "skew_normal"), class = "dcvar_fit")
 
   expect_error(plot_ppc(gamma_fit), "not supported")
   expect_error(plot_ppc(skew_fit), "not supported")

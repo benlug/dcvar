@@ -1,6 +1,6 @@
-test_that("simulate_dcVar_multilevel returns correct structure", {
+test_that("simulate_dcvar_multilevel returns correct structure", {
   set.seed(42)
-  sim <- simulate_dcVar_multilevel(N = 5, T = 20, rho = 0.5, seed = 1)
+  sim <- simulate_dcvar_multilevel(N = 5, T = 20, rho = 0.5, seed = 1)
 
   expect_type(sim, "list")
   expect_named(sim, c("data", "true_params", "person_means"))
@@ -8,18 +8,18 @@ test_that("simulate_dcVar_multilevel returns correct structure", {
   expect_true(all(c("id", "time", "y1", "y2") %in% names(sim$data)))
 })
 
-test_that("simulate_dcVar_multilevel data has correct dimensions", {
+test_that("simulate_dcvar_multilevel data has correct dimensions", {
   N <- 5
   T_val <- 20
-  sim <- simulate_dcVar_multilevel(N = N, T = T_val, rho = 0.3, seed = 2)
+  sim <- simulate_dcvar_multilevel(N = N, T = T_val, rho = 0.3, seed = 2)
 
   expect_equal(nrow(sim$data), N * T_val)
   expect_equal(ncol(sim$data), 4)
   expect_equal(length(unique(sim$data$id)), N)
 })
 
-test_that("simulate_dcVar_multilevel true_params contains expected elements", {
-  sim <- simulate_dcVar_multilevel(N = 3, T = 15, rho = 0.4, seed = 3)
+test_that("simulate_dcvar_multilevel true_params contains expected elements", {
+  sim <- simulate_dcvar_multilevel(N = 3, T = 15, rho = 0.4, seed = 3)
 
   expect_named(sim$true_params,
                c("phi_bar", "tau_phi", "sigma", "rho", "Phi_mat", "Phi_list"))
@@ -32,31 +32,31 @@ test_that("simulate_dcVar_multilevel true_params contains expected elements", {
   expect_equal(length(sim$true_params$Phi_list), 3)
 })
 
-test_that("simulate_dcVar_multilevel person_means has correct shape", {
+test_that("simulate_dcvar_multilevel person_means has correct shape", {
   N <- 8
-  sim <- simulate_dcVar_multilevel(N = N, T = 25, rho = 0.5, seed = 4)
+  sim <- simulate_dcvar_multilevel(N = N, T = 25, rho = 0.5, seed = 4)
 
   expect_equal(nrow(sim$person_means), N)
   expect_equal(ncol(sim$person_means), 2)
 })
 
-test_that("simulate_dcVar_multilevel works with different N and T values", {
-  sim_small <- simulate_dcVar_multilevel(N = 2, T = 10, rho = 0.5, seed = 5)
+test_that("simulate_dcvar_multilevel works with different N and T values", {
+  sim_small <- simulate_dcvar_multilevel(N = 2, T = 10, rho = 0.5, seed = 5)
   expect_equal(nrow(sim_small$data), 2 * 10)
 
-  sim_large <- simulate_dcVar_multilevel(N = 10, T = 50, rho = 0.5, seed = 6)
+  sim_large <- simulate_dcvar_multilevel(N = 10, T = 50, rho = 0.5, seed = 6)
   expect_equal(nrow(sim_large$data), 10 * 50)
 })
 
-test_that("simulate_dcVar_multilevel validates rho bounds", {
+test_that("simulate_dcvar_multilevel validates rho bounds", {
   expect_error(
-    simulate_dcVar_multilevel(N = 2, T = 10, rho = 1.2, seed = 7),
+    simulate_dcvar_multilevel(N = 2, T = 10, rho = 1.2, seed = 7),
     "must be a single numeric value in \\[-1, 1\\]"
   )
 })
 
-test_that("simulate_dcVar_multilevel preserves sampled nonstationary Phi matrices", {
-  sim <- simulate_dcVar_multilevel(
+test_that("simulate_dcvar_multilevel preserves sampled nonstationary Phi matrices", {
+  sim <- simulate_dcvar_multilevel(
     N = 1,
     T = 20,
     phi_bar = c(1.2, 0, 0, 1.1),
@@ -73,17 +73,17 @@ test_that("simulate_dcVar_multilevel preserves sampled nonstationary Phi matrice
   )
 })
 
-test_that("simulate_dcVar_multilevel is reproducible with seed", {
-  s1 <- simulate_dcVar_multilevel(N = 3, T = 15, rho = 0.5, seed = 99)
-  s2 <- simulate_dcVar_multilevel(N = 3, T = 15, rho = 0.5, seed = 99)
+test_that("simulate_dcvar_multilevel is reproducible with seed", {
+  s1 <- simulate_dcvar_multilevel(N = 3, T = 15, rho = 0.5, seed = 99)
+  s2 <- simulate_dcvar_multilevel(N = 3, T = 15, rho = 0.5, seed = 99)
   expect_identical(s1$data, s2$data)
   expect_identical(s1$true_params$Phi_mat, s2$true_params$Phi_mat)
 })
 
-test_that("simulate_dcVar_multilevel centering works", {
-  sim_centered <- simulate_dcVar_multilevel(N = 3, T = 30, rho = 0.5,
+test_that("simulate_dcvar_multilevel centering works", {
+  sim_centered <- simulate_dcvar_multilevel(N = 3, T = 30, rho = 0.5,
                                             center = TRUE, seed = 10)
-  sim_uncentered <- simulate_dcVar_multilevel(N = 3, T = 30, rho = 0.5,
+  sim_uncentered <- simulate_dcvar_multilevel(N = 3, T = 30, rho = 0.5,
                                               center = FALSE, seed = 10)
 
   # Centered data should have near-zero person means
@@ -99,13 +99,13 @@ test_that("simulate_dcVar_multilevel centering works", {
 
 test_that(".project_if_needed returns matrix unchanged when stationary", {
   Phi <- matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2)
-  result <- dcVar:::.project_if_needed(Phi)
+  result <- dcvar:::.project_if_needed(Phi)
   expect_equal(result, Phi)
 })
 
 test_that(".project_if_needed shrinks non-stationary matrix", {
   Phi <- matrix(c(1.2, 0.1, 0.1, 1.2), 2, 2)
-  result <- dcVar:::.project_if_needed(Phi)
+  result <- dcvar:::.project_if_needed(Phi)
 
   ev <- eigen(result, only.values = TRUE)$values
   expect_true(all(Mod(ev) < 1))

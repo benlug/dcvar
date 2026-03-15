@@ -28,15 +28,15 @@
 #' @return A named list with:
 #'   - `Y`: T x 2 observation matrix
 #'   - `Y_df`: data frame with columns `time`, `y1`, `y2` (ready for
-#'     [dcVar()])
+#'     [dcvar()])
 #'   - `true_params`: list of true parameter values
 #' @export
 #'
 #' @examples
-#' sim <- simulate_dcVar(T = 100, rho_trajectory = rho_decreasing(100))
+#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_decreasing(100))
 #' head(sim$Y_df)
 #' plot(sim$true_params$rho, type = "l")
-simulate_dcVar <- function(T,
+simulate_dcvar <- function(T,
                            rho_trajectory,
                            mu = c(0, 0),
                            Phi = matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2),
@@ -62,7 +62,7 @@ simulate_dcVar <- function(T,
   D <- length(mu)
   if (D != 2) {
     cli_abort(
-      "{.fun simulate_dcVar} currently supports bivariate (D = 2) models only, got D = {D}."
+      "{.fun simulate_dcvar} currently supports bivariate (D = 2) models only, got D = {D}."
     )
   }
   if (!is.matrix(Phi) || !all(dim(Phi) == c(D, D))) {

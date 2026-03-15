@@ -11,8 +11,8 @@
 #' are on the standardized (z-scored) scale by default. Use `type = "response"`
 #' to back-transform to the original data scale.
 #'
-#' @param object A fitted model object (`dcVar_fit`, `dcVar_hmm_fit`, or
-#'   `dcVar_constant_fit`).
+#' @param object A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
+#'   `dcvar_constant_fit`).
 #' @param type Character; `"link"` (default) returns values on the model's
 #'   internal scale (standardized if applicable), `"response"` back-transforms
 #'   to the original data scale.
@@ -21,7 +21,7 @@
 #' @return A data frame with columns `time`, and one column per variable
 #'   containing the posterior-mean fitted values.
 #' @export
-fitted.dcVar_model_fit <- function(object, type = c("link", "response"), ...) {
+fitted.dcvar_model_fit <- function(object, type = c("link", "response"), ...) {
   type <- match.arg(type)
   D <- object$stan_data$D
   T_obs <- object$stan_data$T
@@ -66,18 +66,18 @@ fitted.dcVar_model_fit <- function(object, type = c("link", "response"), ...) {
 }
 
 
-#' @rdname fitted.dcVar_model_fit
+#' @rdname fitted.dcvar_model_fit
 #' @export
-fitted.dcVar_multilevel_fit <- function(object, ...) {
+fitted.dcvar_multilevel_fit <- function(object, ...) {
   cli_abort(c(
     "{.fun fitted} is not yet implemented for multilevel models.",
     "i" = "Use {.fun var_params} and {.fun random_effects} to inspect parameters."
   ))
 }
 
-#' @rdname fitted.dcVar_model_fit
+#' @rdname fitted.dcvar_model_fit
 #' @export
-fitted.dcVar_sem_fit <- function(object, ...) {
+fitted.dcvar_sem_fit <- function(object, ...) {
   cli_abort(c(
     "{.fun fitted} is not yet implemented for SEM models.",
     "i" = "Use {.fun latent_states} to extract estimated latent trajectories."
@@ -102,7 +102,7 @@ fitted.dcVar_sem_fit <- function(object, ...) {
 #' @return A data frame with columns `time`, `variable`, `mean`, `lower`,
 #'   `upper` (marginal prediction interval at the specified level).
 #' @export
-predict.dcVar_model_fit <- function(object, type = c("link", "response"),
+predict.dcvar_model_fit <- function(object, type = c("link", "response"),
                                     ci_level = 0.95, ...) {
   type <- match.arg(type)
   margins <- object$margins %||% "normal"
@@ -151,18 +151,18 @@ predict.dcVar_model_fit <- function(object, type = c("link", "response"),
   out
 }
 
-#' @rdname predict.dcVar_model_fit
+#' @rdname predict.dcvar_model_fit
 #' @export
-predict.dcVar_multilevel_fit <- function(object, ...) {
+predict.dcvar_multilevel_fit <- function(object, ...) {
   cli_abort(c(
     "{.fun predict} is not yet implemented for multilevel models.",
     "i" = "Use {.fun var_params} and {.fun random_effects} to inspect parameters."
   ))
 }
 
-#' @rdname predict.dcVar_model_fit
+#' @rdname predict.dcvar_model_fit
 #' @export
-predict.dcVar_sem_fit <- function(object, ...) {
+predict.dcvar_sem_fit <- function(object, ...) {
   cli_abort(c(
     "{.fun predict} is not yet implemented for SEM models.",
     "i" = "Use {.fun latent_states} to extract estimated latent trajectories."

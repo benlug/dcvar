@@ -27,7 +27,7 @@ pit_values.default <- function(object, ...) {
 
 #' @rdname pit_values
 #' @export
-pit_values.dcVar_model_fit <- function(object, ...) {
+pit_values.dcvar_model_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
 
   # Extract posterior mean residuals and parameters
@@ -188,7 +188,7 @@ pit_test.default <- function(object, ...) {
 
 #' @rdname pit_test
 #' @export
-pit_test.dcVar_model_fit <- function(object, ...) {
+pit_test.dcvar_model_fit <- function(object, ...) {
   pit_df <- pit_values(object)
 
   results <- lapply(unique(pit_df$variable), function(v) {
@@ -207,22 +207,22 @@ pit_test.dcVar_model_fit <- function(object, ...) {
 
 
 #' @export
-pit_values.dcVar_multilevel_fit <- function(object, ...) {
+pit_values.dcvar_multilevel_fit <- function(object, ...) {
   cli_abort("PIT values are not yet supported for multilevel models.")
 }
 
 #' @export
-pit_values.dcVar_sem_fit <- function(object, ...) {
+pit_values.dcvar_sem_fit <- function(object, ...) {
   cli_abort("PIT values are not yet supported for SEM models.")
 }
 
 #' @export
-pit_test.dcVar_multilevel_fit <- function(object, ...) {
+pit_test.dcvar_multilevel_fit <- function(object, ...) {
   cli_abort("PIT tests are not yet supported for multilevel models.")
 }
 
 #' @export
-pit_test.dcVar_sem_fit <- function(object, ...) {
+pit_test.dcvar_sem_fit <- function(object, ...) {
   cli_abort("PIT tests are not yet supported for SEM models.")
 }
 

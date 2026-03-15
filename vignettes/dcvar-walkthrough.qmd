@@ -1,5 +1,5 @@
 ---
-title: "dcVar: Complete Feature Walkthrough"
+title: "dcvar: Complete Feature Walkthrough"
 subtitle: "Testing all package functionality end-to-end"
 author: "Benedikt Lugauer"
 format:
@@ -17,7 +17,7 @@ execute:
 ```{r}
 #| label: setup
 #| cache: false
-library(dcVar)
+library(dcvar)
 library(ggplot2)
 
 # Keep cmdstanr CSV outputs in a stable directory for the full render.
@@ -40,7 +40,7 @@ renderable. For real analyses, use more chains and iterations and treat any
 ## 1. Trajectory Generators
 
 All seven built-in generators produce rho trajectories of length `T - 1` for use
-with `simulate_dcVar()`.
+with `simulate_dcvar()`.
 
 ```{r}
 #| label: trajectories
@@ -74,7 +74,7 @@ plot_trajectories(T = T_DEMO)
 
 ```{r}
 #| label: sim-normal
-sim_norm <- simulate_dcVar(
+sim_norm <- simulate_dcvar(
   T = T_DEMO,
   rho_trajectory = rho_decreasing(T_DEMO, rho_start = 0.7, rho_end = 0.3),
   seed = SEED
@@ -87,7 +87,7 @@ head(sim_norm$Y_df)
 
 ```{r}
 #| label: sim-exp
-sim_exp <- simulate_dcVar(
+sim_exp <- simulate_dcvar(
   T = T_DEMO,
   rho_trajectory = rho_decreasing(T_DEMO, rho_start = 0.7, rho_end = 0.3),
   margins = "exponential",
@@ -101,7 +101,7 @@ str(sim_exp$true_params, max.level = 1)
 
 ```{r}
 #| label: sim-sn
-sim_sn <- simulate_dcVar(
+sim_sn <- simulate_dcvar(
   T = T_DEMO,
   rho_trajectory = rho_decreasing(T_DEMO, rho_start = 0.7, rho_end = 0.3),
   margins = "skew_normal",
@@ -115,7 +115,7 @@ str(sim_sn$true_params, max.level = 1)
 
 ```{r}
 #| label: sim-gamma
-sim_gam <- simulate_dcVar(
+sim_gam <- simulate_dcvar(
   T = T_DEMO,
   rho_trajectory = rho_decreasing(T_DEMO, rho_start = 0.7, rho_end = 0.3),
   margins = "gamma",
@@ -142,7 +142,7 @@ sim_double <- simulate_breakpoint_data(T = T_DEMO, type = "double",
 
 ```{r}
 #| label: sim-multilevel
-sim_ml <- simulate_dcVar_multilevel(
+sim_ml <- simulate_dcvar_multilevel(
   N = 10, T = 60,
   rho = 0.5,
   seed = SEED
@@ -155,7 +155,7 @@ head(sim_ml$data)
 
 ```{r}
 #| label: sim-sem
-sim_sem <- simulate_dcVar_sem(
+sim_sem <- simulate_dcvar_sem(
   T = 60, J = 3,
   seed = SEED
 )
@@ -171,7 +171,7 @@ head(sim_sem$data)
 ```{r}
 #| label: fit-dcvar
 #| results: hide
-fit_dc <- dcVar(
+fit_dc <- dcvar(
   sim_norm$Y_df,
   vars = c("y1", "y2"),
   chains = CHAINS,
@@ -228,7 +228,7 @@ plot(fit_dc, type = "diagnostics")
 
 ```{r}
 #| label: diagnostics-dcvar
-dcVar_diagnostics(fit_dc)
+dcvar_diagnostics(fit_dc)
 ```
 
 ```{r}
@@ -284,7 +284,7 @@ interpret_rho_trajectory(fit_dc)
 ```{r}
 #| label: fit-exp-model
 #| results: hide
-fit_exp <- dcVar(
+fit_exp <- dcvar(
   sim_exp$Y_df,
   vars = c("y1", "y2"),
   margins = "exponential",
@@ -308,7 +308,7 @@ pit_test(fit_exp)
 ```{r}
 #| label: fit-sn-model
 #| results: hide
-fit_sn <- dcVar(
+fit_sn <- dcvar(
   sim_sn$Y_df,
   vars = c("y1", "y2"),
   margins = "skew_normal",
@@ -331,7 +331,7 @@ pit_test(fit_sn)
 ```{r}
 #| label: fit-gamma-model
 #| results: hide
-fit_gam <- dcVar(
+fit_gam <- dcvar(
   sim_gam$Y_df,
   vars = c("y1", "y2"),
   margins = "gamma",
@@ -355,7 +355,7 @@ pit_test(fit_gam)
 
 ```{r}
 #| label: sim-hmm-data
-sim_step <- simulate_dcVar(
+sim_step <- simulate_dcvar(
   T = T_DEMO,
   rho_trajectory = rho_step(T_DEMO, rho_before = 0.7, rho_after = 0.3, breakpoint = 0.5),
   seed = SEED
@@ -367,7 +367,7 @@ sim_step <- simulate_dcVar(
 ```{r}
 #| label: fit-hmm
 #| results: hide
-fit_hmm <- dcVar_hmm(
+fit_hmm <- dcvar_hmm(
   sim_step$Y_df,
   vars = c("y1", "y2"),
   K = 2,
@@ -415,7 +415,7 @@ plot_rho(fit_hmm, true_rho = sim_step$true_params$rho)
 
 ```{r}
 #| label: hmm-diagnostics
-dcVar_diagnostics(fit_hmm)
+dcvar_diagnostics(fit_hmm)
 pit_test(fit_hmm)
 ```
 
@@ -431,7 +431,7 @@ interpret_rho_trajectory(fit_hmm)
 
 ```{r}
 #| label: sim-const-data
-sim_const <- simulate_dcVar(
+sim_const <- simulate_dcvar(
   T = T_DEMO,
   rho_trajectory = rho_constant(T_DEMO, rho = 0.5),
   seed = SEED
@@ -443,7 +443,7 @@ sim_const <- simulate_dcVar(
 ```{r}
 #| label: fit-constant
 #| results: hide
-fit_con <- dcVar_constant(
+fit_con <- dcvar_constant(
   sim_const$Y_df,
   vars = c("y1", "y2"),
   chains = CHAINS,
@@ -491,7 +491,7 @@ Compare the three core models on the same decreasing-rho data from Section 3.
 #| label: fit-comparison-models
 #| results: hide
 # Fit HMM and constant on the same decreasing-rho data
-fit_cmp_hmm <- dcVar_hmm(
+fit_cmp_hmm <- dcvar_hmm(
   sim_norm$Y_df,
   vars = c("y1", "y2"),
   K = 2,
@@ -502,7 +502,7 @@ fit_cmp_hmm <- dcVar_hmm(
   refresh = 0
 )
 
-fit_cmp_con <- dcVar_constant(
+fit_cmp_con <- dcvar_constant(
   sim_norm$Y_df,
   vars = c("y1", "y2"),
   chains = CHAINS,
@@ -521,7 +521,7 @@ loo_dc  <- loo::loo(fit_dc)
 loo_hmm <- loo::loo(fit_cmp_hmm)
 loo_con <- loo::loo(fit_cmp_con)
 
-dcVar_compare(dcVar = fit_dc, hmm = fit_cmp_hmm, constant = fit_cmp_con)
+dcvar_compare(dcvar = fit_dc, hmm = fit_cmp_hmm, constant = fit_cmp_con)
 ```
 
 
@@ -531,7 +531,7 @@ dcVar_compare(dcVar = fit_dc, hmm = fit_cmp_hmm, constant = fit_cmp_con)
 
 ```{r}
 #| label: sim-multilevel-fit
-sim_ml <- simulate_dcVar_multilevel(
+sim_ml <- simulate_dcvar_multilevel(
   N = 10, T = 60,
   rho = 0.5,
   seed = SEED
@@ -543,7 +543,7 @@ sim_ml <- simulate_dcVar_multilevel(
 ```{r}
 #| label: fit-multilevel
 #| results: hide
-fit_ml <- dcVar_multilevel(
+fit_ml <- dcvar_multilevel(
   sim_ml$data,
   vars = c("y1", "y2"),
   id_var = "id",
@@ -598,7 +598,7 @@ plot(fit_ml, type = "diagnostics")
 
 ```{r}
 #| label: sim-sem-fit
-sim_sem <- simulate_dcVar_sem(
+sim_sem <- simulate_dcvar_sem(
   T = 60, J = 3,
   seed = SEED
 )
@@ -609,7 +609,7 @@ sim_sem <- simulate_dcVar_sem(
 ```{r}
 #| label: fit-sem
 #| results: hide
-fit_sem <- dcVar_sem(
+fit_sem <- dcvar_sem(
   sim_sem$data,
   indicators = list(
     latent1 = paste0("y1_", 1:3),
@@ -672,7 +672,7 @@ what gets passed to the model.
 ```{r}
 #| label: data-prep
 # DC-VAR data
-d_dc <- prepare_dcVar_data(sim_norm$Y_df, vars = c("y1", "y2"))
+d_dc <- prepare_dcvar_data(sim_norm$Y_df, vars = c("y1", "y2"))
 str(d_dc, max.level = 1)
 
 # HMM data
@@ -704,7 +704,7 @@ str(d_sem, max.level = 1)
 
 ```{r}
 #| label: recovery-metrics
-# Rho recovery from the dcVar fit (Section 3)
+# Rho recovery from the dcvar fit (Section 3)
 # Extract rho trajectory draws for metrics
 rho_df <- rho_trajectory(fit_dc)
 rho_met <- compute_rho_metrics(
@@ -732,12 +732,12 @@ phi_met
 #| label: mini-study-fits
 #| results: hide
 metrics_list <- lapply(1:3, function(rep) {
-  sim_i <- simulate_dcVar(
+  sim_i <- simulate_dcvar(
     T = T_DEMO,
     rho_trajectory = rho_decreasing(T_DEMO, rho_start = 0.7, rho_end = 0.3),
     seed = rep * 100
   )
-  fit_i <- dcVar(
+  fit_i <- dcvar(
     sim_i$Y_df,
     vars = c("y1", "y2"),
     chains = 2,
@@ -768,17 +768,17 @@ aggregate_metrics(metrics_list)
 #| label: utilities
 # Bundled Stan source files for supported model variants
 data.frame(
-  model = c("dcVar", "constant", "hmm", "dcVar", "constant", "hmm", "multilevel", "sem"),
+  model = c("dcvar", "constant", "hmm", "dcvar", "constant", "hmm", "multilevel", "sem"),
   margins = c("normal", "normal", "normal", "exponential", "gamma", "skew_normal", "normal", "normal"),
   stan_file = basename(c(
-    dcVar_stan_path("dcVar"),
-    dcVar_stan_path("constant"),
-    dcVar_stan_path("hmm"),
-    dcVar_stan_path("dcVar", margins = "exponential"),
-    dcVar_stan_path("constant", margins = "gamma"),
-    dcVar_stan_path("hmm", margins = "skew_normal"),
-    dcVar_stan_path("multilevel"),
-    dcVar_stan_path("sem")
+    dcvar_stan_path("dcvar"),
+    dcvar_stan_path("constant"),
+    dcvar_stan_path("hmm"),
+    dcvar_stan_path("dcvar", margins = "exponential"),
+    dcvar_stan_path("constant", margins = "gamma"),
+    dcvar_stan_path("hmm", margins = "skew_normal"),
+    dcvar_stan_path("multilevel"),
+    dcvar_stan_path("sem")
   ))
 )
 ```

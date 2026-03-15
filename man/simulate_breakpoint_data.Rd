@@ -49,11 +49,11 @@ simulate_breakpoint_data(
 \item{seed}{Random seed.}
 }
 \value{
-A named list as returned by \code{\link[=simulate_dcVar]{simulate_dcVar()}}.
+A named list as returned by \code{\link[=simulate_dcvar]{simulate_dcvar()}}.
 }
 \description{
 Convenience wrapper that combines \code{\link[=rho_step]{rho_step()}} or \code{\link[=rho_double_step]{rho_double_step()}} with
-\code{\link[=simulate_dcVar]{simulate_dcVar()}} for quick breakpoint simulation studies.
+\code{\link[=simulate_dcvar]{simulate_dcvar()}} for quick breakpoint simulation studies.
 }
 \examples{
 sim <- simulate_breakpoint_data(T = 100, type = "single", seed = 42)

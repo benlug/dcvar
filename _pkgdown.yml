@@ -7,11 +7,11 @@ reference:
   - title: Model Fitting
     desc: Fit copula VAR models to bivariate time series.
     contents:
-      - dcVar
-      - dcVar_hmm
-      - dcVar_constant
-      - dcVar_multilevel
-      - dcVar_sem
+      - dcvar
+      - dcvar_hmm
+      - dcvar_constant
+      - dcvar_multilevel
+      - dcvar_sem
 
   - title: Extraction
     desc: Extract parameters, trajectories, and draws from fitted models.
@@ -22,23 +22,23 @@ reference:
       - random_effects
       - latent_states
       - draws
-      - coef.dcVar_fit
-      - coef.dcVar_hmm_fit
-      - coef.dcVar_constant_fit
-      - coef.dcVar_multilevel_fit
-      - coef.dcVar_sem_fit
-      - fitted.dcVar_model_fit
-      - predict.dcVar_model_fit
-      - as.data.frame.dcVar_model_fit
+      - coef.dcvar_fit
+      - coef.dcvar_hmm_fit
+      - coef.dcvar_constant_fit
+      - coef.dcvar_multilevel_fit
+      - coef.dcvar_sem_fit
+      - fitted.dcvar_model_fit
+      - predict.dcvar_model_fit
+      - as.data.frame.dcvar_model_fit
 
   - title: Diagnostics
     desc: MCMC diagnostics, PIT checks, and model comparison.
     contents:
-      - dcVar_diagnostics
+      - dcvar_diagnostics
       - pit_values
       - pit_test
       - starts_with("loo.")
-      - dcVar_compare
+      - dcvar_compare
       - interpret_rho_trajectory
 
   - title: Plotting
@@ -57,9 +57,9 @@ reference:
   - title: Simulation
     desc: Simulate data for testing and recovery studies.
     contents:
-      - simulate_dcVar
-      - simulate_dcVar_multilevel
-      - simulate_dcVar_sem
+      - simulate_dcvar
+      - simulate_dcvar_multilevel
+      - simulate_dcvar_sem
       - simulate_breakpoint_data
 
   - title: Trajectories
@@ -83,7 +83,7 @@ reference:
   - title: Data Preparation
     desc: Prepare data for Stan models.
     contents:
-      - prepare_dcVar_data
+      - prepare_dcvar_data
       - prepare_hmm_data
       - prepare_constant_data
       - prepare_multilevel_data
@@ -92,12 +92,12 @@ reference:
   - title: S3 Methods
     desc: Print, summary, and plot methods for fit objects.
     contents:
-      - dcVar_fit-methods
-      - dcVar_hmm_fit-methods
-      - dcVar_constant_fit-methods
-      - dcVar_multilevel_fit-methods
-      - dcVar_sem_fit-methods
+      - dcvar_fit-methods
+      - dcvar_hmm_fit-methods
+      - dcvar_constant_fit-methods
+      - dcvar_multilevel_fit-methods
+      - dcvar_sem_fit-methods
 
   - title: Utilities
     contents:
-      - dcVar_stan_path
+      - dcvar_stan_path

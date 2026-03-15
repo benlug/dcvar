@@ -1,17 +1,17 @@
 # ============================================================================
-# Tests for dcVar_multilevel() fit and methods
+# Tests for dcvar_multilevel() fit and methods
 # ============================================================================
 
 # --- Fit object structure ----------------------------------------------------
 
-test_that("dcVar_multilevel returns correct class", {
+test_that("dcvar_multilevel returns correct class", {
   skip_if_no_cmdstanr()
   fit <- get_multilevel_fit()
-  expect_s3_class(fit, "dcVar_multilevel_fit")
-  expect_s3_class(fit, "dcVar_model_fit")
+  expect_s3_class(fit, "dcvar_multilevel_fit")
+  expect_s3_class(fit, "dcvar_model_fit")
 })
 
-test_that("dcVar_multilevel rejects center = FALSE with bundled Stan model", {
+test_that("dcvar_multilevel rejects center = FALSE with bundled Stan model", {
   df <- data.frame(
     id = rep(1:2, each = 4),
     time = rep(1:4, times = 2),
@@ -20,7 +20,7 @@ test_that("dcVar_multilevel rejects center = FALSE with bundled Stan model", {
   )
 
   expect_error(
-    dcVar_multilevel(df, vars = c("y1", "y2"), center = FALSE),
+    dcvar_multilevel(df, vars = c("y1", "y2"), center = FALSE),
     "not supported by the bundled multilevel model"
   )
 })
@@ -43,7 +43,7 @@ test_that("multilevel summary() returns correct class", {
   fit <- get_multilevel_fit()
   s <- summary(fit)
 
-  expect_s3_class(s, "dcVar_multilevel_summary")
+  expect_s3_class(s, "dcvar_multilevel_summary")
   expect_true(all(c("var_params", "random_effects", "diagnostics") %in% names(s)))
 })
 
@@ -129,7 +129,7 @@ test_that("multilevel pit_values() errors informatively", {
 test_that("multilevel diagnostics are finite", {
   skip_if_no_cmdstanr()
   fit <- get_multilevel_fit()
-  diag <- dcVar_diagnostics(fit)
+  diag <- dcvar_diagnostics(fit)
 
   expect_equal(diag$n_divergent, 0)
   expect_equal(diag$n_max_treedepth, 0)

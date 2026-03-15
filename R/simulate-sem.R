@@ -28,7 +28,7 @@
 #'   - `latent_states`: T x 2 matrix of true latent states
 #'   - `innovations`: T x 2 matrix of true innovations
 #' @export
-simulate_dcVar_sem <- function(T = 200, J = 3,
+simulate_dcvar_sem <- function(T = 200, J = 3,
                                 lambda = rep(sqrt(0.8), 3),
                                 sigma_e = sqrt(0.2),
                                 Phi = matrix(c(0.5, 0.15, 0.15, 0.3), 2, 2),

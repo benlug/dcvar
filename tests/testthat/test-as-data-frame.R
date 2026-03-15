@@ -1,7 +1,7 @@
-test_that("as.data.frame() works for dcVar_fit", {
+test_that("as.data.frame() works for dcvar_fit", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   df <- as.data.frame(fit)
 
   expect_s3_class(df, "data.frame")
@@ -10,7 +10,7 @@ test_that("as.data.frame() works for dcVar_fit", {
   expect_true(nrow(df) > 0)
 })
 
-test_that("as.data.frame() works for dcVar_hmm_fit", {
+test_that("as.data.frame() works for dcvar_hmm_fit", {
   skip_if_no_cmdstanr()
 
   fit <- get_hmm_fit()
@@ -21,7 +21,7 @@ test_that("as.data.frame() works for dcVar_hmm_fit", {
   expect_true(nrow(df) > 0)
 })
 
-test_that("as.data.frame() works for dcVar_constant_fit", {
+test_that("as.data.frame() works for dcvar_constant_fit", {
   skip_if_no_cmdstanr()
 
   fit <- get_constant_fit()

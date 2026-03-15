@@ -1,8 +1,8 @@
 ---
-title: "Getting Started with dcVar"
+title: "Getting Started with dcvar"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Getting Started with dcVar}
+  %\VignetteIndexEntry{Getting Started with dcvar}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 
 ## Installation
 
-The dcVar package uses [CmdStan](https://mc-stan.org/users/interfaces/cmdstan) for
+The dcvar package uses [CmdStan](https://mc-stan.org/users/interfaces/cmdstan) for
 Bayesian model fitting. You need to install **cmdstanr** and **CmdStan** first:
 
 ```{r install, eval = FALSE}
@@ -32,23 +32,23 @@ install.packages("cmdstanr",
 # Install the CmdStan backend
 cmdstanr::install_cmdstan()
 
-# Install dcVar from GitHub
+# Install dcvar from GitHub
 install.packages("remotes")
 remotes::install_github("benlug/dcvar")
 ```
 
 ## Simulating Data
 
-dcVar includes trajectory generators and a data simulator for testing:
+dcvar includes trajectory generators and a data simulator for testing:
 
 ```{r simulate}
-library(dcVar)
+library(dcvar)
 
 # Generate a decreasing rho trajectory (therapy effect)
 rho_true <- rho_decreasing(T = 150, rho_start = 0.7, rho_end = 0.3)
 
 # Simulate bivariate VAR(1) data with this trajectory
-sim <- simulate_dcVar(
+sim <- simulate_dcvar(
   T = 150,
   rho_trajectory = rho_true,
   seed = 42
@@ -59,11 +59,11 @@ head(sim$Y_df)
 
 ## Fitting the DC-VAR Model
 
-The main fitting function is `dcVar()`. It accepts a data frame and the names
+The main fitting function is `dcvar()`. It accepts a data frame and the names
 of two variables to model:
 
 ```{r fit}
-fit <- dcVar(
+fit <- dcvar(
   data = sim$Y_df,
   vars = c("y1", "y2"),
   chains = 4,
@@ -90,7 +90,7 @@ rho_df <- rho_trajectory(fit)
 head(rho_df)
 
 # MCMC diagnostics
-dcVar_diagnostics(fit)
+dcvar_diagnostics(fit)
 ```
 
 ### Fitted Values and Predictions
@@ -153,7 +153,7 @@ plot_ppc(fit)
 Compare the DC-VAR against a constant-correlation baseline:
 
 ```{r compare}
-fit_constant <- dcVar_constant(sim$Y_df, vars = c("y1", "y2"))
+fit_constant <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"))
 
-dcVar_compare(dcVar = fit, constant = fit_constant)
+dcvar_compare(dcvar = fit, constant = fit_constant)
 ```

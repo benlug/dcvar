@@ -3,14 +3,14 @@
 \name{pit_values}
 \alias{pit_values}
 \alias{pit_values.default}
-\alias{pit_values.dcVar_model_fit}
+\alias{pit_values.dcvar_model_fit}
 \title{Extract PIT values from a fitted model}
 \usage{
 pit_values(object, ...)
 
 \method{pit_values}{default}(object, ...)
 
-\method{pit_values}{dcVar_model_fit}(object, ...)
+\method{pit_values}{dcvar_model_fit}(object, ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

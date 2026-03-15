@@ -3,14 +3,14 @@
 \name{pit_test}
 \alias{pit_test}
 \alias{pit_test.default}
-\alias{pit_test.dcVar_model_fit}
+\alias{pit_test.dcvar_model_fit}
 \title{KS test for PIT uniformity}
 \usage{
 pit_test(object, ...)
 
 \method{pit_test}{default}(object, ...)
 
-\method{pit_test}{dcVar_model_fit}(object, ...)
+\method{pit_test}{dcvar_model_fit}(object, ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

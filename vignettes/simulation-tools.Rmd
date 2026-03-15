@@ -20,11 +20,11 @@ knitr::opts_chunk$set(
 
 ## Trajectory Generators
 
-dcVar provides several trajectory generators for simulation studies. All return
+dcvar provides several trajectory generators for simulation studies. All return
 a numeric vector of length T-1 (rho values for time steps 2 through T):
 
 ```{r trajectories, eval = TRUE}
-library(dcVar)
+library(dcvar)
 
 # Smooth trajectories
 rho_constant(100, rho = 0.5)
@@ -54,11 +54,11 @@ plot_trajectories(100, scenarios = c("decreasing", "single_middle", "double_rela
 
 ## Simulating Data
 
-`simulate_dcVar()` generates bivariate VAR(1) data with a given rho trajectory
+`simulate_dcvar()` generates bivariate VAR(1) data with a given rho trajectory
 and known ground-truth parameters:
 
 ```{r simulate, eval = TRUE}
-sim <- simulate_dcVar(
+sim <- simulate_dcvar(
   T = 150,
   rho_trajectory = rho_decreasing(150),
   mu = c(0, 0),
@@ -85,7 +85,7 @@ sim_bp2 <- simulate_breakpoint_data(T = 100, type = "double", seed = 42)
 
 ## Data Preparation
 
-Before fitting, data must be prepared with `prepare_dcVar_data()`,
+Before fitting, data must be prepared with `prepare_dcvar_data()`,
 `prepare_hmm_data()`, or `prepare_constant_data()`. These functions handle
 standardisation, prior hyperparameters, and validation:
 
@@ -93,7 +93,7 @@ standardisation, prior hyperparameters, and validation:
 df <- data.frame(time = 1:100, y1 = rnorm(100), y2 = rnorm(100))
 
 # DC-VAR data (includes sigma_omega prior)
-stan_data <- prepare_dcVar_data(df, vars = c("y1", "y2"))
+stan_data <- prepare_dcvar_data(df, vars = c("y1", "y2"))
 str(stan_data[c("T", "D", "sigma_mu_prior", "sigma_omega_prior")])
 
 # HMM data (includes K, kappa, alpha_off)
@@ -109,7 +109,7 @@ const_data <- prepare_constant_data(df, vars = c("y1", "y2"))
 After fitting, evaluate recovery with:
 
 ```{r metrics-fit, include = FALSE}
-fit <- dcVar(
+fit <- dcvar(
   sim$Y_df,
   vars = c("y1", "y2"),
   chains = 2,
@@ -142,13 +142,13 @@ metrics$correlation
 ```{r mini-study}
 n_reps <- 5
 results <- lapply(1:n_reps, function(i) {
-  sim <- simulate_dcVar(
+  sim <- simulate_dcvar(
     T = 100,
     rho_trajectory = rho_decreasing(100),
     seed = i * 1000
   )
 
-  fit <- dcVar(sim$Y_df, vars = c("y1", "y2"),
+  fit <- dcvar(sim$Y_df, vars = c("y1", "y2"),
                chains = 2, iter_warmup = 500, iter_sampling = 1000,
                seed = i, refresh = 0)
 

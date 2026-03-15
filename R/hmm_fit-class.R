@@ -1,10 +1,10 @@
 # ============================================================================
-# S3 Class: dcVar_hmm_fit
+# S3 Class: dcvar_hmm_fit
 # ============================================================================
 
-#' Construct a dcVar_hmm_fit object
+#' Construct a dcvar_hmm_fit object
 #' @noRd
-new_dcVar_hmm_fit <- function(fit, stan_data, K, vars, standardized,
+new_dcvar_hmm_fit <- function(fit, stan_data, K, vars, standardized,
                               margins = "normal", skew_direction = NULL,
                               priors, meta) {
   structure(
@@ -20,23 +20,23 @@ new_dcVar_hmm_fit <- function(fit, stan_data, K, vars, standardized,
       priors = priors,
       meta = meta
     ),
-    class = c("dcVar_hmm_fit", "dcVar_model_fit")
+    class = c("dcvar_hmm_fit", "dcvar_model_fit")
   )
 }
 
 
-#' S3 methods for dcVar_hmm_fit objects
+#' S3 methods for dcvar_hmm_fit objects
 #'
-#' @param x,object A `dcVar_hmm_fit` object.
+#' @param x,object A `dcvar_hmm_fit` object.
 #' @param ... Additional arguments (unused).
 #'
-#' @name dcVar_hmm_fit-methods
+#' @name dcvar_hmm_fit-methods
 NULL
 
-#' @describeIn dcVar_hmm_fit-methods Print a concise overview of the HMM fit.
+#' @describeIn dcvar_hmm_fit-methods Print a concise overview of the HMM fit.
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_hmm_fit <- function(x, ...) {
+print.dcvar_hmm_fit <- function(x, ...) {
   .print_fit_header(x, "HMM Copula Model Fit")
   cat(sprintf("T = %d, D = %d, K = %d states\n",
               x$stan_data$T, x$stan_data$D, x$K))
@@ -58,17 +58,17 @@ print.dcVar_hmm_fit <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_hmm_fit-methods Produce a detailed summary including
+#' @describeIn dcvar_hmm_fit-methods Produce a detailed summary including
 #'   state information, VAR parameters, and diagnostics.
 #' @param probs Numeric vector of quantile probabilities for the rho trajectory
 #'   (default: `c(0.025, 0.5, 0.975)`).
-#' @return A `dcVar_hmm_summary` object (a list).
+#' @return A `dcvar_hmm_summary` object (a list).
 #' @export
-summary.dcVar_hmm_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
   rho_df <- rho_trajectory(object, probs = probs)
   vp <- var_params(object)
   states <- hmm_states(object)
-  diag <- dcVar_diagnostics(object)
+  diag <- dcvar_diagnostics(object)
 
   out <- list(
     model = "hmm",
@@ -80,19 +80,19 @@ summary.dcVar_hmm_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
     var_params = vp,
     diagnostics = diag
   )
-  class(out) <- "dcVar_hmm_summary"
+  class(out) <- "dcvar_hmm_summary"
   out
 }
 
 
-#' Print a dcVar_hmm_summary object
+#' Print a dcvar_hmm_summary object
 #'
-#' @param x A `dcVar_hmm_summary` object as returned by
-#'   [summary.dcVar_hmm_fit()].
+#' @param x A `dcvar_hmm_summary` object as returned by
+#'   [summary.dcvar_hmm_fit()].
 #' @param ... Additional arguments (unused).
 #' @return Invisibly returns `x`.
 #' @export
-print.dcVar_hmm_summary <- function(x, ...) {
+print.dcvar_hmm_summary <- function(x, ...) {
   cat("HMM Copula Model Summary\n")
   cat(strrep("=", 50), "\n")
   cat(sprintf("T = %d, D = %d, K = %d states\n\n", x$T, x$D, x$K))
@@ -122,12 +122,12 @@ print.dcVar_hmm_summary <- function(x, ...) {
 }
 
 
-#' @describeIn dcVar_hmm_fit-methods Extract posterior means of model
+#' @describeIn dcvar_hmm_fit-methods Extract posterior means of model
 #'   coefficients including state-specific rho values.
 #' @return A named list with elements `mu`, `Phi`, `sigma_eps`, `z_rho`, and
 #'   `rho_state`.
 #' @export
-coef.dcVar_hmm_fit <- function(object, ...) {
+coef.dcvar_hmm_fit <- function(object, ...) {
   summ <- object$fit$summary()
   result <- list(
     mu = .extract_coef(summ, "^mu\\["),
@@ -142,13 +142,13 @@ coef.dcVar_hmm_fit <- function(object, ...) {
 }
 
 
-#' @describeIn dcVar_hmm_fit-methods Dispatch to a plot type: `"rho"`,
+#' @describeIn dcvar_hmm_fit-methods Dispatch to a plot type: `"rho"`,
 #'   `"states"`, `"transition"`, `"phi"`, `"diagnostics"`, `"ppc"`, or `"pit"`.
 #' @param type Character; one of `"rho"`, `"states"`, `"transition"`, `"phi"`,
 #'   `"diagnostics"`, `"ppc"`, or `"pit"`.
 #' @return A ggplot object.
 #' @export
-plot.dcVar_hmm_fit <- function(x,
+plot.dcvar_hmm_fit <- function(x,
                                type = c("rho", "states", "transition", "phi", "diagnostics", "ppc", "pit"),
                                ...) {
   type <- match.arg(type)

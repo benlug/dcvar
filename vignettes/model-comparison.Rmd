@@ -20,13 +20,13 @@ knitr::opts_chunk$set(
 
 ## Overview
 
-The dcVar package provides three copula VAR models:
+The dcvar package provides three copula VAR models:
 
-1. **DC-VAR** (`dcVar()`): Time-varying correlation via a random walk on the Fisher-z scale. Best for smooth, gradual changes.
+1. **DC-VAR** (`dcvar()`): Time-varying correlation via a random walk on the Fisher-z scale. Best for smooth, gradual changes.
 
-2. **HMM Copula** (`dcVar_hmm()`): Discrete regime-switching with K hidden states. Best for abrupt changes between distinct coupling regimes.
+2. **HMM Copula** (`dcvar_hmm()`): Discrete regime-switching with K hidden states. Best for abrupt changes between distinct coupling regimes.
 
-3. **Constant Copula** (`dcVar_constant()`): Single time-invariant correlation. Serves as a null/baseline model.
+3. **Constant Copula** (`dcvar_constant()`): Single time-invariant correlation. Serves as a null/baseline model.
 
 ## Mathematical Background
 
@@ -42,7 +42,7 @@ Each variable follows a VAR(1) process with innovations:
 $$y_t = \mu + \Phi \, (y_{t-1} - \mu) + \varepsilon_t, \qquad \varepsilon_t \sim N(0, \text{diag}(\sigma_{\varepsilon}^2))$$
 
 The normal marginal densities provide the per-variable likelihoods in this
-special case. For non-normal margins, dcVar uses the same VAR recursion and
+special case. For non-normal margins, dcvar uses the same VAR recursion and
 Gaussian copula but swaps in the corresponding marginal likelihood and
 transform.
 
@@ -73,25 +73,25 @@ where $z_{it} = \Phi^{-1}(u_{it})$ and $u_{it} = \Phi(\varepsilon_{it} / \sigma_
 ## Fitting All Three Models
 
 ```{r fit-all}
-library(dcVar)
+library(dcvar)
 
 # Simulate data with a step-function trajectory
-sim <- simulate_dcVar(
+sim <- simulate_dcvar(
   T = 200,
   rho_trajectory = rho_step(200, rho_before = 0.7, rho_after = 0.3),
   seed = 42
 )
 
 # Fit all three models on the same data
-fit_dc  <- dcVar(sim$Y_df, vars = c("y1", "y2"), seed = 1)
-fit_hmm <- dcVar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2, seed = 2)
-fit_con <- dcVar_constant(sim$Y_df, vars = c("y1", "y2"), seed = 3)
+fit_dc  <- dcvar(sim$Y_df, vars = c("y1", "y2"), seed = 1)
+fit_hmm <- dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2, seed = 2)
+fit_con <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"), seed = 3)
 ```
 
 ## LOO-CV Comparison
 
 ```{r compare}
-dcVar_compare(dcVar = fit_dc, hmm = fit_hmm, constant = fit_con)
+dcvar_compare(dcvar = fit_dc, hmm = fit_hmm, constant = fit_con)
 ```
 
 ## Extracting Tidy Summaries

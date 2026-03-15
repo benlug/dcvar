@@ -1,4 +1,4 @@
-Package: dcVar
+Package: dcvar
 Title: Dynamic Copula VAR Models for Time-Varying Dependence
 Version: 0.1.0
 Authors@R:

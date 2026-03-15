@@ -2,7 +2,7 @@
 #'
 #' Returns the file path to a Stan model file included with the package.
 #'
-#' @param model Character string: `"dcVar"`, `"hmm"`, `"constant"`,
+#' @param model Character string: `"dcvar"`, `"hmm"`, `"constant"`,
 #'   `"multilevel"`, or `"sem"`.
 #' @param margins Character string: margin type (`"normal"`, `"exponential"`,
 #'   `"skew_normal"`, `"gamma"`). Default: `"normal"`.
@@ -11,9 +11,9 @@
 #' @export
 #'
 #' @examples
-#' dcVar_stan_path("dcVar")
-#' dcVar_stan_path("constant", margins = "exponential")
-dcVar_stan_path <- function(model = c("dcVar", "hmm", "constant", "multilevel", "sem"),
+#' dcvar_stan_path("dcvar")
+#' dcvar_stan_path("constant", margins = "exponential")
+dcvar_stan_path <- function(model = c("dcvar", "hmm", "constant", "multilevel", "sem"),
                             margins = "normal") {
   model <- match.arg(model)
 
@@ -26,7 +26,7 @@ dcVar_stan_path <- function(model = c("dcVar", "hmm", "constant", "multilevel", 
     file <- .margin_stan_file(model, margins)
   }
 
-  system.file("stan", file, package = "dcVar", mustWork = TRUE)
+  system.file("stan", file, package = "dcvar", mustWork = TRUE)
 }
 
 #' Validate common MCMC sampling arguments
@@ -97,7 +97,7 @@ dcVar_stan_path <- function(model = c("dcVar", "hmm", "constant", "multilevel", 
 
 #' Compile a Stan model with caching
 #'
-#' @param model_type Character string: `"dcVar"`, `"hmm"`, `"constant"`,
+#' @param model_type Character string: `"dcvar"`, `"hmm"`, `"constant"`,
 #'   `"multilevel"`, or `"sem"`.
 #' @param margins Character: margin type (default: `"normal"`).
 #' @param stan_file Optional path to a custom Stan file. If `NULL`, uses the
@@ -107,7 +107,7 @@ dcVar_stan_path <- function(model = c("dcVar", "hmm", "constant", "multilevel", 
 #'
 #' @return A `CmdStanModel` object.
 #' @noRd
-.compile_model <- function(model_type = c("dcVar", "hmm", "constant", "multilevel", "sem"),
+.compile_model <- function(model_type = c("dcvar", "hmm", "constant", "multilevel", "sem"),
                            margins = "normal",
                            stan_file = NULL,
                            force_recompile = FALSE,
@@ -116,10 +116,10 @@ dcVar_stan_path <- function(model = c("dcVar", "hmm", "constant", "multilevel", 
   model_type <- match.arg(model_type)
 
   if (is.null(stan_file)) {
-    stan_file <- dcVar_stan_path(model_type, margins = margins)
+    stan_file <- dcvar_stan_path(model_type, margins = margins)
   }
 
-  cache_dir <- file.path(tempdir(), "dcVar-cache")
+  cache_dir <- file.path(tempdir(), "dcvar-cache")
   if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
 
   # Include the specific Stan source in the cache key so custom files cannot
@@ -132,7 +132,7 @@ dcVar_stan_path <- function(model = c("dcVar", "hmm", "constant", "multilevel", 
   exe_file <- .compiled_exe_path(cache_dir, cache_key)
 
   # Include path for shared Stan functions (e.g., gaussian_copula.stan)
-  include_paths <- system.file("stan", package = "dcVar", mustWork = TRUE)
+  include_paths <- system.file("stan", package = "dcvar", mustWork = TRUE)
 
   cmdstanr::cmdstan_model(
     stan_file = stan_file,

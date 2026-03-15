@@ -7,7 +7,7 @@
 plot_random_effects(object, ...)
 }
 \arguments{
-\item{object}{A \code{dcVar_multilevel_fit} object.}
+\item{object}{A \code{dcvar_multilevel_fit} object.}
 
 \item{...}{Additional arguments (unused).}
 }

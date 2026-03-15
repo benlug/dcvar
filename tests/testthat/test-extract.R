@@ -1,7 +1,7 @@
-test_that("rho_trajectory() returns correct structure for dcVar", {
+test_that("rho_trajectory() returns correct structure for dcvar", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   rho_df <- rho_trajectory(fit)
 
   expect_s3_class(rho_df, "data.frame")
@@ -42,7 +42,7 @@ test_that("rho_trajectory() returns full trajectory for constant", {
 test_that("var_params() returns correct structure", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   vp <- var_params(fit)
 
   expect_type(vp, "list")
@@ -54,7 +54,7 @@ test_that("var_params() returns correct structure", {
 test_that("extractors work for non-normal fitted objects", {
   skip_if_no_cmdstanr()
 
-  rho_df <- rho_trajectory(get_dcVar_exponential_fit())
+  rho_df <- rho_trajectory(get_dcvar_exponential_fit())
   expect_s3_class(rho_df, "data.frame")
   expect_true(all(rho_df$mean >= -1 & rho_df$mean <= 1))
 
@@ -94,16 +94,16 @@ test_that("hmm_states() returns a Viterbi path observed in the posterior draws",
 test_that("draws() returns posterior draws", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   d <- draws(fit, variable = "mu")
   expect_true(inherits(d, "draws_array"))
 })
 
-test_that("dcVar_diagnostics() returns correct fields", {
+test_that("dcvar_diagnostics() returns correct fields", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
-  diag <- dcVar_diagnostics(fit)
+  fit <- get_dcvar_fit()
+  diag <- dcvar_diagnostics(fit)
 
   expect_type(diag, "list")
   expect_named(diag, c("n_divergent", "n_max_treedepth", "max_rhat",
@@ -114,7 +114,7 @@ test_that("dcVar_diagnostics() returns correct fields", {
 test_that("rho_trajectory() supports a single quantile request", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   rho_df <- rho_trajectory(fit, probs = 0.5)
 
   expect_true("q50" %in% names(rho_df))
@@ -132,7 +132,7 @@ test_that("latent_states() supports a single quantile request", {
 test_that("rho_trajectory() and latent_states() honor preserved time values", {
   skip_if_no_cmdstanr()
 
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   attr(fit$stan_data, "time_values") <- 101:(100 + fit$stan_data$T)
   expect_equal(rho_trajectory(fit)$time, 102:(100 + fit$stan_data$T))
 

@@ -4,7 +4,7 @@
 #' parameter. This serves as a baseline for comparison with the DC-VAR
 #' and HMM copula models.
 #'
-#' @inheritParams dcVar
+#' @inheritParams dcvar
 #' @param margins Character string specifying the marginal distribution.
 #'   One of `"normal"` (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
 #' @param skew_direction Integer vector of length D indicating skew direction
@@ -21,19 +21,19 @@
 #'   adaptation without significant computational cost, reducing occasional
 #'   divergences near the rho boundary.
 #'
-#' @return A `dcVar_constant_fit` object.
+#' @return A `dcvar_constant_fit` object.
 #'
-#' @seealso [dcVar()] for the time-varying model, [dcVar_hmm()] for the
-#'   regime-switching model, [dcVar_compare()] for LOO-CV model comparison.
+#' @seealso [dcvar()] for the time-varying model, [dcvar_hmm()] for the
+#'   regime-switching model, [dcvar_compare()] for LOO-CV model comparison.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' sim <- simulate_dcVar(T = 100, rho_trajectory = rho_constant(100, 0.5))
-#' fit <- dcVar_constant(sim$Y_df, vars = c("y1", "y2"))
+#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_constant(100, 0.5))
+#' fit <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"))
 #' print(fit)
 #' }
-dcVar_constant <- function(data, vars,
+dcvar_constant <- function(data, vars,
                            time_var = "time",
                            standardize = TRUE,
                            margins = "normal",
@@ -99,7 +99,7 @@ dcVar_constant <- function(data, vars,
   .report_sampling_outcome(fit, "Constant copula", chains = chains)
 
   # Wrap in S3 class
-  new_dcVar_constant_fit(
+  new_dcvar_constant_fit(
     fit = fit,
     stan_data = stan_data,
     vars = vars,

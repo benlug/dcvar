@@ -14,8 +14,8 @@ interpret_rho_trajectory(
 )
 }
 \arguments{
-\item{object}{A fitted model object (\code{dcVar_fit}, \code{dcVar_hmm_fit}, or
-\code{dcVar_constant_fit}).}
+\item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_hmm_fit}, or
+\code{dcvar_constant_fit}).}
 
 \item{threshold}{Minimum absolute change in posterior-mean rho to be
 considered "meaningful" (default: 0.1).}
@@ -41,8 +41,8 @@ describing the overall trend, magnitude of change, and key features.
 }
 \examples{
 \dontrun{
-sim <- simulate_dcVar(T = 100, rho_trajectory = rho_decreasing(100))
-fit <- dcVar(sim$Y_df, vars = c("y1", "y2"))
+sim <- simulate_dcvar(T = 100, rho_trajectory = rho_decreasing(100))
+fit <- dcvar(sim$Y_df, vars = c("y1", "y2"))
 interpret_rho_trajectory(fit)
 }
 }

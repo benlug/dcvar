@@ -1,14 +1,14 @@
-test_that("dcVar_hmm() returns a dcVar_hmm_fit object", {
+test_that("dcvar_hmm() returns a dcvar_hmm_fit object", {
   skip_if_no_cmdstanr()
 
   fit <- get_hmm_fit()
-  expect_s3_class(fit, "dcVar_hmm_fit")
-  expect_s3_class(fit, "dcVar_model_fit")
+  expect_s3_class(fit, "dcvar_hmm_fit")
+  expect_s3_class(fit, "dcvar_model_fit")
   expect_equal(fit$model, "hmm")
   expect_equal(fit$K, 2)
 })
 
-test_that("print.dcVar_hmm_fit runs without error", {
+test_that("print.dcvar_hmm_fit runs without error", {
   skip_if_no_cmdstanr()
 
   fit <- get_hmm_fit()
@@ -17,17 +17,17 @@ test_that("print.dcVar_hmm_fit runs without error", {
   expect_true(any(grepl("State", out)))
 })
 
-test_that("summary.dcVar_hmm_fit returns expected class", {
+test_that("summary.dcvar_hmm_fit returns expected class", {
   skip_if_no_cmdstanr()
 
   fit <- get_hmm_fit()
   s <- summary(fit)
-  expect_s3_class(s, "dcVar_hmm_summary")
+  expect_s3_class(s, "dcvar_hmm_summary")
   out <- capture.output(print(s))
   expect_true(any(grepl("HMM", out)))
 })
 
-test_that("coef.dcVar_hmm_fit returns named list", {
+test_that("coef.dcvar_hmm_fit returns named list", {
   skip_if_no_cmdstanr()
 
   fit <- get_hmm_fit()
@@ -36,7 +36,7 @@ test_that("coef.dcVar_hmm_fit returns named list", {
   expect_named(co, c("mu", "Phi", "sigma_eps", "z_rho", "rho_state"))
 })
 
-test_that("plot.dcVar_hmm_fit dispatches without error", {
+test_that("plot.dcvar_hmm_fit dispatches without error", {
   skip_if_no_cmdstanr()
 
   fit <- get_hmm_fit()
@@ -44,11 +44,11 @@ test_that("plot.dcVar_hmm_fit dispatches without error", {
   expect_s3_class(plot(fit, type = "phi"), "ggplot")
 })
 
-test_that("dcVar_hmm() fits exponential margins", {
+test_that("dcvar_hmm() fits exponential margins", {
   skip_if_no_cmdstanr()
 
   fit <- get_hmm_exponential_fit()
-  expect_s3_class(fit, "dcVar_hmm_fit")
+  expect_s3_class(fit, "dcvar_hmm_fit")
   expect_equal(fit$margins, "exponential")
   expect_equal(fit$K, 2)
 })

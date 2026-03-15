@@ -62,14 +62,14 @@
 
 #' Get Stan file name for a given model type and margin
 #'
-#' @param model_type Character: "constant", "dcVar", or "hmm".
+#' @param model_type Character: "constant", "dcvar", or "hmm".
 #' @param margins Character: margin type.
 #' @return Character: Stan file name (without path).
 #' @noRd
 .margin_stan_file <- function(model_type, margins) {
   base_files <- c(
     constant = "constant_copula_var",
-    dcVar = "dcVar_model_ncp",
+    dcvar = "dcvar_model_ncp",
     hmm = "hmm_copula_model"
   )
   if (margins == "normal") {
@@ -78,11 +78,11 @@
     suffix <- .margin_stan_suffix(margins)
     base_short <- c(
       constant = "constant",
-      dcVar = "dcVar",
+      dcvar = "dcvar",
       hmm = "hmm"
     )
-    # dcVar non-normal Stan files have _ncp suffix (e.g., dcVar_EG_ncp.stan)
-    ncp <- if (model_type == "dcVar") "_ncp" else ""
+    # dcvar non-normal Stan files have _ncp suffix (e.g., dcvar_EG_ncp.stan)
+    ncp <- if (model_type == "dcvar") "_ncp" else ""
     paste0(base_short[model_type], suffix, ncp, ".stan")
   }
 }
@@ -93,7 +93,7 @@
 #' Includes margin type to prevent cache collisions between different
 #' margin specifications of the same base model.
 #'
-#' @param model_type Character: "constant", "dcVar", or "hmm".
+#' @param model_type Character: "constant", "dcvar", or "hmm".
 #' @param margins Character: margin type.
 #' @return Character: cache key for the compiled model.
 #' @noRd

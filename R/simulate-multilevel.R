@@ -25,7 +25,7 @@
 #'   - `true_params`: list of true parameter values
 #'   - `person_means`: N x 2 matrix of person means (before centering)
 #' @export
-simulate_dcVar_multilevel <- function(N = 40, T = 100,
+simulate_dcvar_multilevel <- function(N = 40, T = 100,
                                       phi_bar = c(0.3, 0.1, 0.1, 0.3),
                                       tau_phi = c(0.1, 0.05, 0.05, 0.1),
                                       sigma = c(1, 1),

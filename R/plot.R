@@ -4,7 +4,7 @@
 
 #' Plot the rho trajectory with credible intervals
 #'
-#' @param object A `dcVar_fit` or `dcVar_hmm_fit` object.
+#' @param object A `dcvar_fit` or `dcvar_hmm_fit` object.
 #' @param show_ci Logical; show credible interval ribbons (default: `TRUE`).
 #' @param ci_level Credible interval level for the outer ribbon (default: 0.95).
 #' @param inner_level Credible interval level for the inner ribbon (default:
@@ -31,7 +31,7 @@ plot_rho <- function(object, show_ci = TRUE, ci_level = 0.95, inner_level = 0.80
 
   if (is.null(title)) {
     model_name <- switch(object$model,
-      dcVar = "DC-VAR",
+      dcvar = "DC-VAR",
       hmm = "HMM Copula",
       constant = "Constant Copula",
       object$model
@@ -203,7 +203,7 @@ plot_diagnostics <- function(object, ...) {
   } else {
     c("mu[1]", "mu[2]")
   }
-  if (object$model == "dcVar") trace_pars <- c(trace_pars, "sigma_omega")
+  if (object$model == "dcvar") trace_pars <- c(trace_pars, "sigma_omega")
   if (object$model == "hmm") {
     K <- object$K
     trace_pars <- c(trace_pars, paste0("rho_state[", 1:K, "]"))
@@ -248,7 +248,7 @@ plot_diagnostics <- function(object, ...) {
 #'   same residual scale as `eps`.
 #' @export
 plot_ppc <- function(object, n_sample = 100, ...) {
-  if (inherits(object, "dcVar_multilevel_fit") || inherits(object, "dcVar_sem_fit")) {
+  if (inherits(object, "dcvar_multilevel_fit") || inherits(object, "dcvar_sem_fit")) {
     cli_abort("Posterior predictive checks are not yet supported for {.cls {class(object)[1]}} models.")
   }
 
@@ -306,7 +306,7 @@ plot_ppc <- function(object, n_sample = 100, ...) {
 
 #' Plot HMM state posteriors
 #'
-#' @param object A `dcVar_hmm_fit` object.
+#' @param object A `dcvar_hmm_fit` object.
 #' @param show_viterbi Logical; overlay the Viterbi (MAP) state sequence
 #'   (default: `TRUE`).
 #' @param ... Additional arguments (unused).
@@ -363,7 +363,7 @@ plot_hmm_states <- function(object, show_viterbi = TRUE, ...) {
 #'
 #' Displays unit-specific VAR coefficients with credible intervals.
 #'
-#' @param object A `dcVar_multilevel_fit` object.
+#' @param object A `dcvar_multilevel_fit` object.
 #' @param ... Additional arguments (unused).
 #'
 #' @return A ggplot object.
@@ -395,7 +395,7 @@ plot_random_effects <- function(object, ...) {
 
 #' Plot estimated latent states with credible intervals
 #'
-#' @param object A `dcVar_sem_fit` object.
+#' @param object A `dcvar_sem_fit` object.
 #' @param true_states Optional T x 2 matrix of true latent states for overlay.
 #' @param ... Additional arguments (unused).
 #'

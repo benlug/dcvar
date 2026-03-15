@@ -64,7 +64,7 @@
 #' @return A named list with VAR params plus `sigma_omega`, `z_rho_init`,
 #'   `omega_raw`.
 #' @noRd
-.init_dcVar_params <- function(D, T_obs, margins = "normal") {
+.init_dcvar_params <- function(D, T_obs, margins = "normal") {
   c(
     .init_var_params(D, margins),
     list(
@@ -245,7 +245,7 @@
 #' Print shared MCMC info and diagnostics footer
 #' @noRd
 .print_fit_footer <- function(x) {
-  diag <- dcVar_diagnostics(x)
+  diag <- dcvar_diagnostics(x)
   cat(sprintf("Chains: %d | Warmup: %d | Sampling: %d\n",
               x$meta$chains, x$meta$iter_warmup, x$meta$iter_sampling))
   cat(sprintf("Divergences: %d | Max Rhat: %.3f\n",

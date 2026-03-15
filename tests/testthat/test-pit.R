@@ -14,9 +14,9 @@ test_that("pit_values returns correct structure for constant fit", {
   expect_equal(unique(pit_df$time), attr(fit$stan_data, "time_values")[-1])
 })
 
-test_that("pit_values returns correct structure for dcVar fit", {
+test_that("pit_values returns correct structure for dcvar fit", {
   skip_if_no_cmdstanr()
-  fit <- get_dcVar_fit()
+  fit <- get_dcvar_fit()
   pit_df <- pit_values(fit)
 
   expect_s3_class(pit_df, "data.frame")

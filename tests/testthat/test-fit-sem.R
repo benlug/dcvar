@@ -1,14 +1,14 @@
 # ============================================================================
-# Tests for dcVar_sem() fit and methods
+# Tests for dcvar_sem() fit and methods
 # ============================================================================
 
 # --- Fit object structure ----------------------------------------------------
 
-test_that("dcVar_sem returns correct class", {
+test_that("dcvar_sem returns correct class", {
   skip_if_no_cmdstanr()
   fit <- get_sem_fit()
-  expect_s3_class(fit, "dcVar_sem_fit")
-  expect_s3_class(fit, "dcVar_model_fit")
+  expect_s3_class(fit, "dcvar_sem_fit")
+  expect_s3_class(fit, "dcvar_model_fit")
 })
 
 test_that("SEM coef() returns expected structure", {
@@ -29,7 +29,7 @@ test_that("SEM summary() returns correct class", {
   fit <- get_sem_fit()
   s <- summary(fit)
 
-  expect_s3_class(s, "dcVar_sem_summary")
+  expect_s3_class(s, "dcvar_sem_summary")
   expect_true(all(c("var_params", "diagnostics") %in% names(s)))
 })
 
@@ -112,7 +112,7 @@ test_that("SEM predict() errors informatively", {
 test_that("SEM diagnostics are finite", {
   skip_if_no_cmdstanr()
   fit <- get_sem_fit()
-  diag <- dcVar_diagnostics(fit)
+  diag <- dcvar_diagnostics(fit)
 
   expect_equal(diag$n_divergent, 0)
   expect_equal(diag$n_max_treedepth, 0)

@@ -2,6 +2,8 @@
 
 functions {
 #include functions/gaussian_copula_uv.stan
+#include functions/var_residuals.stan
+#include functions/ncp_random_walk.stan
 }
 
 data {
@@ -32,24 +34,9 @@ parameters {
 }
 
 transformed parameters {
-  matrix[T_eff, D] eps;
-  vector[T_eff] z_rho;
+  matrix[T_eff, D] eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
+  vector[T_eff] z_rho = compute_z_rho_ncp(z_rho_init, sigma_omega, omega_raw, T_eff);
   vector[T_eff] rho;
-
-  for (t in 1:T_eff) {
-    vector[D] y_prev = to_vector(Y[t, ]);
-    vector[D] y_curr = to_vector(Y[t + 1, ]);
-    vector[D] y_hat = mu + Phi * (y_prev - mu);
-    eps[t, ] = to_row_vector(y_curr - y_hat);
-  }
-
-  {
-    real cumsum_omega = 0;
-    for (t in 1:T_eff) {
-      cumsum_omega += omega_raw[t];
-      z_rho[t] = z_rho_init + sigma_omega * cumsum_omega;
-    }
-  }
   for (t in 1:T_eff) rho[t] = tanh(z_rho[t]);
 }
 

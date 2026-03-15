@@ -6,6 +6,8 @@
 
 functions {
 #include functions/gaussian_copula.stan
+#include functions/var_residuals.stan
+#include functions/ncp_random_walk.stan
 }
 
 data {
@@ -41,36 +43,18 @@ parameters {
 
 transformed parameters {
   // Residuals from VAR
-  matrix[T_eff, D] eps;
+  matrix[T_eff, D] eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
 
   // Standardized residuals (z-scores for copula)
   matrix[T_eff, D] eps_std;
 
   // Time-varying rho (on z-scale and original scale)
-  vector[T_eff] z_rho;
-  vector[T_eff] rho;
-
-  // Compute VAR residuals
-  for (t in 1:T_eff) {
-    // VAR(1): y_t = mu + Phi * (y_{t-1} - mu) + eps_t
-    vector[D] y_prev = to_vector(Y[t, ]);
-    vector[D] y_curr = to_vector(Y[t + 1, ]);
-    vector[D] y_hat = mu + Phi * (y_prev - mu);
-
-    eps[t, ] = to_row_vector(y_curr - y_hat);
-  }
-
   // NON-CENTERED PARAMETERIZATION for random walk
   // Instead of: z_rho[t] = z_rho[t-1] + sigma_omega * omega[t]
   // We use: z_rho[t] = z_rho_init + sigma_omega * cumsum(omega_raw)
   // This avoids the funnel geometry when sigma_omega is small
-  {
-    real cumsum_omega = 0;
-    for (t in 1:T_eff) {
-      cumsum_omega += omega_raw[t];
-      z_rho[t] = z_rho_init + sigma_omega * cumsum_omega;
-    }
-  }
+  vector[T_eff] z_rho = compute_z_rho_ncp(z_rho_init, sigma_omega, omega_raw, T_eff);
+  vector[T_eff] rho;
 
   // Transform to correlation scale via tanh: maps (-inf, inf) to (-1, 1)
   // Mathematically equivalent to inv_fisher_z but numerically stable for large |z|

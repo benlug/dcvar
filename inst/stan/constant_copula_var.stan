@@ -6,6 +6,7 @@
 
 functions {
 #include functions/gaussian_copula.stan
+#include functions/var_residuals.stan
 }
 
 data {
@@ -38,7 +39,7 @@ parameters {
 
 transformed parameters {
   // Residuals from VAR
-  matrix[T_eff, D] eps;
+  matrix[T_eff, D] eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
 
   // Standardized residuals (z-scores for copula)
   matrix[T_eff, D] eps_std;
@@ -46,16 +47,6 @@ transformed parameters {
   // Constant rho (on original scale) via tanh: maps (-inf, inf) to (-1, 1)
   // Mathematically equivalent to inv_fisher_z but numerically stable for large |z|
   real rho = tanh(z_rho);
-
-  // Compute VAR residuals
-  for (t in 1:T_eff) {
-    // VAR(1): y_t = mu + Phi * (y_{t-1} - mu) + eps_t
-    vector[D] y_prev = to_vector(Y[t, ]);
-    vector[D] y_curr = to_vector(Y[t + 1, ]);
-    vector[D] y_hat = mu + Phi * (y_prev - mu);
-
-    eps[t, ] = to_row_vector(y_curr - y_hat);
-  }
 
   // Standardize residuals (z-scores used directly in copula)
   for (t in 1:T_eff) {

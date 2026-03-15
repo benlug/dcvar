@@ -2,6 +2,7 @@
 
 functions {
 #include functions/gaussian_copula_uv.stan
+#include functions/var_residuals.stan
 }
 
 data {
@@ -28,7 +29,7 @@ parameters {
 }
 
 transformed parameters {
-  matrix[T_eff, D] eps;
+  matrix[T_eff, D] eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
   real rho = tanh(z_rho);
   vector[D] alpha;
   vector[D] xi;
@@ -36,13 +37,6 @@ transformed parameters {
   // CP -> DP transform
   alpha = delta ./ sqrt(1 - square(delta));
   xi = -omega .* (delta * SQRT_2_OVER_PI);
-
-  for (t in 1:T_eff) {
-    vector[D] y_prev = to_vector(Y[t, ]);
-    vector[D] y_curr = to_vector(Y[t + 1, ]);
-    vector[D] y_hat = mu + Phi * (y_prev - mu);
-    eps[t, ] = to_row_vector(y_curr - y_hat);
-  }
 }
 
 model {

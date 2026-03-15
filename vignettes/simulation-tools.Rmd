@@ -1,0 +1,168 @@
+---
+title: "Simulation Study Tools"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Simulation Study Tools}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+NOT_CRAN <- identical(Sys.getenv("NOT_CRAN"), "true")
+has_cmdstan <- requireNamespace("cmdstanr", quietly = TRUE) &&
+  !is.null(tryCatch(cmdstanr::cmdstan_path(), error = function(e) NULL))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = NOT_CRAN && has_cmdstan
+)
+```
+
+## Trajectory Generators
+
+dcVar provides several trajectory generators for simulation studies. All return
+a numeric vector of length T-1 (rho values for time steps 2 through T):
+
+```{r trajectories, eval = TRUE}
+library(dcVar)
+
+# Smooth trajectories
+rho_constant(100, rho = 0.5)
+rho_decreasing(100, rho_start = 0.7, rho_end = 0.3)
+rho_increasing(100, rho_start = 0.3, rho_end = 0.7)
+rho_random_walk(100, sigma_omega = 0.05, seed = 42)
+
+# Step-function trajectories
+rho_step(100, rho_before = 0.7, rho_after = 0.3, breakpoint = 0.5)
+rho_double_step(100, rho_levels = c(0.7, 0.3, 0.7))
+
+# Named scenarios
+rho_scenario("double_relapse", T = 150)
+```
+
+### Visualising Trajectories
+
+`plot_trajectories()` shows all built-in scenarios side by side:
+
+```{r plot-trajectories, eval = TRUE}
+# Compare all built-in scenarios
+plot_trajectories(100)
+
+# Subset of scenarios
+plot_trajectories(100, scenarios = c("decreasing", "single_middle", "double_relapse"))
+```
+
+## Simulating Data
+
+`simulate_dcVar()` generates bivariate VAR(1) data with a given rho trajectory
+and known ground-truth parameters:
+
+```{r simulate, eval = TRUE}
+sim <- simulate_dcVar(
+  T = 150,
+  rho_trajectory = rho_decreasing(150),
+  mu = c(0, 0),
+  Phi = matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2),
+  sigma_eps = c(1, 1),
+  seed = 42
+)
+```
+
+### Breakpoint Data Simulator
+
+`simulate_breakpoint_data()` provides a simplified interface for generating
+data with single or double breakpoints:
+
+```{r breakpoint, eval = TRUE}
+# Single breakpoint
+sim_bp <- simulate_breakpoint_data(T = 100, type = "single", seed = 42)
+head(sim_bp$Y_df)
+sim_bp$true_params$breakpoint
+
+# Double breakpoint
+sim_bp2 <- simulate_breakpoint_data(T = 100, type = "double", seed = 42)
+```
+
+## Data Preparation
+
+Before fitting, data must be prepared with `prepare_dcVar_data()`,
+`prepare_hmm_data()`, or `prepare_constant_data()`. These functions handle
+standardisation, prior hyperparameters, and validation:
+
+```{r prepare, eval = TRUE}
+df <- data.frame(time = 1:100, y1 = rnorm(100), y2 = rnorm(100))
+
+# DC-VAR data (includes sigma_omega prior)
+stan_data <- prepare_dcVar_data(df, vars = c("y1", "y2"))
+str(stan_data[c("T", "D", "sigma_mu_prior", "sigma_omega_prior")])
+
+# HMM data (includes K, kappa, alpha_off)
+hmm_data <- prepare_hmm_data(df, vars = c("y1", "y2"), K = 3)
+str(hmm_data[c("K", "kappa", "alpha_off")])
+
+# Constant data (simplest)
+const_data <- prepare_constant_data(df, vars = c("y1", "y2"))
+```
+
+## Parameter Recovery Metrics
+
+After fitting, evaluate recovery with:
+
+```{r metrics-fit, include = FALSE}
+fit <- dcVar(
+  sim$Y_df,
+  vars = c("y1", "y2"),
+  chains = 2,
+  iter_warmup = 250,
+  iter_sampling = 250,
+  seed = 99,
+  refresh = 0
+)
+```
+
+```{r metrics}
+# Extract estimated rho
+rho_df <- rho_trajectory(fit)
+
+# Compute recovery metrics
+metrics <- compute_rho_metrics(
+  rho_true = sim$true_params$rho,
+  rho_est = rho_df$mean,
+  rho_lower = rho_df$q2.5,
+  rho_upper = rho_df$q97.5
+)
+
+metrics$bias
+metrics$coverage
+metrics$correlation
+```
+
+## Running a Mini Simulation Study
+
+```{r mini-study}
+n_reps <- 5
+results <- lapply(1:n_reps, function(i) {
+  sim <- simulate_dcVar(
+    T = 100,
+    rho_trajectory = rho_decreasing(100),
+    seed = i * 1000
+  )
+
+  fit <- dcVar(sim$Y_df, vars = c("y1", "y2"),
+               chains = 2, iter_warmup = 500, iter_sampling = 1000,
+               seed = i, refresh = 0)
+
+  rho_df <- rho_trajectory(fit)
+
+  list(rho = compute_rho_metrics(
+    rho_true = sim$true_params$rho,
+    rho_est = rho_df$mean,
+    rho_lower = rho_df$q2.5,
+    rho_upper = rho_df$q97.5
+  ))
+})
+
+# Aggregate across replications
+agg <- aggregate_metrics(results)
+print(agg$rho)
+```

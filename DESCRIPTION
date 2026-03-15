@@ -1,0 +1,49 @@
+Package: dcVar
+Title: Dynamic Copula VAR Models for Time-Varying Dependence
+Version: 0.1.0
+Authors@R:
+    person("Benedikt", "Lugauer", , "benedikt.lugauer@uni-leipzig.de",
+           role = c("aut", "cre"))
+Description: Fits Bayesian copula VAR(1) models for bivariate time series with
+    three approaches to modelling dependence dynamics: continuous random-walk
+    correlation (DC-VAR), discrete regime-switching via hidden Markov models
+    (HMM Copula), and time-invariant correlation (Constant Copula). Supports
+    Gaussian, exponential, skew-normal, and gamma marginal distributions via
+    Gaussian copula. Extensions include multilevel models with random VAR
+    coefficients for panel data and structural equation models with fixed
+    measurement models for latent process estimation. Estimation is via
+    Hamiltonian Monte Carlo in Stan through the 'cmdstanr' interface. Includes
+    tools for simulation, PIT diagnostics, trajectory extraction, and model
+    comparison via LOO-CV.
+License: MIT + file LICENSE
+URL: https://github.com/benlug/dcvar
+BugReports: https://github.com/benlug/dcvar/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.1.0)
+Imports:
+    posterior (>= 1.5.0),
+    loo (>= 2.7.0),
+    ggplot2 (>= 3.4.0),
+    patchwork (>= 1.1.0),
+    bayesplot (>= 1.10.0),
+    rlang (>= 1.0.0),
+    cli (>= 3.0.0),
+    parallel,
+    stats,
+    tools,
+    utils
+Suggests:
+    cmdstanr (>= 0.8.0),
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    withr,
+    sn
+Additional_repositories: https://stan-dev.r-universe.dev
+SystemRequirements: CmdStan (https://mc-stan.org/users/interfaces/cmdstan)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+LazyData: false

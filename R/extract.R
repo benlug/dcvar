@@ -1,0 +1,559 @@
+# ============================================================================
+# Extraction Functions
+# ============================================================================
+
+#' Extract the rho trajectory with credible intervals
+#'
+#' Returns a data frame with the posterior mean, SD, and quantiles of the
+#' time-varying correlation at each time point.
+#'
+#' @param object A fitted model object (`dcVar_fit`, `dcVar_hmm_fit`, or
+#'   `dcVar_constant_fit`).
+#' @param probs Numeric vector of quantile probabilities (default: `c(0.025, 0.1, 0.5, 0.9, 0.975)`).
+#' @param ... Additional arguments (unused).
+#'
+#' @return A data frame with columns `time`, `mean`, `sd`, and one column per
+#'   quantile (e.g., `q2.5`, `q10`, `q50`, `q90`, `q97.5`). For
+#'   `dcVar_constant_fit` objects, the constant rho is expanded to all T-1
+#'   time points for consistency with the time-varying models.
+#'
+#' @seealso [plot_rho()] to visualise the trajectory,
+#'   [interpret_rho_trajectory()] for a text-based summary,
+#'   [var_params()] for VAR parameter extraction.
+#' @export
+rho_trajectory <- function(object, ...) {
+  UseMethod("rho_trajectory")
+}
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.default <- function(object, ...) {
+  cli_abort("{.fun rho_trajectory} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' Internal helper: recover observed time values from Stan data
+#' @noRd
+.observed_time_values <- function(stan_data, drop_first = FALSE) {
+  time_values <- attr(stan_data, "time_values")
+  if (is.null(time_values)) {
+    time_values <- seq_len(stan_data$T)
+  }
+
+  if (drop_first) {
+    time_values[-1]
+  } else {
+    time_values
+  }
+}
+
+#' Internal helper: summarise time-varying rho draws into a data frame
+#' @noRd
+.summarise_rho_draws <- function(rho_draws, probs, time_values = NULL) {
+  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
+    cli_abort("{.arg probs} must be numeric values in [0, 1].")
+  }
+
+  T_eff <- ncol(rho_draws)
+  if (is.null(time_values)) {
+    time_values <- 2:(T_eff + 1)
+  }
+  if (length(time_values) != T_eff) {
+    cli_abort("Time axis length does not match rho draw length.")
+  }
+
+  rho_summary <- data.frame(
+    time = time_values,
+    mean = colMeans(rho_draws),
+    sd = apply(rho_draws, 2, sd)
+  )
+
+  quantiles <- apply(rho_draws, 2, quantile, probs = probs)
+  if (is.null(dim(quantiles))) {
+    quantiles <- matrix(quantiles, nrow = 1)
+  }
+  for (i in seq_along(probs)) {
+    rho_summary[[paste0("q", probs[i] * 100)]] <- quantiles[i, ]
+  }
+
+  rho_summary
+}
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcVar_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
+  .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcVar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho_hmm"))
+  .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
+#' Internal helper: constant rho trajectory (shared by constant and multilevel)
+#' @noRd
+.rho_trajectory_constant_impl <- function(object, probs) {
+  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
+    cli_abort("{.arg probs} must be numeric values in [0, 1].")
+  }
+
+  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
+
+  T_obs <- object$stan_data$T
+  T_eff <- T_obs - 1
+
+  rho_mean <- mean(rho_draws[, 1])
+  rho_sd <- sd(rho_draws[, 1])
+  quants <- quantile(rho_draws[, 1], probs = probs)
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+
+  rho_summary <- data.frame(
+    time = time_values,
+    mean = rep(rho_mean, T_eff),
+    sd = rep(rho_sd, T_eff)
+  )
+
+  for (i in seq_along(probs)) {
+    rho_summary[[paste0("q", probs[i] * 100)]] <- rep(quants[i], T_eff)
+  }
+
+  rho_summary
+}
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcVar_constant_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .rho_trajectory_constant_impl(object, probs)
+}
+
+
+#' Extract VAR(1) parameter summaries
+#'
+#' Returns posterior summaries for the VAR parameters: intercepts (mu),
+#' coefficients (Phi), innovation SDs (sigma_eps), and sigma_omega (DC-VAR only).
+#'
+#' @param object A fitted model object.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A named list of data frames with columns `variable`, `mean`, `sd`,
+#'   `q2.5`, `q97.5`.
+#' @export
+var_params <- function(object, ...) {
+  UseMethod("var_params")
+}
+
+#' @rdname var_params
+#' @export
+var_params.default <- function(object, ...) {
+  cli_abort("{.fun var_params} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' @rdname var_params
+#' @export
+var_params.dcVar_model_fit <- function(object, ...) {
+  summ <- object$fit$summary(
+    variables = NULL,
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+
+  extract_param <- function(pattern) {
+    rows <- grep(pattern, summ$variable)
+    if (length(rows) == 0) return(NULL)
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+
+  result <- list(
+    mu = extract_param("^mu\\["),
+    Phi = extract_param("^Phi\\[")
+  )
+
+  # Margin-specific scale parameters
+  margins <- object$margins %||% "normal"
+  switch(margins,
+    normal = {
+      result$sigma_eps <- extract_param("^sigma_eps\\[")
+    },
+    exponential = {
+      result$sigma_exp <- extract_param("^sigma_exp\\[")
+    },
+    skew_normal = {
+      result$omega <- extract_param("^omega\\[")
+      result$delta <- extract_param("^delta\\[")
+    },
+    gamma = {
+      result$sigma_gam <- extract_param("^sigma_gam\\[")
+      result$shape_gam <- extract_param("^shape_gam$")
+    },
+    {
+      result$sigma_eps <- extract_param("^sigma_eps\\[")
+    }
+  )
+
+  # sigma_omega is DC-VAR specific
+  so <- extract_param("^sigma_omega$")
+  if (!is.null(so)) result$sigma_omega <- so
+
+  result
+}
+
+
+#' Extract HMM state information
+#'
+#' Returns state posteriors, Viterbi path, state-specific rho values,
+#' and the transition matrix from an HMM copula fit.
+#'
+#' @param object A `dcVar_hmm_fit` object.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A named list with:
+#'   - `gamma`: T_eff x K matrix of posterior state probabilities
+#'   - `viterbi`: integer vector of MAP state sequence
+#'   - `rho_state`: list with `mean`, `lower`, `upper` for each state
+#'   - `A`: K x K posterior mean transition matrix
+#'   - `rho_hmm`: posterior-averaged rho trajectory
+#' @export
+hmm_states <- function(object, ...) {
+  UseMethod("hmm_states")
+}
+
+#' @rdname hmm_states
+#' @export
+hmm_states.default <- function(object, ...) {
+  cli_abort("{.fun hmm_states} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' @rdname hmm_states
+#' @export
+hmm_states.dcVar_hmm_fit <- function(object, ...) {
+  K <- object$K
+  T_eff <- object$stan_data$T - 1
+
+  .safe_draws <- function(var_name) {
+    tryCatch(
+      posterior::as_draws_matrix(object$fit$draws(var_name)),
+      error = function(e) {
+        cli_abort("Failed to extract {.val {var_name}} draws: {e$message}")
+      }
+    )
+  }
+
+  # State posteriors: gamma[t, k]
+  gamma_draws <- .safe_draws("gamma")
+
+  # Validate gamma columns exist upfront
+  expected_gamma_cols <- paste0("gamma[", rep(seq_len(T_eff), K), ",", rep(seq_len(K), each = T_eff), "]")
+  missing_gamma <- setdiff(expected_gamma_cols, colnames(gamma_draws))
+  if (length(missing_gamma) > 0) {
+    cli_abort("Expected gamma columns missing from draws: {.val {head(missing_gamma, 5)}}")
+  }
+
+  gamma_mean <- matrix(NA_real_, T_eff, K)
+  for (k in 1:K) {
+    cols <- paste0("gamma[", 1:T_eff, ",", k, "]")
+    gamma_mean[, k] <- colMeans(gamma_draws[, cols, drop = FALSE])
+  }
+
+  # Use the most frequent complete Viterbi path across draws so the returned
+  # sequence is always a valid joint path.
+  viterbi_draws <- .safe_draws("viterbi_state")
+  viterbi_paths <- apply(viterbi_draws, 1, paste, collapse = ",")
+  viterbi_mode <- as.integer(strsplit(names(sort(table(viterbi_paths), decreasing = TRUE))[1], ",", fixed = TRUE)[[1]])
+
+  # State-specific rho
+  rho_state_draws <- .safe_draws("rho_state")
+  rho_state_mean <- colMeans(rho_state_draws)
+  rho_state_lower <- apply(rho_state_draws, 2, quantile, 0.025)
+  rho_state_upper <- apply(rho_state_draws, 2, quantile, 0.975)
+
+  # Transition matrix
+  A_draws <- .safe_draws("A")
+
+  # Validate A columns exist upfront
+  expected_A_cols <- paste0("A[", rep(seq_len(K), K), ",", rep(seq_len(K), each = K), "]")
+  missing_A <- setdiff(expected_A_cols, colnames(A_draws))
+  if (length(missing_A) > 0) {
+    cli_abort("Expected transition matrix columns missing from draws: {.val {head(missing_A, 5)}}")
+  }
+
+  A_mean <- matrix(NA_real_, K, K)
+  for (i in 1:K) {
+    for (j in 1:K) {
+      col <- paste0("A[", i, ",", j, "]")
+      A_mean[i, j] <- mean(A_draws[, col])
+    }
+  }
+
+  # Posterior-averaged rho
+  rho_hmm_draws <- .safe_draws("rho_hmm")
+  rho_hmm_mean <- colMeans(rho_hmm_draws)
+
+  list(
+    gamma = gamma_mean,
+    viterbi = viterbi_mode,
+    rho_state = list(
+      mean = rho_state_mean,
+      lower = rho_state_lower,
+      upper = rho_state_upper
+    ),
+    A = A_mean,
+    rho_hmm = rho_hmm_mean
+  )
+}
+
+
+#' Extract random effects from a multilevel fit
+#'
+#' Returns posterior summaries for unit-specific VAR coefficients.
+#'
+#' @param object A `dcVar_multilevel_fit` object.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A data frame with columns `unit`, `parameter`, `mean`, `sd`,
+#'   `q2.5`, `q97.5`.
+#' @export
+random_effects <- function(object, ...) {
+  UseMethod("random_effects")
+}
+
+#' @rdname random_effects
+#' @export
+random_effects.default <- function(object, ...) {
+  cli_abort("{.fun random_effects} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' @rdname random_effects
+#' @export
+random_effects.dcVar_multilevel_fit <- function(object, ...) {
+  N <- object$N
+  unit_ids <- attr(object$stan_data, "ids")
+  if (is.null(unit_ids)) {
+    unit_ids <- seq_len(N)
+  }
+  summ <- object$fit$summary(
+    variables = NULL,
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+
+  param_names <- c("phi11", "phi12", "phi21", "phi22")
+  results <- vector("list", N * 4)
+  idx <- 1
+
+  for (i in seq_len(N)) {
+    for (k in 1:4) {
+      var_name <- paste0("phi_unit[", i, ",", k, "]")
+      row <- which(summ$variable == var_name)
+      if (length(row) == 1) {
+        results[[idx]] <- data.frame(
+          unit = unit_ids[i],
+          parameter = param_names[k],
+          mean = summ$mean[row],
+          sd = summ$sd[row],
+          q2.5 = summ$q2.5[row],
+          q97.5 = summ$q97.5[row]
+        )
+      }
+      idx <- idx + 1
+    }
+  }
+
+  do.call(rbind, results)
+}
+
+
+#' @rdname var_params
+#' @details
+#' For multilevel models, returns population-level parameters `phi_bar`
+#' (mean VAR coefficients), `tau_phi` (between-unit SDs), `sigma`
+#' (innovation SDs), and `rho` (copula correlation). These correspond to
+#' `Phi`, `sigma_eps`, and `rho` in single-level models.
+#' @export
+var_params.dcVar_multilevel_fit <- function(object, ...) {
+  summ <- object$fit$summary(
+    variables = NULL,
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+
+  extract_param <- function(pattern) {
+    rows <- grep(pattern, summ$variable)
+    if (length(rows) == 0) return(NULL)
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+
+  list(
+    phi_bar = extract_param("^phi_bar\\["),
+    tau_phi = extract_param("^tau_phi\\["),
+    sigma = extract_param("^sigma\\["),
+    rho = extract_param("^rho$")
+  )
+}
+
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcVar_multilevel_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .rho_trajectory_constant_impl(object, probs)
+}
+
+
+#' Extract latent states from a SEM fit
+#'
+#' Returns posterior summaries for the estimated latent states at each
+#' time point.
+#'
+#' @param object A `dcVar_sem_fit` object.
+#' @param probs Numeric vector of quantile probabilities.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A data frame with columns `time`, `variable`, `mean`, `sd`,
+#'   and quantile columns.
+#' @export
+latent_states <- function(object, ...) {
+  UseMethod("latent_states")
+}
+
+#' @rdname latent_states
+#' @export
+latent_states.default <- function(object, ...) {
+  cli_abort("{.fun latent_states} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' @rdname latent_states
+#' @export
+latent_states.dcVar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
+    cli_abort("{.arg probs} must be numeric values in [0, 1].")
+  }
+
+  state_draws <- posterior::as_draws_matrix(object$fit$draws("state"))
+  T_obs <- object$stan_data$T
+  vars <- object$vars
+  time_values <- .observed_time_values(object$stan_data)
+
+  results <- vector("list", 2)
+  for (d in 1:2) {
+    cols <- paste0("state[", seq_len(T_obs), ",", d, "]")
+    draws_d <- state_draws[, cols, drop = FALSE]
+
+    df <- data.frame(
+      time = time_values,
+      variable = vars[d],
+      mean = colMeans(draws_d),
+      sd = apply(draws_d, 2, sd)
+    )
+
+    quants <- apply(draws_d, 2, quantile, probs = probs)
+    if (is.null(dim(quants))) {
+      quants <- matrix(quants, nrow = 1)
+    }
+    for (i in seq_along(probs)) {
+      df[[paste0("q", probs[i] * 100)]] <- quants[i, ]
+    }
+
+    results[[d]] <- df
+  }
+
+  do.call(rbind, results)
+}
+
+
+#' @rdname var_params
+#' @export
+var_params.dcVar_sem_fit <- function(object, ...) {
+  summ <- object$fit$summary(
+    variables = NULL,
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+
+  extract_param <- function(pattern) {
+    rows <- grep(pattern, summ$variable)
+    if (length(rows) == 0) return(NULL)
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+
+  list(
+    mu = extract_param("^mu\\["),
+    Phi = extract_param("^Phi\\["),
+    sigma = extract_param("^sigma\\["),
+    rho = extract_param("^rho$")
+  )
+}
+
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcVar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  # SEM has constant rho, expand to all T-1 time points
+  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
+  T_obs <- object$stan_data$T
+  T_eff <- T_obs - 1
+
+  rho_mean <- mean(rho_draws[, 1])
+  rho_sd <- sd(rho_draws[, 1])
+  quants <- quantile(rho_draws[, 1], probs = probs)
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+
+  rho_summary <- data.frame(
+    time = time_values,
+    mean = rep(rho_mean, T_eff),
+    sd = rep(rho_sd, T_eff)
+  )
+
+  for (i in seq_along(probs)) {
+    rho_summary[[paste0("q", probs[i] * 100)]] <- rep(quants[i], T_eff)
+  }
+
+  rho_summary
+}
+
+
+#' Extract posterior draws
+#'
+#' Thin wrapper around cmdstanr's draw extraction.
+#'
+#' @param object A fitted model object.
+#' @param variable Character vector of parameter names. `NULL` returns all.
+#' @param format Draw format: `"draws_array"`, `"draws_matrix"`, or
+#'   `"draws_df"` (default: `"draws_array"`).
+#' @param ... Additional arguments passed to `$draws()`.
+#'
+#' @return A posterior draws object.
+#' @export
+draws <- function(object, ...) {
+  UseMethod("draws")
+}
+
+#' @rdname draws
+#' @export
+draws.default <- function(object, ...) {
+  cli_abort("{.fun draws} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' @rdname draws
+#' @export
+draws.dcVar_model_fit <- function(object, variable = NULL, format = "draws_array", ...) {
+  object$fit$draws(variables = variable, format = format, ...)
+}

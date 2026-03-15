@@ -1,0 +1,10 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.Rprofile$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.lintr$
+^\.claude$
+^\.codex$

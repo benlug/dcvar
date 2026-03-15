@@ -1,0 +1,103 @@
+url: ~
+
+template:
+  bootstrap: 5
+
+reference:
+  - title: Model Fitting
+    desc: Fit copula VAR models to bivariate time series.
+    contents:
+      - dcVar
+      - dcVar_hmm
+      - dcVar_constant
+      - dcVar_multilevel
+      - dcVar_sem
+
+  - title: Extraction
+    desc: Extract parameters, trajectories, and draws from fitted models.
+    contents:
+      - rho_trajectory
+      - var_params
+      - hmm_states
+      - random_effects
+      - latent_states
+      - draws
+      - coef.dcVar_fit
+      - coef.dcVar_hmm_fit
+      - coef.dcVar_constant_fit
+      - coef.dcVar_multilevel_fit
+      - coef.dcVar_sem_fit
+      - fitted.dcVar_model_fit
+      - predict.dcVar_model_fit
+      - as.data.frame.dcVar_model_fit
+
+  - title: Diagnostics
+    desc: MCMC diagnostics, PIT checks, and model comparison.
+    contents:
+      - dcVar_diagnostics
+      - pit_values
+      - pit_test
+      - starts_with("loo.")
+      - dcVar_compare
+      - interpret_rho_trajectory
+
+  - title: Plotting
+    desc: Visualise model results.
+    contents:
+      - plot_rho
+      - plot_phi
+      - plot_diagnostics
+      - plot_ppc
+      - plot_pit
+      - plot_hmm_states
+      - plot_random_effects
+      - plot_latent_states
+      - plot_trajectories
+
+  - title: Simulation
+    desc: Simulate data for testing and recovery studies.
+    contents:
+      - simulate_dcVar
+      - simulate_dcVar_multilevel
+      - simulate_dcVar_sem
+      - simulate_breakpoint_data
+
+  - title: Trajectories
+    desc: Generate rho trajectories for simulation.
+    contents:
+      - rho_constant
+      - rho_decreasing
+      - rho_increasing
+      - rho_random_walk
+      - rho_step
+      - rho_double_step
+      - rho_scenario
+
+  - title: Metrics
+    desc: Parameter recovery evaluation.
+    contents:
+      - compute_rho_metrics
+      - compute_param_metrics
+      - aggregate_metrics
+
+  - title: Data Preparation
+    desc: Prepare data for Stan models.
+    contents:
+      - prepare_dcVar_data
+      - prepare_hmm_data
+      - prepare_constant_data
+      - prepare_multilevel_data
+      - prepare_sem_data
+
+  - title: S3 Methods
+    desc: Print, summary, and plot methods for fit objects.
+    contents:
+      - dcVar_fit-methods
+      - dcVar_hmm_fit-methods
+      - dcVar_constant_fit-methods
+      - dcVar_multilevel_fit-methods
+      - dcVar_sem_fit-methods
+
+  - title: Utilities
+    contents:
+      - dcVar_stan_path

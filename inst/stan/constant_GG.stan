@@ -1,0 +1,123 @@
+// Constant Copula VAR Model with Gamma-Gaussian Margins
+
+functions {
+#include functions/gaussian_copula_uv.stan
+}
+
+data {
+  int<lower=2> T;
+  int<lower=2> D;
+  matrix[T, D] Y;
+  vector[D] skew_direction;
+
+  real<lower=0> sigma_mu_prior;
+  real<lower=0> sigma_phi_prior;
+  real<lower=0> z_rho_prior_sd;
+}
+
+transformed data {
+  int T_eff = T - 1;
+}
+
+parameters {
+  vector[D] mu;
+  matrix[D, D] Phi;
+  vector[D] eta;
+  real<lower=0> shape_gam;
+  real z_rho;
+}
+
+transformed parameters {
+  matrix[T_eff, D] eps;
+  real rho = tanh(z_rho);
+
+  for (t in 1:T_eff) {
+    vector[D] y_prev = to_vector(Y[t, ]);
+    vector[D] y_curr = to_vector(Y[t + 1, ]);
+    vector[D] y_hat = mu + Phi * (y_prev - mu);
+    eps[t, ] = to_row_vector(y_curr - y_hat);
+  }
+}
+
+model {
+  vector[D] sigma_lb;
+  vector[D] sigma_gam;
+  vector[D] rate_gam;
+  real sqrt_shape = sqrt(shape_gam);
+  real sigma_eps = 1e-9;
+
+  mu ~ normal(0, sigma_mu_prior);
+  to_vector(Phi) ~ normal(0, sigma_phi_prior);
+  z_rho ~ normal(0, z_rho_prior_sd);
+  shape_gam ~ lognormal(log(1), 0.5);
+
+  // Feasibility bounds
+  for (i in 1:D) {
+    real m = -skew_direction[i] * eps[1, i];
+    for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+    sigma_lb[i] = fmax(m / sqrt_shape, 0);
+  }
+
+  for (i in 1:D) sigma_gam[i] = sigma_lb[i] + exp(eta[i]) + sigma_eps;
+  rate_gam = sqrt_shape ./ sigma_gam;
+
+  for (i in 1:D) {
+    target += lognormal_lpdf(sigma_gam[i] | 0, 0.5) + eta[i];
+  }
+
+  for (t in 1:T_eff) {
+    row_vector[D] res = eps[t];
+    vector[2] u_vec;
+    for (i in 1:D) {
+      real mean_x = sqrt_shape * sigma_gam[i];
+      real x_shifted = mean_x + skew_direction[i] * res[i];
+      target += gamma_lpdf(x_shifted | shape_gam, rate_gam[i]);
+      u_vec[i] = gamma_cdf(x_shifted | shape_gam, rate_gam[i]);
+      if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
+    }
+    target += gaussian_copula_uv_lpdf(u_vec | rho);
+  }
+}
+
+generated quantities {
+  vector[T_eff] log_lik;
+  matrix[T_eff, D] eps_rep;
+  vector[D] sigma_gam;
+  vector[D] b_gq;
+  vector[D] rate_gam;
+
+  {
+    real sqrt_shape = sqrt(shape_gam);
+    real sigma_eps = 1e-9;
+    for (i in 1:D) {
+      real m = -skew_direction[i] * eps[1, i];
+      for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+      b_gq[i] = m / sqrt_shape;
+      sigma_gam[i] = fmax(b_gq[i], 0) + exp(eta[i]) + sigma_eps;
+      rate_gam[i] = sqrt_shape / sigma_gam[i];
+    }
+
+    for (t in 1:T_eff) {
+      log_lik[t] = 0;
+      vector[2] u_vec;
+      for (i in 1:D) {
+        real mean_x = sqrt_shape * sigma_gam[i];
+        real x_shifted = mean_x + skew_direction[i] * eps[t, i];
+        log_lik[t] += gamma_lpdf(x_shifted | shape_gam, rate_gam[i]);
+        u_vec[i] = gamma_cdf(x_shifted | shape_gam, rate_gam[i]);
+        if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
+      }
+      log_lik[t] += gaussian_copula_uv_lpdf(u_vec | rho);
+
+      // NOTE: eps_rep contains copula-level z-scores, not gamma residuals,
+      // because Stan lacks a gamma inverse CDF. plot_ppc() rejects gamma
+      // fits until replicated residuals are available on the margin scale.
+      {
+        real z1_rep = std_normal_rng();
+        real z2_rep = rho * z1_rep + sqrt(1 - square(rho)) * std_normal_rng();
+        eps_rep[t, 1] = z1_rep;
+        eps_rep[t, 2] = z2_rep;
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # dcvar: Dynamic Copula VAR Models for Time-Varying Dependence
 
+[<img src="man/figures/logo.png" align="right" width="15%" height="15%" alt="dcvar logo"/>](https://github.com/benlug/dcvar)
+
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/benlug/dcvar/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/benlug/dcvar/actions/workflows/R-CMD-check.yaml)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)

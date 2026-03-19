@@ -1,0 +1,12 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.Rprofile$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.lintr$
+^data-raw$
+^RStan-CRAN-plan\.md$
+^vignettes/dcvar-walkthrough\.qmd$
+^cran-comments\.md$

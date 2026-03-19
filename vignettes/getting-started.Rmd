@@ -1,0 +1,163 @@
+---
+title: "Getting Started with dcvar"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with dcvar}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+has_stan <- requireNamespace("rstan", quietly = TRUE)
+eval_fits <- identical(Sys.getenv("DCVAR_EVAL_VIGNETTES"), "true") && has_stan
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = eval_fits
+)
+```
+
+## Installation
+
+The dcvar package uses [rstan](https://mc-stan.org/rstan/) as its default
+backend for Bayesian model fitting.
+
+```{r install, eval = FALSE}
+# Install rstan (available on CRAN)
+install.packages("rstan")
+
+# Install dcvar from GitHub
+install.packages("remotes")
+remotes::install_github("benlug/dcvar")
+```
+
+Optionally, you can use [cmdstanr](https://mc-stan.org/cmdstanr/) as an
+alternative backend by installing it and CmdStan:
+
+```{r install-cmdstanr, eval = FALSE}
+install.packages("cmdstanr",
+  repos = c("https://stan-dev.r-universe.dev", getOption("repos"))
+)
+cmdstanr::install_cmdstan()
+```
+
+## Simulating Data
+
+dcvar includes trajectory generators and a data simulator for testing:
+
+```{r simulate, eval = TRUE}
+library(dcvar)
+
+# Generate a decreasing rho trajectory (therapy effect)
+rho_true <- rho_decreasing(T = 150, rho_start = 0.7, rho_end = 0.3)
+
+# Simulate bivariate VAR(1) data with this trajectory
+sim <- simulate_dcvar(
+  T = 150,
+  rho_trajectory = rho_true,
+  seed = 42
+)
+
+head(sim$Y_df)
+```
+
+## Fitting the DC-VAR Model
+
+The main fitting function is `dcvar()`. It accepts a data frame and the names
+of two variables to model:
+
+```{r fit}
+fit <- dcvar(
+  data = sim$Y_df,
+  vars = c("y1", "y2"),
+  chains = 4,
+  iter_warmup = 1000,
+  iter_sampling = 2000,
+  seed = 123
+)
+```
+
+## Inspecting Results
+
+```{r inspect}
+# Quick overview
+print(fit)
+
+# Detailed summary
+summary(fit)
+
+# Posterior means for VAR parameters
+coef(fit)
+
+# Time-varying rho as a data frame
+rho_df <- rho_trajectory(fit)
+head(rho_df)
+
+# MCMC diagnostics
+dcvar_diagnostics(fit)
+```
+
+### Fitted Values and Predictions
+
+The `fitted()` method returns one-step-ahead fitted values from the VAR(1)
+component. The `predict()` method adds marginal prediction intervals for normal
+margin fits:
+
+```{r fitted-predict}
+# VAR(1) fitted values: y_hat[t] = mu + Phi * (y[t-1] - mu)
+fit_df <- fitted(fit)
+head(fit_df)
+
+# Predictions with 95% marginal intervals
+pred_df <- predict(fit)
+head(pred_df)
+
+# Custom interval level
+pred_90 <- predict(fit, ci_level = 0.90)
+```
+
+### Tidy Parameter Summary
+
+Use `as.data.frame()` to export the full parameter summary as a tidy data frame:
+
+```{r as-data-frame}
+param_df <- as.data.frame(fit)
+head(param_df)
+```
+
+### Clinical Interpretation
+
+`interpret_rho_trajectory()` provides a human-readable summary of the
+estimated dependence trajectory:
+
+```{r interpret}
+interpret_rho_trajectory(fit)
+```
+
+## Visualisation
+
+```{r plot}
+# Rho trajectory with credible intervals
+# Red line = true trajectory (simulation only)
+plot_rho(fit, true_rho = sim$true_params$rho)
+
+# VAR coefficient heatmap
+plot_phi(fit)
+
+# MCMC diagnostics (trace, Rhat, ESS)
+plot(fit, type = "diagnostics")
+
+# Posterior predictive check
+# Currently available for normal and exponential margins
+plot_ppc(fit)
+```
+
+## LOO-CV Model Comparison
+
+Compare the DC-VAR against a constant-correlation baseline:
+
+```{r compare}
+fit_constant <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"))
+
+dcvar_compare(dcvar = fit, constant = fit_constant)
+```

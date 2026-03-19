@@ -1,0 +1,149 @@
+---
+title: "Comparing Copula VAR Models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Comparing Copula VAR Models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+has_stan <- requireNamespace("rstan", quietly = TRUE)
+eval_fits <- identical(Sys.getenv("DCVAR_EVAL_VIGNETTES"), "true") && has_stan
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = eval_fits
+)
+```
+
+## Overview
+
+The dcvar package provides three copula VAR models:
+
+1. **DC-VAR** (`dcvar()`): Time-varying correlation via a random walk on the Fisher-z scale. Best for smooth, gradual changes.
+
+2. **HMM Copula** (`dcvar_hmm()`): Discrete regime-switching with K hidden states. Best for abrupt changes between distinct coupling regimes.
+
+3. **Constant Copula** (`dcvar_constant()`): Single time-invariant correlation. Serves as a null/baseline model.
+
+## Mathematical Background
+
+For normal-margin fits, all three models share a common decomposition of the
+bivariate likelihood into marginal and copula components. The package also
+supports exponential, gamma, and skew-normal margins for these three models,
+but the copula structure below is the common part.
+
+### VAR(1) Marginals
+
+Each variable follows a VAR(1) process with innovations:
+
+$$y_t = \mu + \Phi \, (y_{t-1} - \mu) + \varepsilon_t, \qquad \varepsilon_t \sim N(0, \text{diag}(\sigma_{\varepsilon}^2))$$
+
+The normal marginal densities provide the per-variable likelihoods in this
+special case. For non-normal margins, dcvar uses the same VAR recursion and
+Gaussian copula but swaps in the corresponding marginal likelihood and
+transform.
+
+### Gaussian Copula
+
+The dependence between variables is captured by a Gaussian copula with
+time-varying correlation $\rho_t$. The log-likelihood contribution of the
+copula at time $t$ is:
+
+$$\log c(u_{1t}, u_{2t}; \rho_t) = -\frac{1}{2}\log(1 - \rho_t^2) + \frac{\rho_t^2 \, (z_{1t}^2 + z_{2t}^2) - 2\rho_t \, z_{1t} z_{2t}}{2(1 - \rho_t^2)}$$
+
+where $z_{it} = \Phi^{-1}(u_{it})$ and $u_{it} = \Phi(\varepsilon_{it} / \sigma_{\varepsilon,i})$.
+
+### How the Models Differ
+
+- **DC-VAR**: The correlation evolves as a random walk on the Fisher-z scale:
+  $z_t = z_{t-1} + \omega_t$ with $\omega_t \sim N(0, \sigma_\omega^2)$, and
+  $\rho_t = \tanh(z_t)$.
+
+- **HMM Copula**: The correlation is state-dependent: $\rho_t = \rho_{s_t}$,
+  where $s_t \in \{1, \ldots, K\}$ follows a Markov chain with transition
+  matrix $A$. State-specific correlations use an ordered constraint
+  ($\rho_1 < \rho_2 < \ldots$) to prevent label switching.
+
+- **Constant Copula**: $\rho_t = \rho$ for all $t$. A special case of both
+  the DC-VAR ($\sigma_\omega = 0$) and HMM ($K = 1$).
+
+## Fitting All Three Models
+
+```{r fit-all}
+library(dcvar)
+
+# Simulate data with a step-function trajectory
+sim <- simulate_dcvar(
+  T = 200,
+  rho_trajectory = rho_step(200, rho_before = 0.7, rho_after = 0.3),
+  seed = 42
+)
+
+# Fit all three models on the same data
+fit_dc  <- dcvar(sim$Y_df, vars = c("y1", "y2"), seed = 1)
+fit_hmm <- dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2, seed = 2)
+fit_con <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"), seed = 3)
+```
+
+## LOO-CV Comparison
+
+```{r compare}
+dcvar_compare(dcvar = fit_dc, hmm = fit_hmm, constant = fit_con)
+```
+
+## Extracting Tidy Summaries
+
+All fit objects support `as.data.frame()` for exporting tidy parameter
+summaries. The three core time-series fits shown here also support
+`fitted()`/`predict()` for one-step-ahead values; SEM and multilevel fits do
+not currently implement those methods:
+
+```{r tidy}
+# Full parameter summary as a data frame
+param_df <- as.data.frame(fit_dc)
+head(param_df)
+
+# Predictions with marginal intervals
+pred_df <- predict(fit_hmm)
+head(pred_df)
+```
+
+## HMM-Specific Outputs
+
+The HMM model provides additional outputs related to state inference:
+
+```{r hmm}
+# State posteriors, Viterbi path, transition matrix
+states <- hmm_states(fit_hmm)
+
+# State-specific rho values
+states$rho_state
+
+# Transition matrix
+states$A
+
+# Visualise state posteriors
+plot(fit_hmm, type = "states")
+
+# Transition matrix heatmap
+plot(fit_hmm, type = "transition")
+```
+
+## Clinical Interpretation
+
+`interpret_rho_trajectory()` provides a model-aware narrative:
+
+```{r interpret}
+interpret_rho_trajectory(fit_dc)
+interpret_rho_trajectory(fit_hmm)
+interpret_rho_trajectory(fit_con)
+```
+
+## When to Use Which Model
+
+- **Smooth dynamics** (therapy effects, developmental trends): Use DC-VAR
+- **Abrupt regime switches** (treatment onset, relapse): Use HMM Copula
+- **No time variation expected**: Use Constant Copula as baseline
+- **Uncertain**: Fit all three and compare with LOO-CV

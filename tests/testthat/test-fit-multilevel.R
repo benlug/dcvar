@@ -25,6 +25,25 @@ test_that("dcvar_multilevel rejects center = FALSE with bundled Stan model", {
   )
 })
 
+test_that("dcvar_multilevel rejects explicit bundled stan_file with center = FALSE", {
+  df <- data.frame(
+    id = rep(1:2, each = 4),
+    time = rep(1:4, times = 2),
+    y1 = rnorm(8),
+    y2 = rnorm(8)
+  )
+
+  expect_error(
+    dcvar_multilevel(
+      df,
+      vars = c("y1", "y2"),
+      center = FALSE,
+      stan_file = dcvar_stan_path("multilevel")
+    ),
+    "not supported by the bundled multilevel model"
+  )
+})
+
 test_that("multilevel coef() returns expected structure", {
   skip_if_no_rstan()
   fit <- get_multilevel_fit()

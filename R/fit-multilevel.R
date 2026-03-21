@@ -68,7 +68,13 @@ dcvar_multilevel <- function(data, vars,
                              stan_file = NULL,
                              backend = getOption("dcvar.backend", "auto"),
                              ...) {
-  if (!isTRUE(center) && is.null(stan_file)) {
+  bundled_stan <- dcvar_stan_path("multilevel")
+  uses_bundled_stan <- is.null(stan_file) || identical(
+    normalizePath(stan_file, winslash = "/", mustWork = TRUE),
+    normalizePath(bundled_stan, winslash = "/", mustWork = TRUE)
+  )
+
+  if (!isTRUE(center) && uses_bundled_stan) {
     cli_abort(c(
       "{.arg center = FALSE} is not supported by the bundled multilevel model.",
       "i" = "The bundled Stan program assumes person-mean centered data and omits intercept terms.",

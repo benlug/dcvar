@@ -47,6 +47,49 @@ test_that(".stan_include_paths() keeps custom and bundled include roots", {
   expect_equal(length(include_paths), length(unique(include_paths)))
 })
 
+test_that(".stan_cache_fingerprint changes when recursively included files change", {
+  root <- tempfile("stan-cache-root")
+  dir.create(file.path(root, "functions"), recursive = TRUE)
+
+  model_file <- file.path(root, "model.stan")
+  shared_file <- file.path(root, "functions", "shared.stan")
+  nested_file <- file.path(root, "functions", "nested.stan")
+
+  writeLines("#include functions/shared.stan", model_file)
+  writeLines("#include functions/nested.stan", shared_file)
+  writeLines("functions { real nested() { return 1; } }", nested_file)
+
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+
+  fingerprint_1 <- .stan_cache_fingerprint(model_file, c(root, system.file("stan", package = "dcvar")))
+  writeLines("functions { real nested() { return 2; } }", nested_file)
+  fingerprint_2 <- .stan_cache_fingerprint(model_file, c(root, system.file("stan", package = "dcvar")))
+
+  expect_false(identical(fingerprint_1, fingerprint_2))
+})
+
+test_that(".stan_cache_fingerprint respects include search path order", {
+  model_root <- tempfile("stan-cache-model")
+  extra_root <- tempfile("stan-cache-extra")
+  package_root <- tempfile("stan-cache-package")
+
+  dir.create(model_root)
+  dir.create(file.path(extra_root, "functions"), recursive = TRUE)
+  dir.create(file.path(package_root, "functions"), recursive = TRUE)
+
+  model_file <- file.path(model_root, "model.stan")
+  writeLines("#include functions/shared.stan", model_file)
+  writeLines("functions { real shared() { return 1; } }", file.path(extra_root, "functions", "shared.stan"))
+  writeLines("functions { real shared() { return 2; } }", file.path(package_root, "functions", "shared.stan"))
+
+  on.exit(unlink(c(model_root, extra_root, package_root), recursive = TRUE), add = TRUE)
+
+  fingerprint_1 <- .stan_cache_fingerprint(model_file, c(extra_root, package_root))
+  fingerprint_2 <- .stan_cache_fingerprint(model_file, c(package_root, extra_root))
+
+  expect_false(identical(fingerprint_1, fingerprint_2))
+})
+
 test_that(".fit_summary() assigns stable names to unnamed summary functions", {
   draws <- posterior::as_draws_array(
     array(

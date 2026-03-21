@@ -124,15 +124,11 @@ NULL
     dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
   }
 
-  stan_hash <- unname(tools::md5sum(stan_file))
-  if (length(stan_hash) != 1 || is.na(stan_hash) || !nzchar(stan_hash)) {
-    cli_abort("Failed to hash Stan source file {.file {stan_file}} for caching.")
-  }
-
   include_path <- .stan_include_paths(
     stan_file,
     system.file("stan", package = "dcvar", mustWork = TRUE)
   )
+  stan_hash <- .stan_cache_fingerprint(stan_file, include_path)
 
   switch(backend,
     rstan = .compile_rstan(stan_file, include_path, cache_dir, stan_hash,
@@ -152,6 +148,96 @@ NULL
     winslash = "/",
     mustWork = TRUE
   ))
+}
+
+
+#' Internal: collect direct `#include` targets from a Stan file
+#' @noRd
+.stan_direct_includes <- function(stan_file) {
+  lines <- readLines(stan_file, warn = FALSE)
+  include_lines <- grepl("^\\s*#include\\s+", lines)
+  if (!any(include_lines)) {
+    return(character())
+  }
+
+  includes <- sub("^\\s*#include\\s+", "", lines[include_lines])
+  includes <- sub("\\s*(//.*)?$", "", includes)
+  includes <- trimws(includes)
+  includes <- gsub('^[\"<]|[\">]$', "", includes)
+  includes[nzchar(includes)]
+}
+
+
+#' Internal: resolve a Stan include against the active include search path
+#' @noRd
+.stan_resolve_include <- function(include_name, current_dir, include_path) {
+  if (grepl("^(/|[A-Za-z]:[\\\\/])", include_name)) {
+    if (file.exists(include_name)) {
+      return(normalizePath(include_name, winslash = "/", mustWork = TRUE))
+    }
+    return(NA_character_)
+  }
+
+  candidates <- c(
+    file.path(current_dir, include_name),
+    file.path(include_path, include_name)
+  )
+
+  for (candidate in candidates) {
+    if (file.exists(candidate)) {
+      return(normalizePath(candidate, winslash = "/", mustWork = TRUE))
+    }
+  }
+
+  NA_character_
+}
+
+
+#' Internal: fingerprint a Stan file and all recursively included dependencies
+#' @noRd
+.stan_cache_fingerprint <- function(stan_file, include_path) {
+  include_path <- unique(normalizePath(include_path, winslash = "/", mustWork = TRUE))
+
+  visited <- character()
+  fingerprint <- character()
+
+  add_file <- function(file_path) {
+    file_path <- normalizePath(file_path, winslash = "/", mustWork = TRUE)
+    if (file_path %in% visited) {
+      return(invisible(NULL))
+    }
+
+    visited <<- c(visited, file_path)
+    fingerprint <<- c(fingerprint, unname(tools::md5sum(file_path)))
+
+    for (include_name in .stan_direct_includes(file_path)) {
+      resolved <- .stan_resolve_include(include_name, dirname(file_path), include_path)
+      if (is.na(resolved)) {
+        cli_abort(c(
+          "Stan include {.val {include_name}} could not be resolved while computing the compile cache key.",
+          "i" = "Checked {.file {dirname(file_path)}} and the configured include paths."
+        ))
+      }
+      add_file(resolved)
+    }
+
+    invisible(NULL)
+  }
+
+  add_file(stan_file)
+
+  signature_file <- tempfile("dcvar-stan-cache-signature-")
+  on.exit(unlink(signature_file), add = TRUE)
+  writeLines(
+    c(
+      paste0("include_paths:", paste(include_path, collapse = "|")),
+      fingerprint
+    ),
+    signature_file,
+    useBytes = TRUE
+  )
+
+  unname(tools::md5sum(signature_file))
 }
 
 

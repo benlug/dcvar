@@ -22,13 +22,15 @@ A named list with:
 \itemize{
 \item \code{n_divergent}: total number of divergent transitions
 \item \code{n_max_treedepth}: transitions hitting max tree depth
-\item \code{max_rhat}: worst (highest) Rhat across all parameters
-\item \code{min_ess_bulk}: smallest bulk ESS
-\item \code{min_ess_tail}: smallest tail ESS
+\item \code{max_rhat}: worst (highest) Rhat across sampled parameters
+\item \code{min_ess_bulk}: smallest bulk ESS among sampled parameters
+\item \code{min_ess_tail}: smallest tail ESS among sampled parameters
 \item \code{mean_accept_prob}: mean acceptance probability
 }
 }
 \description{
 Returns a summary of sampling diagnostics including divergences,
 tree depth warnings, Rhat, and effective sample size.
+The headline convergence summary is computed from sampled parameters only and
+excludes generated quantities and deterministic transformed outputs.
 }

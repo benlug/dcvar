@@ -17,7 +17,8 @@ plot_pit(object, bins = 20, ...)
 A ggplot object.
 }
 \description{
-Creates faceted histograms of PIT values. Under correct specification,
-these should be approximately uniform (flat). The plotted values are the
-approximate PIT values returned by \code{\link[=pit_values]{pit_values()}}.
+Creates faceted histograms of the approximate PIT values returned by
+\code{\link[=pit_values]{pit_values()}}. Under good model fit, these histograms should be roughly
+uniform, but they remain plug-in diagnostics rather than exact posterior
+predictive checks.
 }

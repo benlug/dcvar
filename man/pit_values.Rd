@@ -21,12 +21,14 @@ pit_values(object, ...)
 A data frame with columns \code{time}, \code{variable}, \code{pit}.
 }
 \description{
-Computes Probability Integral Transform values using posterior mean
-parameters. Under correct model specification, PIT values should be
-uniformly distributed on [0, 1].
+Computes approximate Probability Integral Transform values using posterior
+mean residuals and posterior mean margin parameters. Large departures from
+uniformity can indicate model misfit, but these are not exact posterior
+predictive PIT values.
 }
 \details{
 PIT values are computed from posterior mean residuals and posterior mean
-scale parameters. Treat them as an approximate diagnostic rather than an
-exact posterior predictive transform.
+margin parameters. Treat them as a fast plug-in diagnostic rather than an
+exact posterior predictive transform that integrates over full posterior
+uncertainty.
 }

@@ -6,9 +6,10 @@ utils::globalVariables("count")
 
 #' Extract PIT values from a fitted model
 #'
-#' Computes Probability Integral Transform values using posterior mean
-#' parameters. Under correct model specification, PIT values should be
-#' uniformly distributed on \[0, 1\].
+#' Computes approximate Probability Integral Transform values using posterior
+#' mean residuals and posterior mean margin parameters. Large departures from
+#' uniformity can indicate model misfit, but these are not exact posterior
+#' predictive PIT values.
 #'
 #' @param object A fitted model object.
 #' @param ... Additional arguments (unused).
@@ -17,8 +18,9 @@ utils::globalVariables("count")
 #'
 #' @details
 #' PIT values are computed from posterior mean residuals and posterior mean
-#' scale parameters. Treat them as an approximate diagnostic rather than an
-#' exact posterior predictive transform.
+#' margin parameters. Treat them as a fast plug-in diagnostic rather than an
+#' exact posterior predictive transform that integrates over full posterior
+#' uncertainty.
 #' @export
 pit_values <- function(object, ...) {
   UseMethod("pit_values")
@@ -174,7 +176,8 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 #' KS test for PIT uniformity
 #'
 #' Runs a Kolmogorov-Smirnov test per variable to assess whether PIT values
-#' are uniformly distributed (as expected under correct model specification).
+#' are approximately uniform. This is a heuristic check on the plug-in PIT
+#' values returned by [pit_values()], not an exact posterior predictive test.
 #'
 #' @param object A fitted model object.
 #' @param ... Additional arguments (unused).
@@ -184,7 +187,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 #' @details
 #' This applies a Kolmogorov-Smirnov test to the approximate PIT values
 #' returned by [pit_values()]. The result is a heuristic check and does not
-#' account for serial dependence in the residual sequence.
+#' account for serial dependence or full posterior uncertainty.
 #' @export
 pit_test <- function(object, ...) {
   UseMethod("pit_test")
@@ -239,9 +242,10 @@ pit_test.dcvar_sem_fit <- function(object, ...) {
 
 #' Plot PIT histograms
 #'
-#' Creates faceted histograms of PIT values. Under correct specification,
-#' these should be approximately uniform (flat). The plotted values are the
-#' approximate PIT values returned by [pit_values()].
+#' Creates faceted histograms of the approximate PIT values returned by
+#' [pit_values()]. Under good model fit, these histograms should be roughly
+#' uniform, but they remain plug-in diagnostics rather than exact posterior
+#' predictive checks.
 #'
 #' @param object A fitted model object.
 #' @param bins Number of histogram bins (default: 20).
@@ -265,8 +269,8 @@ plot_pit <- function(object, bins = 20, ...) {
     ggplot2::labs(
       x = "PIT Value",
       y = "Density",
-      title = "Probability Integral Transform Diagnostics",
-      subtitle = "Red dashed line: uniform reference (correct specification)"
+      title = "Approximate PIT Diagnostics",
+      subtitle = "Red dashed line: uniform plug-in reference"
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(

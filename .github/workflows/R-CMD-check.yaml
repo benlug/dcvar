@@ -42,15 +42,21 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
-          extra-repositories: https://stan-dev.r-universe.dev
 
+      # Keep the shared matrix on hard dependencies plus explicit test/vignette
+      # packages; optional backend tooling is installed only in the release lane.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          dependencies: 'NA'
           extra-packages: |
             any::BH
             any::RcppEigen
+            any::testthat
+            any::knitr
+            any::rmarkdown
+            any::withr
+            any::sn
             any::rcmdcheck
-          needs: check
 
       - name: Install qpdf (Linux)
         if: runner.os == 'Linux'
@@ -65,6 +71,16 @@ jobs:
       - name: Install qpdf (Windows)
         if: runner.os == 'Windows'
         run: choco install qpdf --no-progress
+
+      # Install the optional backend only where we actually exercise it.
+      - name: Install cmdstanr
+        if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
+        run: |
+          install.packages(
+            "cmdstanr",
+            repos = c("https://stan-dev.r-universe.dev", getOption("repos"))
+          )
+        shell: Rscript {0}
 
       - name: Install CmdStan
         if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
@@ -125,10 +141,10 @@ jobs:
 
       - uses: r-lib/actions/check-r-package@v2
         env:
-          # cmdstanr is an optional backend. The dedicated Ubuntu release lane
-          # installs and exercises it explicitly; the main matrix should not
-          # fail R CMD check just because that Suggests package is unavailable.
-          _R_CHECK_FORCE_SUGGESTS_: false
+          # The main matrix keeps optional backends out of the shared check
+          # path. The dedicated Ubuntu release lane installs cmdstanr
+          # explicitly, so it can still enforce Suggests handling there.
+          _R_CHECK_FORCE_SUGGESTS_: ${{ matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release' }}
         with:
           # Keep check artifacts for one diagnostic rerun so platform-specific
           # warnings/errors can be inspected from the uploaded 00check.log.

@@ -77,6 +77,17 @@ test_that("simulate_dcvar_sem validates lambda finiteness and sigma_e", {
   )
 })
 
+test_that("simulate_dcvar_sem validates Phi and sigma shapes", {
+  expect_error(
+    simulate_dcvar_sem(T = 20, Phi = matrix(1:3, nrow = 1), rho = 0.5),
+    "Phi"
+  )
+  expect_error(
+    simulate_dcvar_sem(T = 20, sigma = c(1, 1, 1), rho = 0.5),
+    "sigma"
+  )
+})
+
 test_that("simulate_dcvar_sem works with different J values", {
   for (J in c(2, 4, 5)) {
     sim <- simulate_dcvar_sem(T = 40, J = J,

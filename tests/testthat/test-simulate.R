@@ -59,6 +59,25 @@ test_that("simulate_dcvar stores true parameters", {
   expect_equal(sim$true_params$sigma_eps, c(1, 1))
 })
 
+test_that("simulate_dcvar stores default non-normal margin parameters in true_params", {
+  traj <- rho_constant(30, 0.2)
+
+  gamma_sim <- simulate_dcvar(
+    T = 30,
+    rho_trajectory = traj,
+    margins = "gamma",
+    skew_direction = c(1, 1)
+  )
+  expect_equal(gamma_sim$true_params$skew_params$shape, 1)
+
+  skew_sim <- simulate_dcvar(
+    T = 30,
+    rho_trajectory = traj,
+    margins = "skew_normal"
+  )
+  expect_equal(skew_sim$true_params$skew_params$alpha, c(0, 0))
+})
+
 test_that("simulate_dcvar Y_df time column is 1:T", {
   sim <- simulate_dcvar(T = 30, rho_trajectory = rho_constant(30, 0.3))
   expect_equal(sim$Y_df$time, 1:30)

@@ -102,6 +102,20 @@ simulate_dcvar <- function(T,
     gamma_shape <- if (is.null(skew_params) || is.null(skew_params$shape)) 1 else skew_params$shape
     .simulate_validate_positive_scalar(gamma_shape, "skew_params$shape")
   }
+  if (margins == "skew_normal") {
+    if (!is.null(skew_params) && !is.list(skew_params)) {
+      cli_abort("{.arg skew_params} must be a list when using skew_normal margins.")
+    }
+    alpha <- if (is.null(skew_params) || is.null(skew_params$alpha)) c(0, 0) else skew_params$alpha
+    .simulate_validate_numeric_vector(alpha, "skew_params$alpha")
+    if (length(alpha) != D) {
+      cli_abort("{.arg skew_params$alpha} must have length {.val {D}}, got {.val {length(alpha)}}.")
+    }
+    skew_params <- list(alpha = alpha)
+  }
+  if (margins == "gamma") {
+    skew_params <- list(shape = gamma_shape)
+  }
 
   Y <- matrix(0, T, D)
   Y[1, ] <- mu

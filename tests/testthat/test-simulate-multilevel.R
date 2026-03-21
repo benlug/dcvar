@@ -55,6 +55,21 @@ test_that("simulate_dcvar_multilevel validates rho bounds", {
   )
 })
 
+test_that("simulate_dcvar_multilevel validates vector lengths and center flag", {
+  expect_error(
+    simulate_dcvar_multilevel(tau_phi = c(0.1, 0.2, 0.3), seed = 1),
+    "tau_phi"
+  )
+  expect_error(
+    simulate_dcvar_multilevel(sigma = c(1, 1, 1), seed = 1),
+    "sigma"
+  )
+  expect_error(
+    simulate_dcvar_multilevel(center = NA, seed = 1),
+    "center"
+  )
+})
+
 test_that("simulate_dcvar_multilevel preserves sampled nonstationary Phi matrices", {
   sim <- simulate_dcvar_multilevel(
     N = 1,

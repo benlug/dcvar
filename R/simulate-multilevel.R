@@ -34,6 +34,37 @@ simulate_dcvar_multilevel <- function(N = 40, T = 100,
                                       center = TRUE,
                                       seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
+  if (!is.numeric(N) || length(N) != 1L || N != as.integer(N) || N < 1) {
+    cli_abort("{.arg N} must be an integer >= 1, got {.val {N}}.")
+  }
+  if (!is.numeric(T) || length(T) != 1L || T != as.integer(T) || T < 2) {
+    cli_abort("{.arg T} must be an integer >= 2, got {.val {T}}.")
+  }
+  .simulate_validate_numeric_vector(phi_bar, "phi_bar")
+  if (length(phi_bar) != 4L) {
+    cli_abort("{.arg phi_bar} must have length 4, got {.val {length(phi_bar)}}.")
+  }
+  .simulate_validate_numeric_vector(tau_phi, "tau_phi")
+  if (length(tau_phi) != 4L) {
+    cli_abort("{.arg tau_phi} must have length 4, got {.val {length(tau_phi)}}.")
+  }
+  if (any(tau_phi < 0)) {
+    cli_abort("{.arg tau_phi} values must be non-negative.")
+  }
+  .simulate_validate_numeric_vector(sigma, "sigma")
+  if (length(sigma) != 2L) {
+    cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")
+  }
+  if (any(sigma <= 0)) {
+    cli_abort("{.arg sigma} values must be positive.")
+  }
+  if (!is.logical(center) || length(center) != 1L || is.na(center)) {
+    cli_abort("{.arg center} must be TRUE or FALSE.")
+  }
+  if (!is.numeric(burnin) || length(burnin) != 1L ||
+      burnin != as.integer(burnin) || burnin < 0) {
+    cli_abort("{.arg burnin} must be a non-negative integer, got {.val {burnin}}.")
+  }
   if (!is.numeric(rho) || length(rho) != 1 || rho < -1 || rho > 1) {
     cli_abort("{.arg rho} must be a single numeric value in [-1, 1], got {.val {rho}}.")
   }

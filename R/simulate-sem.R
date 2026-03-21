@@ -54,12 +54,35 @@ simulate_dcvar_sem <- function(T = 200, J = 3,
                                 burnin = 0,
                                 seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
+  if (!is.numeric(T) || length(T) != 1L || T != as.integer(T) || T < 1) {
+    cli_abort("{.arg T} must be an integer >= 1, got {.val {T}}.")
+  }
+  if (!is.numeric(J) || length(J) != 1L || J != as.integer(J) || J < 1) {
+    cli_abort("{.arg J} must be an integer >= 1, got {.val {J}}.")
+  }
 
   if (length(lambda) != J) {
     cli_abort("{.arg lambda} must have length {.val {J}}, got {.val {length(lambda)}}.")
   }
   .simulate_sem_validate_numeric_vector(lambda, "lambda")
   .simulate_sem_validate_positive_scalar(sigma_e, "sigma_e")
+  if (!is.matrix(Phi) || !all(dim(Phi) == c(2L, 2L)) || any(!is.finite(Phi))) {
+    cli_abort("{.arg Phi} must be a finite 2x2 matrix.")
+  }
+  .simulate_sem_validate_numeric_vector(mu, "mu")
+  if (length(mu) != 2L) {
+    cli_abort("{.arg mu} must have length 2, got {.val {length(mu)}}.")
+  }
+  .simulate_sem_validate_numeric_vector(sigma, "sigma")
+  if (length(sigma) != 2L) {
+    cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")
+  }
+  if (any(sigma <= 0)) {
+    cli_abort("{.arg sigma} values must be positive.")
+  }
+  if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) || rho < -1 || rho > 1) {
+    cli_abort("{.arg rho} must be a single finite numeric value in [-1, 1].")
+  }
 
   if (!identical(burnin, 0L) && !identical(burnin, 0)) {
     cli_warn(

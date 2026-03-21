@@ -30,7 +30,7 @@ prepare_hmm_data(
 
 \item{time_var}{Name of the time column (default: \code{"time"}).}
 
-\item{standardize}{Logical; whether to z-score variables (default: \code{TRUE}).}
+\item{standardize}{Logical scalar; whether to z-score variables (default: \code{TRUE}).}
 
 \item{margins}{Character string specifying the marginal distribution.
 One of \code{"normal"} (default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
@@ -53,7 +53,7 @@ for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1
 
 \item{prior_z_rho_sd}{Prior SD for state-specific z_rho values (default: 1.0).}
 
-\item{allow_gaps}{Logical; if \code{FALSE} (default), interior missing values
+\item{allow_gaps}{Logical scalar; if \code{FALSE} (default), interior missing values
 cause an error. If \code{TRUE}, they produce a warning and are removed.}
 }
 \value{

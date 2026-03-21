@@ -26,7 +26,7 @@ prepare_dcvar_data(
 
 \item{time_var}{Name of the time column (default: \code{"time"}).}
 
-\item{standardize}{Logical; whether to z-score variables (default: \code{TRUE}).}
+\item{standardize}{Logical scalar; whether to z-score variables (default: \code{TRUE}).}
 
 \item{margins}{Character string specifying the marginal distribution.
 One of \code{"normal"} (default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
@@ -49,7 +49,7 @@ for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1
 
 \item{prior_rho_init_sd}{Prior SD for initial rho on Fisher-z scale.}
 
-\item{allow_gaps}{Logical; if \code{FALSE} (default), interior missing values
+\item{allow_gaps}{Logical scalar; if \code{FALSE} (default), interior missing values
 cause an error. If \code{TRUE}, they produce a warning and are removed.}
 }
 \value{
@@ -69,4 +69,3 @@ prior means (scale parameters), where the exponential rate is
 \code{prior_sigma_omega_rate} (exponential prior on the random-walk SD)
 because the two quantities have fundamentally different roles.
 }
-

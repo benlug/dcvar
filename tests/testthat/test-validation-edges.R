@@ -59,8 +59,11 @@ test_that("zero-variance column errors on standardize", {
 
 test_that("zero-variance column after NA removal errors", {
   df <- data.frame(time = 1:10, y1 = c(5, 5, NA, 5, 5, 5, 5, 5, 5, 5), y2 = rnorm(10))
-  expect_error(prepare_dcvar_data(df, vars = c("y1", "y2"),
-                                  allow_gaps = TRUE), "zero|variance")
+  expect_warning(
+    expect_error(prepare_dcvar_data(df, vars = c("y1", "y2"),
+                                    allow_gaps = TRUE), "zero|variance"),
+    "Removing 1 row"
+  )
 })
 
 # --- Margin validation ------------------------------------------------------
@@ -87,6 +90,22 @@ test_that("normal margins work without skew_direction", {
   df <- data.frame(time = 1:20, y1 = rnorm(20), y2 = rnorm(20))
   result <- prepare_dcvar_data(df, vars = c("y1", "y2"), margins = "normal")
   expect_equal(result$T, 20)
+})
+
+test_that("prepare_dcvar_data validates scalar logical flags", {
+  df <- data.frame(time = 1:20, y1 = rnorm(20), y2 = rnorm(20))
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), standardize = 1),
+    "single logical"
+  )
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), allow_gaps = c(TRUE, FALSE)),
+    "single logical"
+  )
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), standardize = NA),
+    "single logical"
+  )
 })
 
 # --- HMM K validation -------------------------------------------------------
@@ -130,6 +149,32 @@ test_that("multilevel errors on unbalanced panels", {
 test_that("multilevel errors on non-dataframe input", {
   expect_error(prepare_multilevel_data(list(a = 1), vars = c("y1", "y2"), id_var = "id"),
                "data frame")
+})
+
+test_that("multilevel rejects missing unit ids", {
+  df <- data.frame(
+    time = c(1, 2, 1, 2),
+    y1 = rnorm(4),
+    y2 = rnorm(4),
+    id = c("A", NA, "B", "B")
+  )
+  expect_error(
+    prepare_multilevel_data(df, vars = c("y1", "y2"), id_var = "id"),
+    "missing values"
+  )
+})
+
+test_that("multilevel drops unused factor levels in ids", {
+  df <- data.frame(
+    time = c(1, 2, 1, 2),
+    y1 = rnorm(4),
+    y2 = rnorm(4),
+    id = factor(c("A", "A", "B", "B"), levels = c("A", "B", "C"))
+  )
+  out <- prepare_multilevel_data(df, vars = c("y1", "y2"), id_var = "id")
+  expect_equal(out$N, 2)
+  expect_equal(as.character(attr(out, "ids")), c("A", "B"))
+  expect_equal(levels(attr(out, "ids")), c("A", "B"))
 })
 
 test_that("multilevel errors on NAs in unit data", {

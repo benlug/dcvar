@@ -23,6 +23,14 @@
   }
 }
 
+#' Internal: validate a scalar logical flag
+#' @noRd
+.prep_validate_scalar_logical <- function(x, arg_name) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+    cli_abort("{.arg {arg_name}} must be a single logical value.")
+  }
+}
+
 #' Internal: validate a finite numeric vector
 #' @noRd
 .prep_validate_numeric_vector <- function(x, arg_name) {
@@ -116,8 +124,8 @@
 #' @param data A data frame.
 #' @param vars Character vector of exactly two variable names.
 #' @param time_var Name of the time column.
-#' @param standardize Whether to z-score the variables.
-#' @param allow_gaps Logical; if `FALSE` (default), interior missing values
+#' @param standardize Logical scalar; whether to z-score the variables.
+#' @param allow_gaps Logical scalar; if `FALSE` (default), interior missing values
 #'   cause an error. If `TRUE`, they produce a warning and are removed.
 #'
 #' @return A list with elements `Y`, `T`, `D`, and standardization metadata.
@@ -135,6 +143,8 @@
     cli_abort("Exactly 2 variables required (bivariate model). Got {.val {length(vars)}}.")
   }
   .prep_validate_unique_vars(vars)
+  .prep_validate_scalar_logical(standardize, "standardize")
+  .prep_validate_scalar_logical(allow_gaps, "allow_gaps")
   missing_vars <- setdiff(c(vars, time_var), names(data))
   if (length(missing_vars) > 0) {
     cli_abort("Column{?s} not found in data: {.val {missing_vars}}")
@@ -393,7 +403,7 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
 #' @param vars Character vector of two variable names.
 #' @param id_var Name of the unit/person ID column.
 #' @param time_var Name of the time column.
-#' @param center Logical; person-mean center (default: `TRUE`).
+#' @param center Logical scalar; person-mean center (default: `TRUE`).
 #' @param prior_phi_bar_sd Prior SD for phi_bar.
 #' @param prior_tau_phi_scale Prior scale for tau_phi.
 #' @param prior_sigma_sd Prior SD for sigma.
@@ -408,9 +418,7 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
                                     prior_sigma_sd = 1,
                                     prior_rho_sd = 0.5) {
   if (!is.data.frame(data)) cli_abort("{.arg data} must be a data frame.")
-  if (!is.logical(center) || length(center) != 1L || is.na(center)) {
-    cli_abort("{.arg center} must be a single logical value.")
-  }
+  .prep_validate_scalar_logical(center, "center")
   if (length(vars) != 2) {
     cli_abort("Exactly 2 variables required for multilevel models. Got {.val {length(vars)}}.")
   }
@@ -429,15 +437,27 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
     }
   }
 
+  id_values <- data[[id_var]]
+  if (anyNA(id_values)) {
+    cli_abort(c(
+      "{.arg id_var} contains missing values.",
+      "i" = "Remove or impute missing unit IDs before fitting the multilevel model."
+    ))
+  }
+  if (is.factor(id_values)) {
+    id_values <- droplevels(id_values)
+    data[[id_var]] <- id_values
+  }
+
   # Split by unit
-  ids <- unique(data[[id_var]])
+  ids <- unique(id_values)
   N <- length(ids)
 
   # Sort within each unit
   data <- data[order(data[[id_var]], data[[time_var]]), , drop = FALSE]
 
   # Check balanced panel
-  counts <- table(data[[id_var]])
+  counts <- table(id_values)
   if (length(unique(counts)) != 1) {
     cli_abort("Unbalanced panels not yet supported. All units must have the same number of observations.")
   }

@@ -29,7 +29,13 @@
 #' @param sigma_e Measurement error SD (scalar).
 #' @param Phi 2x2 VAR coefficient matrix.
 #' @param mu Length-2 intercept vector.
-#' @param sigma Length-2 innovation SD vector.
+#' @param margins Character string specifying the latent innovation margin.
+#'   One of `"normal"` (default) or `"exponential"`.
+#' @param sigma Length-2 latent innovation SD vector for normal margins.
+#' @param sigma_exp Length-2 shifted-exponential scale vector for exponential
+#'   margins.
+#' @param skew_direction Integer vector of length 2 indicating skew direction
+#'   for exponential margins. Required when `margins = "exponential"`.
 #' @param rho Copula correlation.
 #' @param burnin Retained for backward compatibility but ignored. Default `0`
 #'   keeps the default simulation path aligned with the fitted SEM model,
@@ -49,11 +55,15 @@ simulate_dcvar_sem <- function(T = 200, J = 3,
                                 sigma_e = sqrt(0.2),
                                 Phi = matrix(c(0.5, 0.15, 0.15, 0.3), 2, 2),
                                 mu = c(0, 0),
+                                margins = "normal",
                                 sigma = c(1, 1),
+                                sigma_exp = c(1, 1),
+                                skew_direction = NULL,
                                 rho = 0.3,
                                 burnin = 0,
                                 seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
+  .validate_sem_margins(margins, skew_direction)
   if (!is.numeric(T) || length(T) != 1L || T != as.integer(T) || T < 1) {
     cli_abort("{.arg T} must be an integer >= 1, got {.val {T}}.")
   }
@@ -73,12 +83,22 @@ simulate_dcvar_sem <- function(T = 200, J = 3,
   if (length(mu) != 2L) {
     cli_abort("{.arg mu} must have length 2, got {.val {length(mu)}}.")
   }
-  .simulate_sem_validate_numeric_vector(sigma, "sigma")
-  if (length(sigma) != 2L) {
-    cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")
-  }
-  if (any(sigma <= 0)) {
-    cli_abort("{.arg sigma} values must be positive.")
+  if (identical(margins, "normal")) {
+    .simulate_sem_validate_numeric_vector(sigma, "sigma")
+    if (length(sigma) != 2L) {
+      cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")
+    }
+    if (any(sigma <= 0)) {
+      cli_abort("{.arg sigma} values must be positive.")
+    }
+  } else {
+    .simulate_sem_validate_numeric_vector(sigma_exp, "sigma_exp")
+    if (length(sigma_exp) != 2L) {
+      cli_abort("{.arg sigma_exp} must have length 2, got {.val {length(sigma_exp)}}.")
+    }
+    if (any(sigma_exp <= 0)) {
+      cli_abort("{.arg sigma_exp} values must be positive.")
+    }
   }
   if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) || rho < -1 || rho > 1) {
     cli_abort("{.arg rho} must be a single finite numeric value in [-1, 1].")
@@ -94,12 +114,20 @@ simulate_dcvar_sem <- function(T = 200, J = 3,
   }
 
   # Generate correlated innovations via Gaussian copula
-  Sigma_copula <- matrix(c(1, rho, rho, 1), 2, 2)
-  L <- t(chol(Sigma_copula))
+  L <- matrix(c(1, rho, 0, sqrt(1 - rho^2)), 2, 2)
   zeta <- matrix(NA_real_, T, 2)
   for (t in seq_len(T)) {
     z <- rnorm(2)
-    zeta[t, ] <- (L %*% z) * sigma
+    w <- drop(L %*% z)
+    if (identical(margins, "normal")) {
+      zeta[t, ] <- w * sigma
+    } else {
+      u <- stats::pnorm(w)
+      for (i in seq_len(2L)) {
+        x_raw <- stats::qexp(u[i], rate = 1 / sigma_exp[i])
+        zeta[t, i] <- skew_direction[i] * (x_raw - sigma_exp[i])
+      }
+    }
   }
 
   # Latent VAR(1) recursion matching the SEM Stan model, which conditions on x_0 = 0.
@@ -119,17 +147,25 @@ simulate_dcvar_sem <- function(T = 200, J = 3,
 
   data <- data.frame(time = seq_len(T), y, check.names = FALSE)
 
+  true_params <- list(
+    Phi = Phi,
+    mu = mu,
+    margins = margins,
+    rho = rho,
+    lambda = lambda,
+    sigma_e = sigma_e,
+    J = J
+  )
+  if (identical(margins, "normal")) {
+    true_params$sigma <- sigma
+  } else {
+    true_params$sigma_exp <- sigma_exp
+    true_params$skew_direction <- skew_direction
+  }
+
   list(
     data = data,
-    true_params = list(
-      Phi = Phi,
-      mu = mu,
-      sigma = sigma,
-      rho = rho,
-      lambda = lambda,
-      sigma_e = sigma_e,
-      J = J
-    ),
+    true_params = true_params,
     latent_states = state,
     innovations = zeta
   )

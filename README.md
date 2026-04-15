@@ -88,11 +88,12 @@ dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 All models use Gaussian copulas. The core three time-series models
 (`dcvar()`, `dcvar_hmm()`, and `dcvar_constant()`) support four marginal
 distributions: **normal**, **exponential**, **skew-normal**, and **gamma**.
-The multilevel and SEM variants currently support normal margins only.
+The multilevel variant currently supports normal margins only. The SEM variant
+supports normal and exponential latent innovation margins.
 
 If you are reading the accompanying manuscript, note that `dcvar` currently
-implements Gaussian-copula workflows only. Clayton-copula models and the
-paper-specific exponential-indicator SEM variant are not part of the package.
+implements Gaussian-copula workflows only. Clayton-copula models are not part
+of the package.
 
 `fitted()` and `predict()` are implemented for all five fit classes. The
 multilevel methods return unit-specific trajectories and intervals; the SEM

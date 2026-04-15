@@ -2,6 +2,7 @@
 ^\.Rproj\.user$
 ^\.Rprofile$
 ^\.claude$
+^\.codex$
 ^\.github$
 ^_pkgdown\.yml$
 ^docs$

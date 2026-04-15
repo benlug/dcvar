@@ -5,7 +5,8 @@
 #' Construct a dcvar_sem_fit object
 #' @noRd
 new_dcvar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
-                               indicators, backend = "rstan",
+                               indicators, margins = "normal",
+                               skew_direction = NULL, backend = "rstan",
                                priors, meta) {
   structure(
     list(
@@ -14,11 +15,12 @@ new_dcvar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
       model = "sem",
       vars = vars,
       standardized = FALSE,
-      margins = "normal",
+      margins = margins,
       J = J,
       lambda = lambda,
       sigma_e = sigma_e,
       indicators = indicators,
+      skew_direction = skew_direction,
       backend = backend,
       priors = priors,
       meta = meta
@@ -94,6 +96,8 @@ print.dcvar_sem_summary <- function(x, ...) {
   if (!is.null(x$var_params$sigma)) {
     cat("\n  sigma:\n")
     print(x$var_params$sigma[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+  } else {
+    .print_margin_params(x$var_params)
   }
   if (!is.null(x$var_params$rho)) {
     cat("\n  rho:\n")
@@ -115,12 +119,18 @@ print.dcvar_sem_summary <- function(x, ...) {
 #' @export
 coef.dcvar_sem_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)
-  list(
+  result <- list(
     mu = .extract_required_coef(summ, "^mu\\[", "mu", "coef.dcvar_sem_fit()"),
     Phi = .extract_required_coef(summ, "^Phi\\[", "Phi", "coef.dcvar_sem_fit()"),
-    sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_sem_fit()"),
     rho = .extract_required_coef(summ, "^rho$", "rho", "coef.dcvar_sem_fit()")
   )
+  margins <- object$margins %||% "normal"
+  margin_coefs <- if (identical(margins, "normal")) {
+    list(sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_sem_fit()"))
+  } else {
+    .extract_margin_coefs(summ, margins)
+  }
+  c(result[1:2], margin_coefs, result[3])
 }
 
 

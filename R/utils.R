@@ -227,19 +227,27 @@
 #' Generate default SEM initialization values
 #'
 #' @param T_obs Number of time points.
+#' @param margins Character string: `"normal"` or `"exponential"`.
 #' @return A named list with SEM params.
 #' @noRd
-.init_sem_params <- function(T_obs) {
-  list(
+.init_sem_params <- function(T_obs, margins = "normal") {
+  init <- list(
     mu = rnorm(2, 0, 0.1),
     phi11 = runif(1, 0.1, 0.5),
     phi12 = runif(1, -0.2, 0.2),
     phi21 = runif(1, -0.2, 0.2),
     phi22 = runif(1, 0.1, 0.5),
-    sigma = runif(2, 0.5, 1.5),
     rho_raw = rnorm(1, 0, 0.3),
     zeta = matrix(rnorm(T_obs * 2, 0, 0.5), T_obs, 2)
   )
+
+  if (identical(margins, "exponential")) {
+    init$eta <- rnorm(2, 0, 0.2)
+  } else {
+    init$sigma <- runif(2, 0.5, 1.5)
+  }
+
+  init
 }
 
 

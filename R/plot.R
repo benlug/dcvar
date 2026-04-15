@@ -214,7 +214,11 @@ plot_diagnostics <- function(object, ...) {
   trace_pars <- if (object$model == "multilevel") {
     c("phi_bar[1]", "phi_bar[2]", "phi_bar[3]", "phi_bar[4]", "rho")
   } else if (object$model == "sem") {
-    c("mu[1]", "mu[2]", "phi11", "phi22", "sigma[1]", "sigma[2]", "rho")
+    if (margins == "exponential") {
+      c("mu[1]", "mu[2]", "phi11", "phi22", "sigma_exp[1]", "sigma_exp[2]", "rho")
+    } else {
+      c("mu[1]", "mu[2]", "phi11", "phi22", "sigma[1]", "sigma[2]", "rho")
+    }
   } else if (margins == "normal") {
     c("mu[1]", "mu[2]", "sigma_eps[1]", "sigma_eps[2]")
   } else if (margins == "exponential") {

@@ -11,7 +11,10 @@ simulate_dcvar_sem(
   sigma_e = sqrt(0.2),
   Phi = matrix(c(0.5, 0.15, 0.15, 0.3), 2, 2),
   mu = c(0, 0),
+  margins = "normal",
   sigma = c(1, 1),
+  sigma_exp = c(1, 1),
+  skew_direction = NULL,
   rho = 0.3,
   burnin = 0,
   seed = NULL
@@ -30,7 +33,16 @@ simulate_dcvar_sem(
 
 \item{mu}{Length-2 intercept vector.}
 
-\item{sigma}{Length-2 innovation SD vector.}
+\item{margins}{Character string specifying the latent innovation margin.
+One of \code{"normal"} (default) or \code{"exponential"}.}
+
+\item{sigma}{Length-2 latent innovation SD vector for normal margins.}
+
+\item{sigma_exp}{Length-2 shifted-exponential scale vector for exponential
+margins.}
+
+\item{skew_direction}{Integer vector of length 2 indicating skew direction
+for exponential margins. Required when \code{margins = "exponential"}.}
 
 \item{rho}{Copula correlation.}
 
@@ -53,5 +65,6 @@ A named list with:
 }
 \description{
 Generates indicator-level time series data from a latent VAR(1) process
-with Gaussian copula dependence and a fixed measurement model.
+with Gaussian copula dependence and a fixed measurement model. The latent
+innovations can follow either normal or shifted-exponential margins.
 }

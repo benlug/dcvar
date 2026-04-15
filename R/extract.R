@@ -546,9 +546,19 @@ latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
 #' @rdname var_params
 #' @export
 var_params.dcvar_sem_fit <- function(object, ...) {
+  margins <- object$margins %||% "normal"
+  required_patterns <- c("^mu\\[", "^Phi\\[", "^rho$")
+  if (identical(margins, "normal")) {
+    required_patterns <- c(required_patterns, "^sigma\\[")
+  } else if (identical(margins, "exponential")) {
+    required_patterns <- c(required_patterns, "^sigma_exp\\[")
+  } else {
+    cli_abort("Unsupported SEM margin type in {.fun var_params}: {.val {margins}}.")
+  }
+
   summ <- .fit_summary(
     object$fit, variables = NULL, backend = object$backend,
-    required = c("^mu\\[", "^Phi\\[", "^sigma\\[", "^rho$"),
+    required = required_patterns,
     required_type = "pattern",
     context = "var_params.dcvar_sem_fit()",
     output_type = "parameter group",
@@ -566,12 +576,18 @@ var_params.dcvar_sem_fit <- function(object, ...) {
     )
   }
 
-  list(
+  result <- list(
     mu = extract_param("^mu\\["),
     Phi = extract_param("^Phi\\["),
-    sigma = extract_param("^sigma\\["),
     rho = extract_param("^rho$")
   )
+  if (identical(margins, "normal")) {
+    result <- c(result[1:2], list(sigma = extract_param("^sigma\\[")), result[3])
+  } else {
+    result <- c(result[1:2], list(sigma_exp = extract_param("^sigma_exp\\[")), result[3])
+  }
+
+  result
 }
 
 

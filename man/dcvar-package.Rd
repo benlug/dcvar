@@ -13,12 +13,12 @@ series. The core single-level models \code{\link[=dcvar]{dcvar()}}, \code{\link[
 margins.
 
 Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and \code{\link[=dcvar_sem]{dcvar_sem()}}
-currently support normal margins only and provide a narrower diagnostic interface than
-the core models.
+provide a narrower diagnostic interface than the core models. The multilevel
+model currently supports normal margins only, while the SEM model supports normal
+and exponential latent innovation margins.
 
-The package implements Gaussian-copula models only. Clayton copulas and the
-paper-specific exponential-indicator SEM variant are not part of the public
-API.
+The package implements Gaussian-copula models only. Clayton copulas are not
+part of the public API.
 
 Estimation uses Stan through \code{rstan} by default, with optional \code{cmdstanr}
 backend support. PIT diagnostics are approximate posterior-mean plug-in

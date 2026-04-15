@@ -220,6 +220,39 @@ test_that("SEM errors on mismatched lambda length", {
   )
 })
 
+test_that("SEM exponential margins require skew_direction", {
+  df <- data.frame(time = 1:10, y1_1 = rnorm(10), y1_2 = rnorm(10),
+                   y2_1 = rnorm(10), y2_2 = rnorm(10))
+  expect_error(
+    prepare_sem_data(
+      df,
+      indicators = list(a = c("y1_1", "y1_2"), b = c("y2_1", "y2_2")),
+      J = 2,
+      lambda = c(1, 1),
+      sigma_e = 1,
+      margins = "exponential"
+    ),
+    "skew_direction"
+  )
+})
+
+test_that("SEM rejects unsupported non-normal margins", {
+  df <- data.frame(time = 1:10, y1_1 = rnorm(10), y1_2 = rnorm(10),
+                   y2_1 = rnorm(10), y2_2 = rnorm(10))
+  expect_error(
+    prepare_sem_data(
+      df,
+      indicators = list(a = c("y1_1", "y1_2"), b = c("y2_1", "y2_2")),
+      J = 2,
+      lambda = c(1, 1),
+      sigma_e = 1,
+      margins = "gamma",
+      skew_direction = c(1, 1)
+    ),
+    "normal|exponential"
+  )
+})
+
 test_that("J must be a positive integer", {
   skip_if_no_rstan()
   expect_error(dcvar_sem(data.frame(), indicators = list(), J = 0,

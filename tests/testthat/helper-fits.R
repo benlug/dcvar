@@ -283,6 +283,78 @@ get_sem_fit_warnings <- function() {
   })$warnings
 }
 
+get_sem_exponential_fit <- function() {
+  .cache_fit_result("sem_fit_exponential", function() {
+    J <- 2
+    sim <- simulate_dcvar_sem(
+      T = 50,
+      J = J,
+      lambda = rep(0.8, J),
+      margins = "exponential",
+      sigma_exp = c(0.8, 1.1),
+      skew_direction = c(1, -1),
+      rho = 0.5,
+      seed = 42
+    )
+    indicators <- list(
+      latent1 = paste0("y1_", seq_len(J)),
+      latent2 = paste0("y2_", seq_len(J))
+    )
+    dcvar_sem(
+      sim$data,
+      indicators = indicators,
+      J = J,
+      lambda = rep(0.8, J),
+      sigma_e = sqrt(0.2),
+      margins = "exponential",
+      skew_direction = c(1, -1),
+      chains = 2,
+      iter_warmup = max(hier_iter_warmup, 350),
+      iter_sampling = max(hier_iter_sampling, 350),
+      adapt_delta = 0.999,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  })$fit
+}
+
+get_sem_exponential_fit_warnings <- function() {
+  .cache_fit_result("sem_fit_exponential", function() {
+    J <- 2
+    sim <- simulate_dcvar_sem(
+      T = 50,
+      J = J,
+      lambda = rep(0.8, J),
+      margins = "exponential",
+      sigma_exp = c(0.8, 1.1),
+      skew_direction = c(1, -1),
+      rho = 0.5,
+      seed = 42
+    )
+    indicators <- list(
+      latent1 = paste0("y1_", seq_len(J)),
+      latent2 = paste0("y2_", seq_len(J))
+    )
+    dcvar_sem(
+      sim$data,
+      indicators = indicators,
+      J = J,
+      lambda = rep(0.8, J),
+      sigma_e = sqrt(0.2),
+      margins = "exponential",
+      skew_direction = c(1, -1),
+      chains = 2,
+      iter_warmup = max(hier_iter_warmup, 350),
+      iter_sampling = max(hier_iter_sampling, 350),
+      adapt_delta = 0.999,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  })$warnings
+}
+
 get_dcvar_exponential_fit <- function() {
   .cache_fit_result("dcvar_fit_exponential", function() {
     sim <- simulate_dcvar(

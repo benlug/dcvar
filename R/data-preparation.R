@@ -530,23 +530,31 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
 #' @param J Number of indicators per latent variable.
 #' @param lambda Numeric vector of length J with fixed factor loadings.
 #' @param sigma_e Fixed measurement error SD (scalar).
+#' @param margins Character string specifying the latent innovation margin.
+#'   One of `"normal"` (default) or `"exponential"`.
+#' @param skew_direction Integer vector of length 2 indicating skew direction
+#'   for exponential margins. Required when `margins = "exponential"`.
 #' @param time_var Name of the time column (default: `"time"`).
 #' @param prior_mu_sd Prior SD for intercepts.
 #' @param prior_phi_sd Prior SD for VAR coefficients.
-#' @param prior_sigma_sd Prior SD for lognormal on innovation SDs.
+#' @param prior_sigma_sd Prior SD for the lognormal prior on the latent
+#'   innovation scale parameter.
 #' @param prior_rho_sd Prior SD for rho_raw.
 #'
 #' @return A named list suitable as Stan data input.
 #' @export
 prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
-                              time_var = "time",
-                              prior_mu_sd = 0.25,
-                              prior_phi_sd = 0.5,
-                              prior_sigma_sd = 0.5,
-                              prior_rho_sd = 0.75) {
+                             margins = "normal",
+                             skew_direction = NULL,
+                             time_var = "time",
+                             prior_mu_sd = 0.25,
+                             prior_phi_sd = 0.5,
+                             prior_sigma_sd = 0.5,
+                             prior_rho_sd = 0.75) {
   if (!is.data.frame(data)) {
     cli_abort("{.arg data} must be a data frame.")
   }
+  .validate_sem_margins(margins, skew_direction)
   if (!is.list(indicators) || length(indicators) != 2) {
     cli_abort("{.arg indicators} must be a list of two character vectors.")
   }
@@ -614,6 +622,10 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
     prior_rho_sd = prior_rho_sd
   )
 
+  if (identical(margins, "exponential")) {
+    stan_data$skew_direction <- as.numeric(skew_direction)
+  }
+
   # Use list names as latent variable names, or default
   latent_names <- names(indicators)
   if (is.null(latent_names) || any(latent_names == "")) {
@@ -623,6 +635,10 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
   attr(stan_data, "vars") <- latent_names
   attr(stan_data, "indicators") <- indicators
   attr(stan_data, "time_values") <- time_values
+  attr(stan_data, "margins") <- margins
+  if (!is.null(skew_direction)) {
+    attr(stan_data, "skew_direction") <- as.numeric(skew_direction)
+  }
 
   stan_data
 }

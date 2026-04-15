@@ -41,6 +41,29 @@
 }
 
 
+#' Validate SEM margin specification
+#'
+#' SEM currently supports the normal and exponential latent innovation
+#' parameterizations only.
+#'
+#' @param margins Character string: one of `"normal"` or `"exponential"`.
+#' @param skew_direction Length-2 integer vector of +1/-1 for exponential
+#'   margins.
+#' @return Invisible TRUE if valid.
+#' @noRd
+.validate_sem_margins <- function(margins, skew_direction = NULL) {
+  .validate_margins(margins, skew_direction)
+
+  if (!margins %in% c("normal", "exponential")) {
+    cli_abort(
+      "{.arg margins} for {.fun dcvar_sem} must be one of {.val {c('normal', 'exponential')}}, got {.val {margins}}."
+    )
+  }
+
+  invisible(TRUE)
+}
+
+
 #' Get Stan model suffix for a given margin type
 #'
 #' Maps margin names to Stan file suffixes used in model file naming.
@@ -70,8 +93,20 @@
   base_files <- c(
     constant = "constant_copula_var",
     dcvar = "dcvar_model_ncp",
-    hmm = "hmm_copula_model"
+    hmm = "hmm_copula_model",
+    sem = "sem_copula_var"
   )
+  if (identical(model_type, "sem")) {
+    if (margins == "normal") {
+      return("sem_copula_var.stan")
+    }
+    if (margins == "exponential") {
+      return("sem_EG.stan")
+    }
+    cli_abort(
+      "SEM Stan models currently support only {.val {c('normal', 'exponential')}} margins, got {.val {margins}}."
+    )
+  }
   if (margins == "normal") {
     paste0(base_files[model_type], ".stan")
   } else {

@@ -5,13 +5,13 @@
 #' [dcvar_constant()] support normal, exponential, skew-normal, and gamma
 #' margins.
 #'
-#' Experimental extensions via [dcvar_multilevel()] and [dcvar_sem()] currently
-#' support normal margins only and provide a narrower diagnostic interface than
-#' the core models.
+#' Experimental extensions via [dcvar_multilevel()] and [dcvar_sem()] provide a
+#' narrower diagnostic interface than the core models. The multilevel model
+#' currently supports normal margins only, while the SEM model supports normal
+#' and exponential latent innovation margins.
 #'
-#' The package implements Gaussian-copula models only. Clayton copulas and the
-#' paper-specific exponential-indicator SEM variant are not part of the public
-#' API.
+#' The package implements Gaussian-copula models only. Clayton copulas are not
+#' part of the public API.
 #'
 #' Estimation uses Stan through `rstan` by default, with optional `cmdstanr`
 #' backend support. PIT diagnostics are approximate posterior-mean plug-in

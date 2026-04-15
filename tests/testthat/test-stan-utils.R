@@ -4,6 +4,10 @@ test_that("dcvar_stan_path returns valid file paths", {
     expect_true(file.exists(path), info = paste("model:", m))
     expect_true(grepl("\\.stan$", path), info = paste("model:", m))
   }
+
+  sem_exp <- dcvar_stan_path("sem", margins = "exponential")
+  expect_true(file.exists(sem_exp))
+  expect_match(basename(sem_exp), "^sem_EG\\.stan$")
 })
 
 test_that("dcvar_stan_path rejects invalid model names", {

@@ -9,6 +9,7 @@ test_that("dcvar_sem returns correct class", {
   fit <- get_sem_fit()
   expect_s3_class(fit, "dcvar_sem_fit")
   expect_s3_class(fit, "dcvar_model_fit")
+  expect_equal(fit$margins, "normal")
 })
 
 test_that("SEM coef() returns expected structure", {
@@ -22,6 +23,20 @@ test_that("SEM coef() returns expected structure", {
   expect_true(length(co$Phi) == 4)
   expect_true(length(co$sigma) == 2)
   expect_true(length(co$rho) == 1)
+})
+
+test_that("SEM exponential margins return expected structure", {
+  skip_if_no_rstan()
+  fit <- get_sem_exponential_fit()
+  co <- coef(fit)
+  vp <- var_params(fit)
+
+  expect_equal(fit$margins, "exponential")
+  expect_equal(fit$skew_direction, c(1, -1))
+  expect_named(co, c("mu", "Phi", "sigma_exp", "rho"))
+  expect_true(length(co$sigma_exp) == 2)
+  expect_named(vp, c("mu", "Phi", "sigma_exp", "rho"))
+  expect_s3_class(vp$sigma_exp, "data.frame")
 })
 
 test_that("SEM summary() returns correct class", {
@@ -75,6 +90,23 @@ test_that("SEM var_params() returns expected structure", {
   expect_named(vp, c("mu", "Phi", "sigma", "rho"))
   expect_s3_class(vp$mu, "data.frame")
   expect_true(all(c("variable", "mean", "sd", "q2.5", "q97.5") %in% names(vp$mu)))
+})
+
+test_that("SEM exponential fitted() and predict() return expected structures", {
+  skip_if_no_rstan()
+  fit <- get_sem_exponential_fit()
+
+  fit_link <- fitted(fit, type = "link")
+  fit_resp <- fitted(fit, type = "response")
+  pred_resp <- predict(fit, type = "response")
+  indicator_names <- unlist(fit$indicators, use.names = FALSE)
+
+  expect_s3_class(fit_link, "data.frame")
+  expect_named(fit_link, c("time", fit$vars))
+  expect_s3_class(fit_resp, "data.frame")
+  expect_named(fit_resp, c("time", indicator_names))
+  expect_s3_class(pred_resp, "data.frame")
+  expect_named(pred_resp, c("time", "variable", "mean", "lower", "upper"))
 })
 
 # --- Plotting ----------------------------------------------------------------
@@ -152,4 +184,10 @@ test_that("SEM fit cache emits only known diagnostic warnings", {
   skip_if_no_rstan()
 
   expect_known_fit_warnings(get_sem_fit_warnings(), "SEM")
+})
+
+test_that("SEM exponential fit cache emits only known diagnostic warnings", {
+  skip_if_no_rstan()
+
+  expect_known_fit_warnings(get_sem_exponential_fit_warnings(), "SEM exponential")
 })

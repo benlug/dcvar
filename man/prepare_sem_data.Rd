@@ -10,6 +10,8 @@ prepare_sem_data(
   J,
   lambda,
   sigma_e,
+  margins = "normal",
+  skew_direction = NULL,
   time_var = "time",
   prior_mu_sd = 0.25,
   prior_phi_sd = 0.5,
@@ -29,13 +31,20 @@ columns per latent variable.}
 
 \item{sigma_e}{Fixed measurement error SD (scalar).}
 
+\item{margins}{Character string specifying the latent innovation margin.
+One of \code{"normal"} (default) or \code{"exponential"}.}
+
+\item{skew_direction}{Integer vector of length 2 indicating skew direction
+for exponential margins. Required when \code{margins = "exponential"}.}
+
 \item{time_var}{Name of the time column (default: \code{"time"}).}
 
 \item{prior_mu_sd}{Prior SD for intercepts.}
 
 \item{prior_phi_sd}{Prior SD for VAR coefficients.}
 
-\item{prior_sigma_sd}{Prior SD for lognormal on innovation SDs.}
+\item{prior_sigma_sd}{Prior SD for the lognormal prior on the latent
+innovation scale parameter.}
 
 \item{prior_rho_sd}{Prior SD for rho_raw.}
 }

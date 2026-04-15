@@ -68,10 +68,15 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "sem")) {
     T_obs <- .diagnostic_positive_int(object$stan_data$T, "T", "stan_data")
+    margin_vars <- if (identical(margins, "exponential")) {
+      paste0("eta[", seq_len(2), "]")
+    } else {
+      paste0("sigma[", seq_len(2), "]")
+    }
     return(c(
       "mu[1]", "mu[2]",
       "phi11", "phi12", "phi21", "phi22",
-      paste0("sigma[", seq_len(2), "]"),
+      margin_vars,
       "rho_raw",
       paste0(
         "zeta[",

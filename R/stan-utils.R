@@ -17,11 +17,8 @@ dcvar_stan_path <- function(model = c("dcvar", "hmm", "constant", "multilevel", 
                             margins = "normal") {
   model <- match.arg(model)
 
-  if (model %in% c("multilevel", "sem")) {
-    file <- switch(model,
-      multilevel = "multilevel_copula_var.stan",
-      sem = "sem_copula_var.stan"
-    )
+  if (model == "multilevel") {
+    file <- "multilevel_copula_var.stan"
   } else {
     file <- .margin_stan_file(model, margins)
   }

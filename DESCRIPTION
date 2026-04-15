@@ -12,12 +12,14 @@ Description: Fits Bayesian copula VAR(1) models for bivariate time series with
     marginal distributions via Gaussian copula. Experimental extensions
     include multilevel models with random VAR coefficients for panel data and
     structural equation models with fixed measurement models for latent
-    process estimation; these extensions currently support normal margins only
-    and have narrower diagnostic support than the core models. Estimation is
-    via Hamiltonian Monte Carlo in Stan through 'rstan', with optional
-    'cmdstanr' backend support. Includes tools for simulation, approximate
-    PIT diagnostics, trajectory extraction, fitted and prediction summaries,
-    and LOO-CV model comparison for supported fits.
+    process estimation; these extensions have narrower diagnostic support
+    than the core models. The multilevel extension currently supports normal
+    margins only, while the SEM extension supports normal and exponential
+    latent innovation margins. Estimation is via Hamiltonian Monte Carlo in
+    Stan through 'rstan', with optional 'cmdstanr' backend support. Includes
+    tools for simulation, approximate PIT diagnostics, trajectory extraction,
+    fitted and prediction summaries, and LOO-CV model comparison for
+    supported fits.
 License: GPL (>= 3)
 URL: https://github.com/benlug/dcvar
 BugReports: https://github.com/benlug/dcvar/issues

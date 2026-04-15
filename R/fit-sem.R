@@ -12,12 +12,18 @@
 #' @param J Number of indicators per latent variable.
 #' @param lambda Numeric vector of length J with fixed factor loadings.
 #' @param sigma_e Fixed measurement error SD (scalar).
+#' @param margins Character string specifying the latent innovation margin.
+#'   One of `"normal"` (default) or `"exponential"`.
+#' @param skew_direction Integer vector of length 2 indicating skew direction
+#'   for exponential margins. Each element must be `1` (right-skewed) or `-1`
+#'   (left-skewed). Required when `margins = "exponential"`.
 #' @param time_var Name of the time column (default: `"time"`).
 #' @param prior_mu_sd Prior SD for intercepts: `mu ~ normal(0, prior_mu_sd)`.
 #' @param prior_phi_sd Prior SD for VAR coefficients:
 #'   `phi ~ normal(0, prior_phi_sd)`.
-#' @param prior_sigma_sd Prior SD for lognormal on innovation SDs:
-#'   `sigma ~ lognormal(0, prior_sigma_sd)`.
+#' @param prior_sigma_sd Prior SD for the lognormal prior on the latent
+#'   innovation scale parameter. For normal margins this is applied to
+#'   `sigma`; for exponential margins it is applied to `sigma_exp`.
 #' @param prior_rho_sd Prior SD for rho_raw:
 #'   `rho_raw ~ normal(0, prior_rho_sd)`, with `rho = 0.97 * tanh(rho_raw)`.
 #' @param chains Number of MCMC chains.
@@ -51,22 +57,26 @@
 #' Gaussian copula density. Extremely high correlations near \eqn{\pm 1}
 #' are truncated.
 #'
-#' **Margins.** The SEM model currently supports only normal marginal
-#' distributions. Non-normal margins (e.g., exponential, gamma) are not
-#' available; use [dcvar()], [dcvar_constant()], or [dcvar_hmm()] instead.
+#' **Margins.** The SEM model currently supports normal and exponential latent
+#' innovation margins. Exponential margins use the same shifted-exponential
+#' parameterization as the single-level models and therefore require
+#' `skew_direction`. Other non-normal margins are not yet available.
 #'
 #' **Post-estimation.** `fitted()` and `predict()` are available for both the
 #' latent-state scale (`type = "link"`) and the observed-indicator scale
 #' (`type = "response"`). Use [latent_states()] when you specifically need the
 #' full posterior summaries of the latent trajectories.
 #'
-#' @note This model currently supports normal marginal distributions only.
-#'   For non-normal margins, use [dcvar()], [dcvar_constant()], or [dcvar_hmm()].
+#' @note This model currently supports normal and exponential latent margins.
+#'   For skew-normal or gamma margins, use [dcvar()], [dcvar_constant()], or
+#'   [dcvar_hmm()].
 #'
 #' @seealso [latent_states()] for extracting estimated latent states,
 #'   [simulate_dcvar_sem()] for data generation.
 #' @export
 dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
+                      margins = "normal",
+                      skew_direction = NULL,
                       time_var = "time",
                       prior_mu_sd = 0.25,
                       prior_phi_sd = 0.5,
@@ -87,6 +97,7 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
   backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
+  .validate_sem_margins(margins, skew_direction)
 
   if (!is.numeric(J) || length(J) != 1 || J < 1 || J != as.integer(J)) {
     cli_abort("{.arg J} must be a positive integer, got {.val {J}}.")
@@ -94,21 +105,27 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
 
   # Prepare SEM data
   stan_data <- prepare_sem_data(
-    data, indicators, J, lambda, sigma_e, time_var,
-    prior_mu_sd, prior_phi_sd, prior_sigma_sd, prior_rho_sd
+    data, indicators, J, lambda, sigma_e,
+    margins = margins,
+    skew_direction = skew_direction,
+    time_var = time_var,
+    prior_mu_sd = prior_mu_sd,
+    prior_phi_sd = prior_phi_sd,
+    prior_sigma_sd = prior_sigma_sd,
+    prior_rho_sd = prior_rho_sd
   )
 
   T_obs <- stan_data$T
   vars <- attr(stan_data, "vars")
 
-  cli_inform("Fitting SEM copula VAR model (T = {T_obs}, J = {J})...")
+  cli_inform("Fitting SEM copula VAR model [{margins}] (T = {T_obs}, J = {J})...")
 
   # Compile model
-  model <- .compile_model("sem", stan_file = stan_file, backend = backend)
+  model <- .compile_model("sem", margins = margins, stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
-    init <- function() .init_sem_params(T_obs)
+    init <- function() .init_sem_params(T_obs, margins)
   }
 
   cores <- .normalize_cores(cores, chains)
@@ -139,6 +156,8 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
     lambda = lambda,
     sigma_e = sigma_e,
     indicators = attr(stan_data, "indicators"),
+    margins = margins,
+    skew_direction = attr(stan_data, "skew_direction"),
     backend = backend,
     priors = list(
       mu_sd = prior_mu_sd,

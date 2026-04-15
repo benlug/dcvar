@@ -10,6 +10,8 @@ dcvar_sem(
   J,
   lambda,
   sigma_e,
+  margins = "normal",
+  skew_direction = NULL,
   time_var = "time",
   prior_mu_sd = 0.25,
   prior_phi_sd = 0.5,
@@ -42,6 +44,13 @@ columns per latent variable. For example:
 
 \item{sigma_e}{Fixed measurement error SD (scalar).}
 
+\item{margins}{Character string specifying the latent innovation margin.
+One of \code{"normal"} (default) or \code{"exponential"}.}
+
+\item{skew_direction}{Integer vector of length 2 indicating skew direction
+for exponential margins. Each element must be \code{1} (right-skewed) or \code{-1}
+(left-skewed). Required when \code{margins = "exponential"}.}
+
 \item{time_var}{Name of the time column (default: \code{"time"}).}
 
 \item{prior_mu_sd}{Prior SD for intercepts: \code{mu ~ normal(0, prior_mu_sd)}.}
@@ -49,8 +58,9 @@ columns per latent variable. For example:
 \item{prior_phi_sd}{Prior SD for VAR coefficients:
 \code{phi ~ normal(0, prior_phi_sd)}.}
 
-\item{prior_sigma_sd}{Prior SD for lognormal on innovation SDs:
-\code{sigma ~ lognormal(0, prior_sigma_sd)}.}
+\item{prior_sigma_sd}{Prior SD for the lognormal prior on the latent
+innovation scale parameter. For normal margins this is applied to
+\code{sigma}; for exponential margins it is applied to \code{sigma_exp}.}
 
 \item{prior_rho_sd}{Prior SD for rho_raw:
 \code{rho_raw ~ normal(0, prior_rho_sd)}, with \code{rho = 0.97 * tanh(rho_raw)}.}
@@ -104,9 +114,10 @@ via \code{rho = 0.97 * tanh(rho_raw)} to avoid boundary singularity in the
 Gaussian copula density. Extremely high correlations near \eqn{\pm 1}
 are truncated.
 
-\strong{Margins.} The SEM model currently supports only normal marginal
-distributions. Non-normal margins (e.g., exponential, gamma) are not
-available; use \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_constant]{dcvar_constant()}}, or \code{\link[=dcvar_hmm]{dcvar_hmm()}} instead.
+\strong{Margins.} The SEM model currently supports normal and exponential latent
+innovation margins. Exponential margins use the same shifted-exponential
+parameterization as the single-level models and therefore require
+\code{skew_direction}. Other non-normal margins are not yet available.
 
 \strong{Post-estimation.} \code{fitted()} and \code{predict()} are available for both the
 latent-state scale (\code{type = "link"}) and the observed-indicator scale
@@ -114,8 +125,9 @@ latent-state scale (\code{type = "link"}) and the observed-indicator scale
 full posterior summaries of the latent trajectories.
 }
 \note{
-This model currently supports normal marginal distributions only.
-For non-normal margins, use \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_constant]{dcvar_constant()}}, or \code{\link[=dcvar_hmm]{dcvar_hmm()}}.
+This model currently supports normal and exponential latent margins.
+For skew-normal or gamma margins, use \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_constant]{dcvar_constant()}}, or
+\code{\link[=dcvar_hmm]{dcvar_hmm()}}.
 }
 \seealso{
 \code{\link[=latent_states]{latent_states()}} for extracting estimated latent states,

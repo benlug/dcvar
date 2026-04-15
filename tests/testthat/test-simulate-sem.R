@@ -48,11 +48,12 @@ test_that("simulate_dcvar_sem true_params contains expected elements", {
   sim <- simulate_dcvar_sem(T = 50, J = J, rho = 0.4, seed = 6)
 
   expect_named(sim$true_params,
-               c("Phi", "mu", "sigma", "rho", "lambda", "sigma_e", "J"))
+               c("Phi", "mu", "margins", "rho", "lambda", "sigma_e", "J", "sigma"))
   expect_equal(sim$true_params$rho, 0.4)
   expect_equal(sim$true_params$J, J)
   expect_equal(length(sim$true_params$lambda), J)
   expect_equal(dim(sim$true_params$Phi), c(2, 2))
+  expect_equal(sim$true_params$margins, "normal")
 })
 
 test_that("simulate_dcvar_sem errors when lambda length mismatches J", {
@@ -85,6 +86,31 @@ test_that("simulate_dcvar_sem validates Phi and sigma shapes", {
   expect_error(
     simulate_dcvar_sem(T = 20, sigma = c(1, 1, 1), rho = 0.5),
     "sigma"
+  )
+})
+
+test_that("simulate_dcvar_sem supports exponential latent margins", {
+  sim <- simulate_dcvar_sem(
+    T = 40,
+    J = 2,
+    lambda = rep(sqrt(0.8), 2),
+    margins = "exponential",
+    sigma_exp = c(0.7, 1.1),
+    skew_direction = c(1, -1),
+    rho = 0.25,
+    seed = 12
+  )
+
+  expect_equal(sim$true_params$margins, "exponential")
+  expect_equal(sim$true_params$sigma_exp, c(0.7, 1.1))
+  expect_equal(sim$true_params$skew_direction, c(1, -1))
+  expect_true(all(is.finite(sim$innovations)))
+})
+
+test_that("simulate_dcvar_sem exponential margins require skew_direction", {
+  expect_error(
+    simulate_dcvar_sem(T = 20, margins = "exponential", sigma_exp = c(1, 1)),
+    "skew_direction"
   )
 })
 

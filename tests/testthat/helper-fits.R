@@ -128,6 +128,56 @@ get_dcvar_exponential_fit <- function() {
   cache_env$dcvar_fit_exponential
 }
 
+get_dcvar_gamma_fit <- function() {
+  if (is.null(cache_env$dcvar_fit_gamma)) {
+    sim <- simulate_dcvar(
+      T = 30,
+      rho_trajectory = rho_decreasing(30),
+      margins = "gamma",
+      skew_direction = c(1, 1),
+      skew_params = list(shape = 2),
+      seed = 42
+    )
+    cache_env$dcvar_fit_gamma <- dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = "gamma",
+      skew_direction = c(1, 1),
+      chains = 2,
+      iter_warmup = margin_iter_warmup,
+      iter_sampling = margin_iter_sampling,
+      refresh = 0,
+      seed = 123
+    )
+  }
+  cache_env$dcvar_fit_gamma
+}
+
+get_dcvar_skew_normal_fit <- function() {
+  skip_if_not_installed("sn")
+
+  if (is.null(cache_env$dcvar_fit_skew_normal)) {
+    sim <- simulate_dcvar(
+      T = 30,
+      rho_trajectory = rho_decreasing(30),
+      margins = "skew_normal",
+      skew_params = list(alpha = c(3, -3)),
+      seed = 42
+    )
+    cache_env$dcvar_fit_skew_normal <- dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = "skew_normal",
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 123
+    )
+  }
+  cache_env$dcvar_fit_skew_normal
+}
+
 get_hmm_exponential_fit <- function() {
   if (is.null(cache_env$hmm_fit_exponential)) {
     # Use a strongly separated step trajectory so the tiny test fit remains
@@ -155,6 +205,62 @@ get_hmm_exponential_fit <- function() {
     )
   }
   cache_env$hmm_fit_exponential
+}
+
+get_hmm_gamma_fit <- function() {
+  if (is.null(cache_env$hmm_fit_gamma)) {
+    sim <- simulate_dcvar(
+      T = 30,
+      rho_trajectory = rho_step(30, rho_before = 0.8, rho_after = 0.2),
+      margins = "gamma",
+      skew_direction = c(1, 1),
+      skew_params = list(shape = 2),
+      seed = 42
+    )
+    cache_env$hmm_fit_gamma <- dcvar_hmm(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      K = 2,
+      margins = "gamma",
+      skew_direction = c(1, 1),
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      adapt_delta = 0.99,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  }
+  cache_env$hmm_fit_gamma
+}
+
+get_hmm_skew_normal_fit <- function() {
+  skip_if_not_installed("sn")
+
+  if (is.null(cache_env$hmm_fit_skew_normal)) {
+    sim <- simulate_dcvar(
+      T = 30,
+      rho_trajectory = rho_step(30, rho_before = 0.8, rho_after = 0.2),
+      margins = "skew_normal",
+      skew_params = list(alpha = c(3, -3)),
+      seed = 42
+    )
+    cache_env$hmm_fit_skew_normal <- dcvar_hmm(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      K = 2,
+      margins = "skew_normal",
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      adapt_delta = 0.99,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  }
+  cache_env$hmm_fit_skew_normal
 }
 
 get_constant_gamma_fit <- function() {

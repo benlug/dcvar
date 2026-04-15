@@ -2,7 +2,7 @@
 % Please edit documentation in R/fit-sem.R
 \name{dcvar_sem}
 \alias{dcvar_sem}
-\title{Fit a SEM copula VAR(1) model}
+\title{Fit an experimental SEM copula VAR(1) model}
 \usage{
 dcvar_sem(
   data,
@@ -86,6 +86,10 @@ are treated as parameters, making this model computationally intensive
 for large T.
 }
 \details{
+\strong{Experimental extension.} This SEM variant currently has a narrower
+post-estimation interface than the core single-level models. \code{fitted()},
+\code{predict()}, PIT diagnostics, and PSIS-LOO are not yet implemented.
+
 \strong{Boundary constraints.} The SEM model constrains each VAR coefficient
 (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcvar models
 where Phi is unconstrained. Very strong autoregressive or cross-lag
@@ -100,9 +104,7 @@ are truncated.
 distributions. Non-normal margins (e.g., exponential, gamma) are not
 available; use \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_constant]{dcvar_constant()}}, or \code{\link[=dcvar_hmm]{dcvar_hmm()}} instead.
 
-\strong{Post-estimation.} \code{fitted()} and \code{predict()} are not yet implemented
-for SEM models. Use \code{\link[=latent_states]{latent_states()}} to extract estimated latent
-trajectories.
+Use \code{\link[=latent_states]{latent_states()}} to extract estimated latent trajectories.
 }
 \note{
 This model currently supports normal marginal distributions only.

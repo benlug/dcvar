@@ -6,14 +6,18 @@ utils::globalVariables("count")
 
 #' Extract PIT values from a fitted model
 #'
-#' Computes Probability Integral Transform values using posterior mean
-#' parameters. Under correct model specification, PIT values should be
-#' uniformly distributed on \[0, 1\].
+#' Computes posterior-mean plug-in Probability Integral Transform values.
+#' Under correct model specification, PIT values should be uniformly
+#' distributed on \[0, 1\].
 #'
 #' @param object A fitted model object.
 #' @param ... Additional arguments (unused).
 #'
 #' @return A data frame with columns `time`, `variable`, `pit`.
+#'
+#' @details Supported for the core single-level fits returned by [dcvar()],
+#'   [dcvar_hmm()], and [dcvar_constant()]. PIT diagnostics are not currently
+#'   implemented for [dcvar_multilevel()] or [dcvar_sem()].
 #' @export
 pit_values <- function(object, ...) {
   UseMethod("pit_values")
@@ -175,6 +179,10 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 #' @param ... Additional arguments (unused).
 #'
 #' @return A data frame with columns `variable`, `ks_statistic`, `p_value`, `n`.
+#'
+#' @details Supported for the core single-level fits returned by [dcvar()],
+#'   [dcvar_hmm()], and [dcvar_constant()]. PIT tests are not currently
+#'   implemented for [dcvar_multilevel()] or [dcvar_sem()].
 #' @export
 pit_test <- function(object, ...) {
   UseMethod("pit_test")
@@ -237,6 +245,10 @@ pit_test.dcvar_sem_fit <- function(object, ...) {
 #' @param ... Additional arguments (unused).
 #'
 #' @return A ggplot object.
+#'
+#' @details Supported for the core single-level fits returned by [dcvar()],
+#'   [dcvar_hmm()], and [dcvar_constant()]. PIT histograms are not currently
+#'   available for [dcvar_multilevel()] or [dcvar_sem()].
 #' @export
 plot_pit <- function(object, bins = 20, ...) {
   pit_df <- pit_values(object)

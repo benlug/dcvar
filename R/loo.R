@@ -8,6 +8,11 @@
 #' @param ... Additional arguments passed to [loo::loo()].
 #'
 #' @return A `loo` object from the loo package.
+#'
+#' @details PSIS-LOO is available for the core single-level fits returned by
+#'   [dcvar()], [dcvar_hmm()], and [dcvar_constant()]. It is not supported for
+#'   [dcvar_multilevel()] or [dcvar_sem()] because their stored `log_lik`
+#'   quantities are not valid comparable pointwise predictive densities.
 #' @importFrom loo loo
 #' @name loo.dcvar
 NULL

@@ -1,4 +1,4 @@
-#' Fit a multilevel copula VAR(1) model
+#' Fit an experimental multilevel copula VAR(1) model
 #'
 #' Fits a hierarchical copula VAR(1) model with unit-specific VAR coefficients
 #' (random effects) and a global copula correlation. Uses non-centered
@@ -31,9 +31,14 @@
 #'
 #' @return A `dcvar_multilevel_fit` object.
 #'
-#' @details `adapt_delta` defaults to 0.90 and `max_treedepth` to 14 because
-#'   the hierarchical structure with random effects benefits from deeper trees
-#'   but does not require aggressive step-size adaptation.
+#' @details **Experimental extension.** This multilevel variant currently has a
+#'   narrower post-estimation interface than the core single-level models.
+#'   `fitted()`, `predict()`, PIT diagnostics, and PSIS-LOO are not yet
+#'   implemented.
+#'
+#'   `adapt_delta` defaults to 0.90 and `max_treedepth` to 14 because the
+#'   hierarchical structure with random effects benefits from deeper trees but
+#'   does not require aggressive step-size adaptation.
 #'
 #' @note This model currently supports normal marginal distributions only.
 #'   For non-normal margins, use [dcvar()], [dcvar_constant()], or [dcvar_hmm()].

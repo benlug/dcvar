@@ -3,9 +3,24 @@
 \docType{package}
 \name{dcvar-package}
 \alias{dcvar-package}
-\title{dcvar: Dynamic Copula VAR Models for Time-Varying Dependence}
+\title{dcvar: Gaussian-copula VAR models for bivariate time series}
 \description{
-Fits Bayesian copula VAR(1) models for bivariate time series with three approaches to modelling dependence dynamics: continuous random-walk correlation (DC-VAR), discrete regime-switching via hidden Markov models (HMM Copula), and time-invariant correlation (Constant Copula). Supports Gaussian, exponential, skew-normal, and gamma marginal distributions via Gaussian copula. Extensions include multilevel models with random VAR coefficients for panel data and structural equation models with fixed measurement models for latent process estimation. Estimation is via Hamiltonian Monte Carlo in Stan through the 'cmdstanr' interface. Includes tools for simulation, PIT diagnostics, trajectory extraction, and model comparison via LOO-CV.
+The package's core scope is the Gaussian-copula family for bivariate VAR(1)
+time series. \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
+\code{\link[=dcvar_constant]{dcvar_constant()}} support normal, exponential,
+skew-normal, and gamma margins.
+
+Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and
+\code{\link[=dcvar_sem]{dcvar_sem()}} currently support normal margins only and
+provide a narrower post-estimation interface than the core single-level models.
+
+\code{dcvar} currently implements Gaussian-copula models only. Clayton copulas
+and the paper-specific exponential-indicator SEM variant are not part of the
+package API.
+
+PIT diagnostics and LOO-CV comparison are available for the supported
+single-level models. See \code{\link[=pit_values]{pit_values()}}, \code{\link[=pit_test]{pit_test()}},
+\code{\link[loo:loo]{loo()}}, and \code{\link[=dcvar_compare]{dcvar_compare()}}.
 }
 \seealso{
 Useful links:

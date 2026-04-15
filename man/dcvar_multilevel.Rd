@@ -2,7 +2,7 @@
 % Please edit documentation in R/fit-multilevel.R
 \name{dcvar_multilevel}
 \alias{dcvar_multilevel}
-\title{Fit a multilevel copula VAR(1) model}
+\title{Fit an experimental multilevel copula VAR(1) model}
 \usage{
 dcvar_multilevel(
   data,
@@ -81,6 +81,11 @@ Fits a hierarchical copula VAR(1) model with unit-specific VAR coefficients
 parameterization for the random Phi coefficients.
 }
 \details{
+\strong{Experimental extension.} This multilevel variant currently has a
+narrower post-estimation interface than the core single-level models.
+\code{fitted()}, \code{predict()}, PIT diagnostics, and PSIS-LOO are not yet
+implemented.
+
 \code{adapt_delta} defaults to 0.90 and \code{max_treedepth} to 14 because
 the hierarchical structure with random effects benefits from deeper trees
 but does not require aggressive step-size adaptation.

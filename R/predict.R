@@ -4,8 +4,8 @@
 
 #' Fitted values from a copula VAR model
 #'
-#' Returns the one-step-ahead fitted values (posterior mean of y_hat) from the
-#' VAR(1) component: `y_hat[t] = mu + Phi * (y[t-1] - mu)`.
+#' Returns posterior-mean one-step-ahead fitted values from the VAR(1)
+#' component: `y_hat[t] = mu + Phi * (y[t-1] - mu)`.
 #'
 #' If the model was fit with `standardize = TRUE` (the default), fitted values
 #' are on the standardized (z-scored) scale by default. Use `type = "response"`
@@ -20,6 +20,11 @@
 #'
 #' @return A data frame with columns `time`, and one column per variable
 #'   containing the posterior-mean fitted values.
+#'
+#' @details This is a posterior-mean plug-in summary of the conditional mean,
+#'   not simulated posterior predictive draws. `fitted()` is currently
+#'   implemented for the core single-level fits returned by [dcvar()],
+#'   [dcvar_hmm()], and [dcvar_constant()].
 #' @export
 fitted.dcvar_model_fit <- function(object, type = c("link", "response"), ...) {
   type <- match.arg(type)
@@ -101,6 +106,11 @@ fitted.dcvar_sem_fit <- function(object, ...) {
 #'
 #' @return A data frame with columns `time`, `variable`, `mean`, `lower`,
 #'   `upper` (marginal prediction interval at the specified level).
+#'
+#' @details Prediction intervals are currently available only for normal-margin
+#'   fits from [dcvar()], [dcvar_hmm()], and [dcvar_constant()]. The returned
+#'   intervals are marginal, normal-approximation intervals and do not attempt
+#'   to represent joint copula-calibrated predictive regions.
 #' @export
 predict.dcvar_model_fit <- function(object, type = c("link", "response"),
                                     ci_level = 0.95, ...) {

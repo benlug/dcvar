@@ -20,3 +20,10 @@ A ggplot object.
 Creates faceted histograms of PIT values. Under correct specification,
 these should be approximately uniform (flat).
 }
+\details{
+Supported for the core single-level fits returned by
+\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
+\code{\link[=dcvar_constant]{dcvar_constant()}}. PIT histograms are not currently
+available for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
+\code{\link[=dcvar_sem]{dcvar_sem()}}.
+}

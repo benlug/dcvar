@@ -27,11 +27,17 @@ A data frame with columns \code{time}, and one column per variable
 containing the posterior-mean fitted values.
 }
 \description{
-Returns the one-step-ahead fitted values (posterior mean of y_hat) from the
+Returns posterior-mean one-step-ahead fitted values from the
 VAR(1) component: \code{y_hat[t] = mu + Phi * (y[t-1] - mu)}.
 }
 \details{
 If the model was fit with \code{standardize = TRUE} (the default), fitted values
 are on the standardized (z-scored) scale by default. Use \code{type = "response"}
 to back-transform to the original data scale.
+
+This is a posterior-mean plug-in summary of the conditional mean,
+not simulated posterior predictive draws. \code{fitted()} is currently
+implemented for the core single-level fits returned by
+\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
+\code{\link[=dcvar_constant]{dcvar_constant()}}.
 }

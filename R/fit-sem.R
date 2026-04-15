@@ -1,4 +1,4 @@
-#' Fit a SEM copula VAR(1) model
+#' Fit an experimental SEM copula VAR(1) model
 #'
 #' Fits a copula VAR(1) model with a fixed measurement model (factor
 #' loadings and measurement error SD are not estimated). Latent innovations
@@ -35,6 +35,10 @@
 #' @return A `dcvar_sem_fit` object.
 #'
 #' @details
+#' **Experimental extension.** This SEM variant currently has a narrower
+#' post-estimation interface than the core single-level models. `fitted()`,
+#' `predict()`, PIT diagnostics, and PSIS-LOO are not yet implemented.
+#'
 #' **Boundary constraints.** The SEM model constrains each VAR coefficient
 #' (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcvar models
 #' where Phi is unconstrained. Very strong autoregressive or cross-lag
@@ -49,9 +53,7 @@
 #' distributions. Non-normal margins (e.g., exponential, gamma) are not
 #' available; use [dcvar()], [dcvar_constant()], or [dcvar_hmm()] instead.
 #'
-#' **Post-estimation.** `fitted()` and `predict()` are not yet implemented
-#' for SEM models. Use [latent_states()] to extract estimated latent
-#' trajectories.
+#' Use [latent_states()] to extract estimated latent trajectories.
 #'
 #' @note This model currently supports normal marginal distributions only.
 #'   For non-normal margins, use [dcvar()], [dcvar_constant()], or [dcvar_hmm()].

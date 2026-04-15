@@ -1,0 +1,12 @@
+citHeader("To cite package 'dcvar' in publications use:")
+
+bibentry(
+  bibtype = "Manual",
+  title = "dcvar: Dynamic Copula VAR Models for Time-Varying Dependence",
+  author = c(
+    person(given = "Benedikt", family = "Lugauer")
+  ),
+  year = "2026",
+  note = "R package version 0.1.0",
+  url = "https://github.com/benlug/dcvar"
+)

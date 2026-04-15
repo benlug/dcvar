@@ -52,3 +52,22 @@ test_that("dcvar_hmm() fits exponential margins", {
   expect_equal(fit$margins, "exponential")
   expect_equal(fit$K, 2)
 })
+
+test_that("dcvar_hmm() fits gamma margins", {
+  skip_if_no_cmdstanr()
+
+  fit <- get_hmm_gamma_fit()
+  expect_s3_class(fit, "dcvar_hmm_fit")
+  expect_equal(fit$margins, "gamma")
+  expect_equal(fit$K, 2)
+})
+
+test_that("dcvar_hmm() fits skew-normal margins", {
+  skip_if_no_cmdstanr()
+  skip_if_not_installed("sn")
+
+  fit <- get_hmm_skew_normal_fit()
+  expect_s3_class(fit, "dcvar_hmm_fit")
+  expect_equal(fit$margins, "skew_normal")
+  expect_equal(fit$K, 2)
+})

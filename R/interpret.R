@@ -1,16 +1,17 @@
 # ============================================================================
-# Clinical Interpretation Helper
+# Heuristic Interpretation Helper
 # ============================================================================
 
-# Default thresholds for classifying correlation strength (Cohen's conventions
-# adapted for copula correlations). These are used by interpret_rho_trajectory()
-# and can be overridden via the strength_breaks parameter.
+# Default heuristic thresholds for classifying correlation strength. These are
+# used by interpret_rho_trajectory() and can be overridden via the
+# strength_breaks parameter.
 .default_strength_breaks <- c(strong = 0.7, moderate = 0.4, weak = 0.2)
 
-# Default thresholds for classifying the magnitude of change in a trajectory.
+# Default heuristic thresholds for classifying the magnitude of change in a
+# trajectory.
 .default_magnitude_breaks <- c(large = 0.5, moderate = 0.3, small = 0.1)
 
-#' Interpret a rho trajectory in clinical terms
+#' Summarize a rho trajectory using heuristic thresholds
 #'
 #' Generates a human-readable interpretation of the estimated rho trajectory,
 #' describing the overall trend, magnitude of change, and key features.
@@ -20,11 +21,11 @@
 #' @param threshold Minimum absolute change in posterior-mean rho to be
 #'   considered "meaningful" (default: 0.1).
 #' @param strength_breaks Named numeric vector of thresholds for classifying
-#'   correlation strength (default: `c(strong = 0.7, moderate = 0.4,
-#'   weak = 0.2)`). Values above the highest threshold are "strong", etc.
+#'   correlation strength. The defaults are heuristic and can be overridden
+#'   (default: `c(strong = 0.7, moderate = 0.4, weak = 0.2)`).
 #' @param magnitude_breaks Named numeric vector of thresholds for classifying
-#'   the magnitude of trajectory range (default: `c(large = 0.5, moderate = 0.3,
-#'   small = 0.1)`).
+#'   the magnitude of trajectory range. The defaults are heuristic and can be
+#'   overridden (default: `c(large = 0.5, moderate = 0.3, small = 0.1)`).
 #' @param fluctuation_threshold Proportion of sign changes in first differences
 #'   to flag "substantial fluctuation" (default: 0.3).
 #' @param ... Additional arguments (unused).
@@ -80,9 +81,9 @@ interpret_rho_trajectory <- function(object, threshold = 0.1,
   if (abs(delta) < threshold) {
     trend <- "relatively stable"
   } else if (delta < -threshold) {
-    trend <- "decreasing (decoupling)"
+    trend <- "decreasing"
   } else {
-    trend <- "increasing (strengthening coupling)"
+    trend <- "increasing"
   }
 
   # Classify magnitude

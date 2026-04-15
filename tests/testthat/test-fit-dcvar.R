@@ -50,3 +50,20 @@ test_that("dcvar() fits exponential margins", {
   expect_s3_class(fit, "dcvar_fit")
   expect_equal(fit$margins, "exponential")
 })
+
+test_that("dcvar() fits gamma margins", {
+  skip_if_no_cmdstanr()
+
+  fit <- get_dcvar_gamma_fit()
+  expect_s3_class(fit, "dcvar_fit")
+  expect_equal(fit$margins, "gamma")
+})
+
+test_that("dcvar() fits skew-normal margins", {
+  skip_if_no_cmdstanr()
+  skip_if_not_installed("sn")
+
+  fit <- get_dcvar_skew_normal_fit()
+  expect_s3_class(fit, "dcvar_fit")
+  expect_equal(fit$margins, "skew_normal")
+})

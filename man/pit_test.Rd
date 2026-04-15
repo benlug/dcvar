@@ -24,3 +24,10 @@ A data frame with columns \code{variable}, \code{ks_statistic}, \code{p_value}, 
 Runs a Kolmogorov-Smirnov test per variable to assess whether PIT values
 are uniformly distributed (as expected under correct model specification).
 }
+\details{
+Supported for the core single-level fits returned by
+\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
+\code{\link[=dcvar_constant]{dcvar_constant()}}. PIT tests are not currently
+implemented for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
+\code{\link[=dcvar_sem]{dcvar_sem()}}.
+}

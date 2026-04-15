@@ -25,6 +25,27 @@ test_that("pit_values returns correct structure for dcvar fit", {
   expect_equal(unique(pit_df$time), attr(fit$stan_data, "time_values")[-1])
 })
 
+test_that("pit_values supports gamma margins", {
+  skip_if_no_cmdstanr()
+  fit <- get_constant_gamma_fit()
+  pit_df <- pit_values(fit)
+
+  expect_s3_class(pit_df, "data.frame")
+  expect_named(pit_df, c("time", "variable", "pit"))
+  expect_true(all(pit_df$pit >= 0 & pit_df$pit <= 1))
+})
+
+test_that("pit_values supports skew-normal margins", {
+  skip_if_no_cmdstanr()
+  skip_if_not_installed("sn")
+  fit <- get_constant_skew_normal_fit()
+  pit_df <- pit_values(fit)
+
+  expect_s3_class(pit_df, "data.frame")
+  expect_named(pit_df, c("time", "variable", "pit"))
+  expect_true(all(pit_df$pit >= 0 & pit_df$pit <= 1))
+})
+
 test_that("pit_test returns KS test results", {
   skip_if_no_cmdstanr()
   fit <- get_constant_fit()

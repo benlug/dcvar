@@ -33,3 +33,10 @@ the VAR(1) fitted values with the estimated innovation SDs. Intervals are
 computed per-variable using a normal approximation and do not account for
 the copula dependence structure between variables.
 }
+\details{
+Prediction intervals are currently available only for normal-margin
+fits from \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
+\code{\link[=dcvar_constant]{dcvar_constant()}}. The returned intervals are
+marginal, normal-approximation intervals and do not attempt to represent
+joint copula-calibrated predictive regions.
+}

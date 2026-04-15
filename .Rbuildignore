@@ -8,3 +8,7 @@
 ^\.lintr$
 ^\.claude$
 ^\.codex$
+^data-raw$
+^vignettes/dcvar-walkthrough\.qmd$
+^cran-comments\.md$
+.*-test-local\.log$

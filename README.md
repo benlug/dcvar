@@ -8,11 +8,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 <!-- badges: end -->
 
-`dcvar` is an R package for fitting Bayesian copula VAR(1) models to bivariate
-time series with time-varying dependence. It supports continuous random-walk,
-regime-switching, and constant-copula specifications, with extensions for
-multilevel and SEM settings, all estimated through
-[CmdStan](https://mc-stan.org/users/interfaces/cmdstan).
+`dcvar` is an R package for fitting Bayesian Gaussian-copula VAR(1) models to
+bivariate time series. Its core scope is the single-level Gaussian-copula
+family: continuous random-walk, regime-switching, and constant-copula
+specifications, all estimated through
+[CmdStan](https://mc-stan.org/users/interfaces/cmdstan). The package also
+ships experimental multilevel and SEM extensions with a narrower
+post-estimation interface.
 
 ## Installation
 
@@ -72,23 +74,27 @@ dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 
 ## Supported Models
 
-| Model | Function | Dependence Structure |
-| --- | --- | --- |
-| **DC-VAR** | `dcvar()` | Continuous random-walk on Fisher-z scale |
-| **HMM Copula** | `dcvar_hmm()` | Discrete regime-switching with K states |
-| **Constant Copula** | `dcvar_constant()` | Time-invariant baseline |
-| **Multilevel** | `dcvar_multilevel()` | Random VAR coefficients for panel data |
-| **SEM** | `dcvar_sem()` | Fixed measurement model for latent processes |
+| Model | Function | Dependence Structure | Status |
+| --- | --- | --- | --- |
+| **DC-VAR** | `dcvar()` | Continuous random-walk on Fisher-z scale | Core |
+| **HMM Copula** | `dcvar_hmm()` | Discrete regime-switching with K states | Core |
+| **Constant Copula** | `dcvar_constant()` | Time-invariant baseline | Core |
+| **Multilevel** | `dcvar_multilevel()` | Random VAR coefficients for panel data | Experimental |
+| **SEM** | `dcvar_sem()` | Fixed measurement model for latent processes | Experimental |
 
 All models use Gaussian copulas. The core three time-series models
 (`dcvar()`, `dcvar_hmm()`, and `dcvar_constant()`) support four marginal
 distributions: **normal**, **exponential**, **skew-normal**, and **gamma**.
 The multilevel and SEM variants currently support normal margins only.
 
-`fitted()` and `predict()` are currently implemented for the three core
-time-series models. `plot_ppc()` is available for normal and exponential
-margins; gamma and skew-normal fits do not yet have replicated residuals on the
-observed margin scale.
+If you are reading the accompanying manuscript, note that `dcvar` currently
+implements Gaussian-copula workflows only. Clayton-copula models and the
+paper-specific exponential-indicator SEM variant are not part of the package.
+
+`fitted()`, `predict()`, `pit_values()`, `pit_test()`, and `loo()` are
+currently implemented for the three core time-series models only. `plot_ppc()`
+is available for normal and exponential margins; gamma and skew-normal fits do
+not yet have replicated residuals on the observed margin scale.
 
 ## Documentation
 

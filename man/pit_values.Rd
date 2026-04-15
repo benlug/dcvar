@@ -21,7 +21,14 @@ pit_values(object, ...)
 A data frame with columns \code{time}, \code{variable}, \code{pit}.
 }
 \description{
-Computes Probability Integral Transform values using posterior mean
-parameters. Under correct model specification, PIT values should be
+Computes posterior-mean plug-in Probability Integral Transform values.
+Under correct model specification, PIT values should be
 uniformly distributed on [0, 1].
+}
+\details{
+Supported for the core single-level fits returned by
+\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
+\code{\link[=dcvar_constant]{dcvar_constant()}}. PIT diagnostics are not currently
+implemented for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
+\code{\link[=dcvar_sem]{dcvar_sem()}}.
 }

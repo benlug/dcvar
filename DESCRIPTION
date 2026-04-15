@@ -7,18 +7,22 @@ Authors@R:
 Description: Fits Bayesian copula VAR(1) models for bivariate time series with
     three approaches to modelling dependence dynamics: continuous random-walk
     correlation (DC-VAR), discrete regime-switching via hidden Markov models
-    (HMM Copula), and time-invariant correlation (Constant Copula). Supports
-    Gaussian, exponential, skew-normal, and gamma marginal distributions via
-    Gaussian copula. Extensions include multilevel models with random VAR
-    coefficients for panel data and structural equation models with fixed
-    measurement models for latent process estimation. Estimation is via
-    Hamiltonian Monte Carlo in Stan through the 'cmdstanr' interface. Includes
-    tools for simulation, PIT diagnostics, trajectory extraction, and model
-    comparison via LOO-CV.
+    (HMM Copula), and time-invariant correlation (Constant Copula). The core
+    single-level models support Gaussian, exponential, skew-normal, and gamma
+    marginal distributions via Gaussian copula. Experimental extensions
+    include multilevel models with random VAR coefficients for panel data and
+    structural equation models with fixed measurement models for latent
+    process estimation; these extensions currently support normal margins only
+    and provide a narrower post-estimation interface than the core models.
+    Estimation is via Hamiltonian Monte Carlo in Stan through the 'cmdstanr'
+    interface. Includes tools for simulation, trajectory extraction,
+    posterior-mean PIT diagnostics, and LOO-CV model comparison for the
+    supported single-level models.
 License: MIT + file LICENSE
 URL: https://github.com/benlug/dcvar
 BugReports: https://github.com/benlug/dcvar/issues
 Encoding: UTF-8
+Language: en-US
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Depends:

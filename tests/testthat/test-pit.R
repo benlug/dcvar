@@ -3,7 +3,7 @@
 # ============================================================================
 
 test_that("pit_values returns correct structure for constant fit", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_constant_fit()
   pit_df <- pit_values(fit)
 
@@ -15,7 +15,7 @@ test_that("pit_values returns correct structure for constant fit", {
 })
 
 test_that("pit_values returns correct structure for dcvar fit", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_dcvar_fit()
   pit_df <- pit_values(fit)
 
@@ -26,7 +26,7 @@ test_that("pit_values returns correct structure for dcvar fit", {
 })
 
 test_that("pit_values supports gamma margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_constant_gamma_fit()
   pit_df <- pit_values(fit)
 
@@ -36,7 +36,7 @@ test_that("pit_values supports gamma margins", {
 })
 
 test_that("pit_values supports skew-normal margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   skip_if_not_installed("sn")
   fit <- get_constant_skew_normal_fit()
   pit_df <- pit_values(fit)
@@ -47,7 +47,7 @@ test_that("pit_values supports skew-normal margins", {
 })
 
 test_that("pit_test returns KS test results", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_constant_fit()
   ks_df <- pit_test(fit)
 
@@ -59,7 +59,7 @@ test_that("pit_test returns KS test results", {
 })
 
 test_that("plot_pit returns a ggplot object", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_constant_fit()
   p <- plot_pit(fit)
 
@@ -67,7 +67,7 @@ test_that("plot_pit returns a ggplot object", {
 })
 
 test_that("pit plot dispatch works via plot(fit, type = 'pit')", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_constant_fit()
   p <- plot(fit, type = "pit")
 
@@ -83,7 +83,7 @@ test_that("pit_test.default errors for unsupported objects", {
 })
 
 test_that("pit_values honor preserved time values", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_constant_fit()
   attr(fit$stan_data, "time_values") <- seq.Date(

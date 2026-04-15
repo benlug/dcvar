@@ -68,6 +68,24 @@ test_that("prepare_multilevel_data validates numeric columns", {
   )
 })
 
+test_that("prepare_multilevel_data rejects duplicate vars and invalid priors", {
+  sim <- simulate_dcvar_multilevel(N = 3, T = 10, rho = 0.5, seed = 7)
+  expect_error(
+    prepare_multilevel_data(sim$data, vars = c("y1", "y1"), id_var = "id"),
+    "distinct"
+  )
+  expect_error(
+    prepare_multilevel_data(sim$data, vars = c("y1", "y2"), id_var = "id",
+                            prior_tau_phi_scale = 0),
+    "prior_tau_phi_scale"
+  )
+  expect_error(
+    prepare_multilevel_data(sim$data, vars = c("y1", "y2"), id_var = "id",
+                            center = "no"),
+    "center"
+  )
+})
+
 test_that("prepare_multilevel_data handles centering correctly", {
   sim <- simulate_dcvar_multilevel(N = 3, T = 20, rho = 0.5,
                                    center = FALSE, seed = 3)
@@ -176,6 +194,40 @@ test_that("prepare_sem_data validates numeric indicator columns", {
     prepare_sem_data(df, indicators = indicators, J = 2,
                      lambda = c(0.8, 0.8), sigma_e = 0.5),
     "must be numeric"
+  )
+})
+
+test_that("prepare_sem_data rejects overlapping indicators and invalid scales", {
+  df <- data.frame(
+    time = 1:10,
+    y1_1 = rnorm(10),
+    y1_2 = rnorm(10),
+    y2_1 = rnorm(10),
+    y2_2 = rnorm(10)
+  )
+  overlapping <- list(
+    latent1 = c("y1_1", "y1_2"),
+    latent2 = c("y2_1", "y1_2")
+  )
+
+  expect_error(
+    prepare_sem_data(df, indicators = overlapping, J = 2,
+                     lambda = c(0.8, 0.8), sigma_e = 0.5),
+    "unique"
+  )
+  expect_error(
+    prepare_sem_data(df, indicators = list(
+      latent1 = c("y1_1", "y1_2"),
+      latent2 = c("y2_1", "y2_2")
+    ), J = 2, lambda = c(0.8, NA_real_), sigma_e = 0.5),
+    "lambda"
+  )
+  expect_error(
+    prepare_sem_data(df, indicators = list(
+      latent1 = c("y1_1", "y1_2"),
+      latent2 = c("y2_1", "y2_2")
+    ), J = 2, lambda = c(0.8, 0.8), sigma_e = 0),
+    "sigma_e"
   )
 })
 

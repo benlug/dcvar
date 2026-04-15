@@ -21,7 +21,25 @@
 #'   - `coverage_start`, `coverage_end`: coverage at endpoints
 #' @export
 compute_rho_metrics <- function(rho_true, rho_est, rho_lower, rho_upper) {
+  .validate_numeric_vector(rho_true, "rho_true")
+  .validate_numeric_vector(rho_est, "rho_est")
+  .validate_numeric_vector(rho_lower, "rho_lower")
+  .validate_numeric_vector(rho_upper, "rho_upper")
+
   n <- length(rho_true)
+  if (length(rho_est) != n || length(rho_lower) != n || length(rho_upper) != n) {
+    cli_abort(c(
+      "All rho metric vectors must have the same length.",
+      "i" = "Expected {.val {n}} values for each of {.arg rho_est}, {.arg rho_lower}, and {.arg rho_upper}."
+    ))
+  }
+  if (any(rho_lower > rho_upper)) {
+    cli_abort(c(
+      "{.arg rho_lower} must not exceed {.arg rho_upper}.",
+      "i" = "Check that every credible interval is ordered lower <= upper."
+    ))
+  }
+
   list(
     bias = mean(rho_est - rho_true),
     relative_bias = .relative_bias(rho_est, rho_true),
@@ -47,6 +65,18 @@ compute_rho_metrics <- function(rho_true, rho_est, rho_lower, rho_upper) {
 #'   `interval_width`.
 #' @export
 compute_param_metrics <- function(true_value, est_mean, est_lower, est_upper) {
+  .validate_scalar_numeric(true_value, "true_value")
+  .validate_scalar_numeric(est_mean, "est_mean")
+  .validate_scalar_numeric(est_lower, "est_lower")
+  .validate_scalar_numeric(est_upper, "est_upper")
+
+  if (est_lower > est_upper) {
+    cli_abort(c(
+      "{.arg est_lower} must not exceed {.arg est_upper}.",
+      "i" = "Check that the reported credible interval is ordered lower <= upper."
+    ))
+  }
+
   list(
     bias = est_mean - true_value,
     relative_bias = .relative_bias(est_mean, true_value),
@@ -62,7 +92,8 @@ compute_param_metrics <- function(true_value, est_mean, est_lower, est_upper) {
 #'   containing a `$rho` element as returned by [compute_rho_metrics()].
 #'
 #' @return A named list with:
-#'   - `rho`: data frame of aggregated rho metrics (mean, SD, quantiles)
+#'   - `rho`: data frame of aggregated rho metrics (mean, SD, quantiles) for
+#'     every field in the per-replication `rho` metric list
 #'   - `n_reps`: number of replications
 #' @export
 aggregate_metrics <- function(metrics_list) {
@@ -70,19 +101,36 @@ aggregate_metrics <- function(metrics_list) {
   if (n_reps == 0) {
     cli_abort("{.arg metrics_list} must contain at least one replication.")
   }
-  if (!all(vapply(metrics_list, function(x) is.list(x) && !is.null(x$rho), logical(1)))) {
+  if (!is.list(metrics_list) || !all(vapply(metrics_list, function(x) is.list(x) && !is.null(x$rho), logical(1)))) {
     cli_abort("Each element of {.arg metrics_list} must be a list with a {.val rho} element.")
   }
 
-  rho_df <- do.call(rbind, lapply(metrics_list, function(m) {
-    data.frame(
-      bias = m$rho$bias,
-      relative_bias = m$rho$relative_bias,
-      coverage = m$rho$coverage,
-      interval_width = m$rho$interval_width,
-      correlation = m$rho$correlation
-    )
-  }))
+  expected_metric_names <- c(
+    "bias", "relative_bias", "coverage", "interval_width",
+    "correlation", "bias_start", "bias_end",
+    "coverage_start", "coverage_end"
+  )
+  metric_names <- names(metrics_list[[1]]$rho)
+  if (is.null(metric_names) || any(metric_names == "")) {
+    cli_abort("The {.val rho} element must be a named list of scalar metrics.")
+  }
+  if (!identical(metric_names, expected_metric_names)) {
+    cli_abort("The {.val rho} element must contain the full set of compute_rho_metrics() outputs in the documented order.")
+  }
+  if (!all(vapply(metrics_list, function(x) identical(names(x$rho), expected_metric_names), logical(1)))) {
+    cli_abort("All {.val rho} elements must contain the same metric names in the same order.")
+  }
+
+  rho_rows <- vapply(metrics_list, function(m) {
+    vals <- m$rho[expected_metric_names]
+    if (!all(vapply(vals, function(x) is.numeric(x) && length(x) == 1L && is.finite(x), logical(1)))) {
+      cli_abort("Each metric in {.val rho} must be a single finite numeric value.")
+    }
+    unlist(vals, use.names = FALSE)
+  }, numeric(length(expected_metric_names)))
+
+  rho_df <- as.data.frame(t(rho_rows))
+  names(rho_df) <- expected_metric_names
 
   summarise_col <- function(x) {
     c(mean = mean(x, na.rm = TRUE),
@@ -105,4 +153,26 @@ aggregate_metrics <- function(metrics_list) {
 .relative_bias <- function(estimated, true, epsilon = 1e-10) {
   denom <- ifelse(abs(true) < epsilon, epsilon, true)
   mean((estimated - true) / denom) * 100
+}
+
+#' Internal: validate a numeric vector for metric calculations
+#' @noRd
+.validate_numeric_vector <- function(x, arg_name) {
+  if (!is.numeric(x)) {
+    cli_abort("{.arg {arg_name}} must be a numeric vector.")
+  }
+  if (length(x) == 0) {
+    cli_abort("{.arg {arg_name}} must not be empty.")
+  }
+  if (any(!is.finite(x))) {
+    cli_abort("{.arg {arg_name}} must contain only finite values.")
+  }
+}
+
+#' Internal: validate a single finite numeric value for metric calculations
+#' @noRd
+.validate_scalar_numeric <- function(x, arg_name) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x)) {
+    cli_abort("{.arg {arg_name}} must be a single finite numeric value.")
+  }
 }

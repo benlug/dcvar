@@ -2,6 +2,52 @@
 # Trajectory Generation Functions
 # ============================================================================
 
+#' Internal: validate a rho scalar in [-1, 1]
+#' @noRd
+.trajectory_validate_rho_scalar <- function(x, arg_name) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x < -1 || x > 1) {
+    cli_abort("{.arg {arg_name}} must be a single finite numeric value in [-1, 1].")
+  }
+}
+
+#' Internal: validate a rho level vector in [-1, 1]
+#' @noRd
+.trajectory_validate_rho_levels <- function(x, arg_name) {
+  if (!is.numeric(x) || length(x) != 3L || any(!is.finite(x)) || any(x < -1 | x > 1)) {
+    cli_abort("{.arg {arg_name}} must be a length-3 finite numeric vector in [-1, 1].")
+  }
+}
+
+#' Internal: validate and resolve a breakpoint specification
+#' @noRd
+.trajectory_resolve_breakpoint <- function(breakpoint, T_eff, arg_name = "breakpoint") {
+  if (!is.numeric(breakpoint) || length(breakpoint) != 1L || !is.finite(breakpoint)) {
+    cli_abort("{.arg {arg_name}} must be a single finite numeric value.")
+  }
+
+  if (breakpoint >= 0 && breakpoint <= 1) {
+    bp_time <- round(breakpoint * T_eff)
+  } else {
+    if (breakpoint != as.integer(breakpoint) || breakpoint < 1) {
+      cli_abort(c(
+        "{.arg {arg_name}} must be either a proportion in [0, 1] or a positive integer breakpoint.",
+        "i" = "Use a whole number for an absolute breakpoint index."
+      ))
+    }
+    bp_time <- as.integer(breakpoint)
+  }
+
+  max(1L, min(T_eff - 1L, as.integer(bp_time)))
+}
+
+#' Internal: validate a non-negative transition width
+#' @noRd
+.trajectory_validate_transition_width <- function(x, arg_name = "transition_width") {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x < 0) {
+    cli_abort("{.arg {arg_name}} must be a single non-negative finite numeric value.")
+  }
+}
+
 #' Generate a constant rho trajectory
 #'
 #' @param T Number of time points.
@@ -14,9 +60,7 @@
 #' rho_constant(100, rho = 0.5)
 rho_constant <- function(T, rho = 0.5) {
   if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
-  if (rho < -1 || rho > 1) {
-    cli_abort("{.arg rho} must be between -1 and 1, got {rho}.")
-  }
+  .trajectory_validate_rho_scalar(rho, "rho")
   rep(rho, T - 1)
 }
 
@@ -124,14 +168,11 @@ rho_random_walk <- function(T, z_init = 0.5, sigma_omega = 0.05, seed = NULL) {
 rho_step <- function(T, rho_before = 0.7, rho_after = 0.3,
                       breakpoint = 0.5, transition_width = 0) {
   if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
+  .trajectory_validate_rho_scalar(rho_before, "rho_before")
+  .trajectory_validate_rho_scalar(rho_after, "rho_after")
   T_eff <- T - 1
-
-  if (breakpoint <= 1) {
-    bp_time <- round(breakpoint * T_eff)
-  } else {
-    bp_time <- round(breakpoint)
-  }
-  bp_time <- max(1, min(T_eff - 1, bp_time))
+  .trajectory_validate_transition_width(transition_width)
+  bp_time <- .trajectory_resolve_breakpoint(breakpoint, T_eff)
 
   t_vec <- 1:T_eff
 
@@ -165,12 +206,21 @@ rho_double_step <- function(T, rho_levels = c(0.7, 0.3, 0.7),
                              breakpoints = c(1 / 3, 2 / 3),
                              transition_width = 0) {
   if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
+  .trajectory_validate_rho_levels(rho_levels, "rho_levels")
+  if (!is.numeric(breakpoints) || length(breakpoints) != 2L || any(!is.finite(breakpoints))) {
+    cli_abort("{.arg breakpoints} must be a length-2 finite numeric vector.")
+  }
+  .trajectory_validate_transition_width(transition_width)
   T_eff <- T - 1
 
-  bp1 <- if (breakpoints[1] <= 1) round(breakpoints[1] * T_eff) else round(breakpoints[1])
-  bp2 <- if (breakpoints[2] <= 1) round(breakpoints[2] * T_eff) else round(breakpoints[2])
-  bp1 <- max(1, min(T_eff - 2, bp1))
-  bp2 <- max(bp1 + 1, min(T_eff - 1, bp2))
+  bp1 <- .trajectory_resolve_breakpoint(breakpoints[1], T_eff, "breakpoints[1]")
+  bp2 <- .trajectory_resolve_breakpoint(breakpoints[2], T_eff, "breakpoints[2]")
+  if (bp2 <= bp1) {
+    cli_abort(c(
+      "{.arg breakpoints} must resolve to two strictly increasing breakpoint positions.",
+      "i" = "Choose distinct breakpoint values so the middle phase is non-empty."
+    ))
+  }
 
   t_vec <- 1:T_eff
 

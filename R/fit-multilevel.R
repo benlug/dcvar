@@ -27,13 +27,15 @@
 #' @param refresh How often to print progress.
 #' @param init Custom init function or `NULL`.
 #' @param stan_file Custom Stan file path or `NULL`.
-#' @param ... Additional arguments passed to `cmdstanr::CmdStanModel$sample()`.
+#' @param backend Character: `"auto"` (default, uses rstan), `"rstan"`, or
+#'   `"cmdstanr"`. Can also be set globally via
+#'   `options(dcvar.backend = "cmdstanr")`.
+#' @param ... Additional backend-specific sampling arguments.
 #'
 #' @return A `dcvar_multilevel_fit` object.
 #'
-#' @details **Experimental extension.** This multilevel variant currently has a
-#'   narrower post-estimation interface than the core single-level models.
-#'   `fitted()`, `predict()`, PIT diagnostics, and PSIS-LOO are not yet
+#' @details **Experimental extension.** This multilevel variant supports
+#'   `fitted()` and `predict()`, but PIT diagnostics and PSIS-LOO are not yet
 #'   implemented.
 #'
 #'   `adapt_delta` defaults to 0.90 and `max_treedepth` to 14 because the
@@ -68,8 +70,15 @@ dcvar_multilevel <- function(data, vars,
                              refresh = 500,
                              init = NULL,
                              stan_file = NULL,
+                             backend = getOption("dcvar.backend", "auto"),
                              ...) {
-  if (!isTRUE(center) && is.null(stan_file)) {
+  bundled_stan <- dcvar_stan_path("multilevel")
+  uses_bundled_stan <- is.null(stan_file) || identical(
+    normalizePath(stan_file, winslash = "/", mustWork = TRUE),
+    normalizePath(bundled_stan, winslash = "/", mustWork = TRUE)
+  )
+
+  if (!isTRUE(center) && uses_bundled_stan) {
     cli_abort(c(
       "{.arg center = FALSE} is not supported by the bundled multilevel model.",
       "i" = "The bundled Stan program assumes person-mean centered data and omits intercept terms.",
@@ -77,7 +86,7 @@ dcvar_multilevel <- function(data, vars,
     ))
   }
 
-  .check_cmdstanr()
+  backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
 
@@ -93,30 +102,32 @@ dcvar_multilevel <- function(data, vars,
   cli_inform("Fitting multilevel copula VAR model (N = {N}, T = {T_obs})...")
 
   # Compile model
-  model <- .compile_model("multilevel", stan_file = stan_file)
+  model <- .compile_model("multilevel", stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
     init <- function() .init_multilevel_params(2, N)
   }
 
-  if (is.null(cores)) cores <- parallel::detectCores(logical = FALSE)
+  cores <- .normalize_cores(cores, chains)
 
-  fit <- model$sample(
-    data = stan_data,
+  fit <- .sample_model(
+    compiled_model = model,
+    stan_data = stan_data,
+    backend = backend,
     chains = chains,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     adapt_delta = adapt_delta,
     max_treedepth = max_treedepth,
     seed = seed,
-    parallel_chains = cores,
+    cores = cores,
     init = init,
     refresh = refresh,
     ...
   )
 
-  .report_sampling_outcome(fit, "Multilevel copula VAR", chains = chains)
+  .report_sampling_outcome(fit, "Multilevel copula VAR", chains = chains, backend = backend)
 
   new_dcvar_multilevel_fit(
     fit = fit,
@@ -125,6 +136,7 @@ dcvar_multilevel <- function(data, vars,
     vars = vars,
     centered = center,
     person_means = attr(stan_data, "person_means"),
+    backend = backend,
     priors = list(
       phi_bar_sd = prior_phi_bar_sd,
       tau_phi_scale = prior_tau_phi_scale,

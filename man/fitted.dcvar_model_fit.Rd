@@ -8,13 +8,12 @@
 \usage{
 \method{fitted}{dcvar_model_fit}(object, type = c("link", "response"), ...)
 
-\method{fitted}{dcvar_multilevel_fit}(object, ...)
+\method{fitted}{dcvar_multilevel_fit}(object, type = c("link", "response"), ...)
 
-\method{fitted}{dcvar_sem_fit}(object, ...)
+\method{fitted}{dcvar_sem_fit}(object, type = c("link", "response"), ...)
 }
 \arguments{
-\item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_hmm_fit}, or
-\code{dcvar_constant_fit}).}
+\item{object}{A fitted model object.}
 
 \item{type}{Character; \code{"link"} (default) returns values on the model's
 internal scale (standardized if applicable), \code{"response"} back-transforms
@@ -23,11 +22,14 @@ to the original data scale.}
 \item{...}{Additional arguments (unused).}
 }
 \value{
-A data frame with columns \code{time}, and one column per variable
-containing the posterior-mean fitted values.
+A data frame of posterior-mean fitted values. Single-level fits
+return columns \code{time} plus one column per modeled variable. Multilevel
+fits additionally include \code{unit}. SEM fits return either latent-state
+columns (\code{type = "link"}) or observed-indicator columns
+(\code{type = "response"}).
 }
 \description{
-Returns posterior-mean one-step-ahead fitted values from the
+Returns the one-step-ahead fitted values (posterior mean of y_hat) from the
 VAR(1) component: \code{y_hat[t] = mu + Phi * (y[t-1] - mu)}.
 }
 \details{
@@ -35,9 +37,9 @@ If the model was fit with \code{standardize = TRUE} (the default), fitted values
 are on the standardized (z-scored) scale by default. Use \code{type = "response"}
 to back-transform to the original data scale.
 
-This is a posterior-mean plug-in summary of the conditional mean,
-not simulated posterior predictive draws. \code{fitted()} is currently
-implemented for the core single-level fits returned by
-\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}}.
+\code{fitted()} and \code{predict()} are implemented for the three core single-level
+models plus the multilevel and SEM variants. For multilevel fits, the
+methods return unit-specific trajectories. For SEM fits, \code{type = "link"}
+returns latent-state summaries and \code{type = "response"} returns observed
+indicator-scale summaries.
 }

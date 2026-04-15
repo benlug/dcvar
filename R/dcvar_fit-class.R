@@ -6,7 +6,7 @@
 #' @noRd
 new_dcvar_fit <- function(fit, stan_data, vars, standardized,
                           margins = "normal", skew_direction = NULL,
-                          priors, meta) {
+                          backend = "rstan", priors, meta) {
   structure(
     list(
       fit = fit,
@@ -16,6 +16,7 @@ new_dcvar_fit <- function(fit, stan_data, vars, standardized,
       standardized = standardized,
       margins = margins,
       skew_direction = skew_direction,
+      backend = backend,
       priors = priors,
       meta = meta
     ),
@@ -122,15 +123,15 @@ print.dcvar_summary <- function(x, ...) {
 #'   `sigma_omega`.
 #' @export
 coef.dcvar_fit <- function(object, ...) {
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
   result <- list(
-    mu = .extract_coef(summ, "^mu\\["),
-    Phi = .extract_coef(summ, "^Phi\\[")
+    mu = .extract_required_coef(summ, "^mu\\[", "mu", "coef.dcvar_fit()"),
+    Phi = .extract_required_coef(summ, "^Phi\\[", "Phi", "coef.dcvar_fit()")
   )
   # Margin-specific scale params before sigma_omega
   margins <- object$margins %||% "normal"
   result <- c(result, .extract_margin_coefs(summ, margins))
-  result$sigma_omega <- .extract_coef(summ, "^sigma_omega$")
+  result$sigma_omega <- .extract_required_coef(summ, "^sigma_omega$", "sigma_omega", "coef.dcvar_fit()")
   result
 }
 

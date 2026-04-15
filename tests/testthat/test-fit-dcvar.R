@@ -1,5 +1,5 @@
 test_that("dcvar() returns a dcvar_fit object", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   expect_s3_class(fit, "dcvar_fit")
@@ -8,7 +8,7 @@ test_that("dcvar() returns a dcvar_fit object", {
 })
 
 test_that("print.dcvar_fit runs without error", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   out <- capture.output(print(fit))
@@ -17,7 +17,7 @@ test_that("print.dcvar_fit runs without error", {
 })
 
 test_that("summary.dcvar_fit returns expected class", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   s <- summary(fit)
@@ -27,7 +27,7 @@ test_that("summary.dcvar_fit returns expected class", {
 })
 
 test_that("coef.dcvar_fit returns named list", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   co <- coef(fit)
@@ -36,7 +36,7 @@ test_that("coef.dcvar_fit returns named list", {
 })
 
 test_that("plot.dcvar_fit dispatches without error", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   expect_s3_class(plot(fit, type = "rho"), "ggplot")
@@ -44,7 +44,7 @@ test_that("plot.dcvar_fit dispatches without error", {
 })
 
 test_that("dcvar() fits exponential margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_exponential_fit()
   expect_s3_class(fit, "dcvar_fit")
@@ -52,7 +52,7 @@ test_that("dcvar() fits exponential margins", {
 })
 
 test_that("dcvar() fits gamma margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_gamma_fit()
   expect_s3_class(fit, "dcvar_fit")
@@ -60,10 +60,19 @@ test_that("dcvar() fits gamma margins", {
 })
 
 test_that("dcvar() fits skew-normal margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   skip_if_not_installed("sn")
 
   fit <- get_dcvar_skew_normal_fit()
   expect_s3_class(fit, "dcvar_fit")
   expect_equal(fit$margins, "skew_normal")
+})
+
+test_that("dcvar fit cache emits only known diagnostic warnings", {
+  skip_if_no_rstan()
+
+  expect_known_fit_warnings(get_dcvar_fit_warnings(), "dcvar")
+  expect_known_fit_warnings(get_dcvar_exponential_fit_warnings(), "dcvar exponential")
+  expect_known_fit_warnings(get_dcvar_gamma_fit_warnings(), "dcvar gamma")
+  expect_known_fit_warnings(get_dcvar_skew_normal_fit_warnings(), "dcvar skew-normal")
 })

@@ -102,42 +102,27 @@ dcvar_stan_path <- function(model = c("dcvar", "hmm", "constant", "multilevel", 
 #' @param margins Character: margin type (default: `"normal"`).
 #' @param stan_file Optional path to a custom Stan file. If `NULL`, uses the
 #'   bundled model.
+#' @param backend Character: `"rstan"` or `"cmdstanr"`.
 #' @param force_recompile Force recompilation even if cached.
 #' @param quiet Suppress compilation messages.
 #'
-#' @return A `CmdStanModel` object.
+#' @return A compiled model object (backend-dependent class).
 #' @noRd
 .compile_model <- function(model_type = c("dcvar", "hmm", "constant", "multilevel", "sem"),
                            margins = "normal",
                            stan_file = NULL,
+                           backend = "rstan",
                            force_recompile = FALSE,
                            quiet = FALSE) {
-  .check_cmdstanr()
   model_type <- match.arg(model_type)
 
   if (is.null(stan_file)) {
     stan_file <- dcvar_stan_path(model_type, margins = margins)
   }
 
-  cache_dir <- file.path(tempdir(), "dcvar-cache")
-  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-
-  # Include the specific Stan source in the cache key so custom files cannot
-  # reuse an executable built from a different model.
-  stan_hash <- unname(tools::md5sum(stan_file))
-  if (length(stan_hash) != 1 || is.na(stan_hash) || !nzchar(stan_hash)) {
-    cli_abort("Failed to hash Stan source file {.file {stan_file}} for caching.")
-  }
-  cache_key <- paste0(.margin_cache_key(model_type, margins), "_", stan_hash)
-  exe_file <- .compiled_exe_path(cache_dir, cache_key)
-
-  # Include path for shared Stan functions (e.g., gaussian_copula.stan)
-  include_paths <- system.file("stan", package = "dcvar", mustWork = TRUE)
-
-  cmdstanr::cmdstan_model(
+  .compile_model_backend(
     stan_file = stan_file,
-    exe_file = exe_file,
-    include_paths = include_paths,
+    backend = backend,
     force_recompile = force_recompile,
     quiet = quiet
   )

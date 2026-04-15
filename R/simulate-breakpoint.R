@@ -24,8 +24,7 @@
 #' @param sigma_eps Innovation SDs, length 2 (default: `c(1, 1)`).
 #' @param seed Random seed.
 #'
-#' @return A named list as returned by [simulate_dcvar()], with breakpoint
-#'   metadata added to `true_params`.
+#' @return A named list as returned by [simulate_dcvar()].
 #' @export
 #'
 #' @examples
@@ -54,14 +53,6 @@ simulate_breakpoint_data <- function(T,
                     transition_width = transition_width)
   }
 
-  sim <- simulate_dcvar(T = T, rho_trajectory = rho_traj,
-                        mu = mu, Phi = Phi, sigma_eps = sigma_eps, seed = seed)
-
-  if (type == "single") {
-    sim$true_params$breakpoint <- breakpoint
-  } else {
-    sim$true_params$breakpoints <- breakpoints
-  }
-
-  sim
+  simulate_dcvar(T = T, rho_trajectory = rho_traj,
+                 mu = mu, Phi = Phi, sigma_eps = sigma_eps, seed = seed)
 }

@@ -6,6 +6,8 @@
 #'
 #' Returns a summary of sampling diagnostics including divergences,
 #' tree depth warnings, Rhat, and effective sample size.
+#' The convergence headline is computed from sampled parameters only and
+#' excludes generated quantities and deterministic transformed outputs.
 #'
 #' @param object A fitted model object.
 #' @param ... Additional arguments (unused).
@@ -13,9 +15,9 @@
 #' @return A named list with:
 #'   - `n_divergent`: total number of divergent transitions
 #'   - `n_max_treedepth`: transitions hitting max tree depth
-#'   - `max_rhat`: worst (highest) Rhat across all parameters
-#'   - `min_ess_bulk`: smallest bulk ESS
-#'   - `min_ess_tail`: smallest tail ESS
+#'   - `max_rhat`: worst (highest) Rhat across sampled parameters
+#'   - `min_ess_bulk`: smallest bulk ESS among sampled parameters
+#'   - `min_ess_tail`: smallest tail ESS among sampled parameters
 #'   - `mean_accept_prob`: mean acceptance probability
 #' @export
 dcvar_diagnostics <- function(object, ...) {
@@ -28,12 +30,126 @@ dcvar_diagnostics.default <- function(object, ...) {
   cli_abort("{.fun dcvar_diagnostics} is not defined for objects of class {.cls {class(object)[[1]]}}.")
 }
 
+#' Internal: validate model dimensions used by diagnostics
+#' @noRd
+.diagnostic_positive_int <- function(value, name, location) {
+  if (!is.numeric(value) || length(value) != 1L || !is.finite(value) ||
+      value < 1 || value != as.integer(value)) {
+    cli_abort(
+      "{.fun dcvar_diagnostics} requires {.field {name}} to be a positive integer in {.field {location}}."
+    )
+  }
+
+  as.integer(value)
+}
+
+#' Internal: build the exact sampled-parameter set for diagnostics
+#' @noRd
+.diagnostic_parameter_variables <- function(object) {
+  margins <- object$margins %||% "normal"
+  model <- object$model
+
+  if (identical(model, "multilevel")) {
+    N <- .diagnostic_positive_int(object$N, "N", "object")
+    return(c(
+      paste0("phi_bar[", seq_len(4), "]"),
+      paste0("tau_phi[", seq_len(4), "]"),
+      paste0(
+        "z_phi[",
+        rep(seq_len(N), each = 4),
+        ",",
+        rep(seq_len(4), times = N),
+        "]"
+      ),
+      paste0("sigma[", seq_len(2), "]"),
+      "rho"
+    ))
+  }
+
+  if (identical(model, "sem")) {
+    T_obs <- .diagnostic_positive_int(object$stan_data$T, "T", "stan_data")
+    return(c(
+      "mu[1]", "mu[2]",
+      "phi11", "phi12", "phi21", "phi22",
+      paste0("sigma[", seq_len(2), "]"),
+      "rho_raw",
+      paste0(
+        "zeta[",
+        rep(seq_len(T_obs), each = 2),
+        ",",
+        rep(seq_len(2), times = T_obs),
+        "]"
+      )
+    ))
+  }
+
+  D <- .diagnostic_positive_int(object$stan_data$D, "D", "stan_data")
+  mu_vars <- paste0("mu[", seq_len(D), "]")
+  phi_vars <- paste0(
+    "Phi[",
+    rep(seq_len(D), each = D),
+    ",",
+    rep(seq_len(D), times = D),
+    "]"
+  )
+  margin_vars <- switch(margins,
+    normal = paste0("sigma_eps[", seq_len(D), "]"),
+    exponential = paste0("eta[", seq_len(D), "]"),
+    skew_normal = c(
+      paste0("omega[", seq_len(D), "]"),
+      paste0("delta[", seq_len(D), "]")
+    ),
+    gamma = c(
+      paste0("eta[", seq_len(D), "]"),
+      "shape_gam"
+    ),
+    paste0("sigma_eps[", seq_len(D), "]")
+  )
+
+  if (identical(model, "constant")) {
+    return(c(mu_vars, phi_vars, margin_vars, "z_rho"))
+  }
+
+  if (identical(model, "dcvar")) {
+    T_obs <- .diagnostic_positive_int(object$stan_data$T, "T", "stan_data")
+    return(c(
+      mu_vars,
+      phi_vars,
+      margin_vars,
+      "z_rho_init",
+      "sigma_omega",
+      paste0("omega_raw[", seq_len(T_obs - 1), "]")
+    ))
+  }
+
+  if (identical(model, "hmm")) {
+    K <- .diagnostic_positive_int(object$K, "K", "object")
+    return(c(
+      mu_vars,
+      phi_vars,
+      margin_vars,
+      paste0("z_rho[", seq_len(K), "]"),
+      paste0("pi0[", seq_len(K), "]"),
+      paste0(
+        "A[",
+        rep(seq_len(K), each = K),
+        ",",
+        rep(seq_len(K), times = K),
+        "]"
+      )
+    ))
+  }
+
+  c(mu_vars, phi_vars, margin_vars)
+}
+
 #' Internal: extract common diagnostics from a CmdStanMCMC fit
 #' @noRd
-.sampling_diagnostics_from_fit <- function(fit) {
-  diag_summ <- fit$diagnostic_summary(quiet = TRUE)
-  summ <- suppressWarnings(fit$summary())
-  sampler_diags <- fit$sampler_diagnostics()
+.sampling_diagnostics_from_fit <- function(fit, backend = "rstan", object = NULL) {
+  vars <- if (is.null(object)) NULL else .diagnostic_parameter_variables(object)
+  diag_summ <- .fit_diagnostic_summary(fit, backend)
+  summ <- suppressWarnings(.fit_summary(fit, variables = vars, backend = backend))
+  sampler_diags <- .fit_sampler_diagnostics(fit, backend)
   accept_stat <- as.numeric(sampler_diags[, , "accept_stat__", drop = TRUE])
   accept_stat <- accept_stat[is.finite(accept_stat)]
 
@@ -54,8 +170,8 @@ dcvar_diagnostics.default <- function(object, ...) {
 #' Internal: report post-sampling diagnostics to the user
 #' @noRd
 .report_sampling_outcome <- function(fit, model_label, chains = NA_integer_,
-                                     rhat_threshold = 1.10) {
-  diag <- .sampling_diagnostics_from_fit(fit)
+                                     rhat_threshold = 1.10, backend = "rstan") {
+  diag <- .sampling_diagnostics_from_fit(fit, backend = backend)
   issues <- character()
 
   if (diag$n_divergent > 0) {
@@ -95,5 +211,5 @@ dcvar_diagnostics.default <- function(object, ...) {
 #' @rdname dcvar_diagnostics
 #' @export
 dcvar_diagnostics.dcvar_model_fit <- function(object, ...) {
-  .sampling_diagnostics_from_fit(object$fit)
+  .sampling_diagnostics_from_fit(object$fit, backend = object$backend %||% "rstan", object = object)
 }

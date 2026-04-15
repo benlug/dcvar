@@ -6,7 +6,7 @@
 #' @noRd
 new_dcvar_hmm_fit <- function(fit, stan_data, K, vars, standardized,
                               margins = "normal", skew_direction = NULL,
-                              priors, meta) {
+                              backend = "rstan", priors, meta) {
   structure(
     list(
       fit = fit,
@@ -17,6 +17,7 @@ new_dcvar_hmm_fit <- function(fit, stan_data, K, vars, standardized,
       standardized = standardized,
       margins = margins,
       skew_direction = skew_direction,
+      backend = backend,
       priors = priors,
       meta = meta
     ),
@@ -128,16 +129,16 @@ print.dcvar_hmm_summary <- function(x, ...) {
 #'   `rho_state`.
 #' @export
 coef.dcvar_hmm_fit <- function(object, ...) {
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
   result <- list(
-    mu = .extract_coef(summ, "^mu\\["),
-    Phi = .extract_coef(summ, "^Phi\\[")
+    mu = .extract_required_coef(summ, "^mu\\[", "mu", "coef.dcvar_hmm_fit()"),
+    Phi = .extract_required_coef(summ, "^Phi\\[", "Phi", "coef.dcvar_hmm_fit()")
   )
   # Margin-specific scale params before HMM-specific params
   margins <- object$margins %||% "normal"
   result <- c(result, .extract_margin_coefs(summ, margins))
-  result$z_rho <- .extract_coef(summ, "^z_rho\\[")
-  result$rho_state <- .extract_coef(summ, "^rho_state\\[")
+  result$z_rho <- .extract_required_coef(summ, "^z_rho\\[", "z_rho", "coef.dcvar_hmm_fit()")
+  result$rho_state <- .extract_required_coef(summ, "^rho_state\\[", "rho_state", "coef.dcvar_hmm_fit()")
   result
 }
 

@@ -16,6 +16,90 @@
   cor(x, y)
 }
 
+#' Validate a credible/prediction interval level
+#'
+#' @param level Numeric scalar interval level.
+#' @param arg_name Name of the argument for error messages.
+#' @return Invisibly returns `level`.
+#' @noRd
+.validate_interval_level <- function(level, arg_name = "ci_level") {
+  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) ||
+      level <= 0 || level >= 1) {
+    cli_abort("{.arg {arg_name}} must be a single numeric value strictly between 0 and 1.")
+  }
+
+  invisible(level)
+}
+
+#' Build a regex that matches a Stan output group by base name
+#'
+#' @param name Stan variable name or indexed element.
+#' @return Regex matching the base output name with or without indices.
+#' @noRd
+.stan_output_group_pattern <- function(name) {
+  base_name <- sub("\\[.*$", "", name)
+  escaped <- gsub("([][{}()+*^$.|?\\\\])", "\\\\\\1", base_name)
+  paste0("^", escaped, "(\\[|$)")
+}
+
+#' Internal: extract required coefficient summaries
+#' @noRd
+.extract_required_coef <- function(summ, pattern, label = NULL, context = NULL) {
+  rows <- grep(pattern, summ$variable)
+  if (length(rows) == 0) {
+    if (is.null(label)) label <- pattern
+    if (is.null(context)) context <- "Coefficient extraction"
+    cli_abort(c(
+      "{context} requires Stan output that is not present in the fitted model.",
+      "i" = "Missing coefficient group: {.val {label}}.",
+      "i" = "Custom Stan files must preserve the expected parameter names."
+    ))
+  }
+
+  setNames(summ$mean[rows], summ$variable[rows])
+}
+
+#' Internal: validate that a fitted model exposes required Stan outputs
+#' @noRd
+.validate_required_stan_outputs <- function(draws, required = NULL,
+                                            required_type = c("exact", "pattern"),
+                                            context = "This method",
+                                            output_type = "Stan output") {
+  if (is.null(required) || length(required) == 0L) {
+    return(invisible(TRUE))
+  }
+
+  required_type <- match.arg(required_type)
+  vars <- posterior::variables(draws)
+
+  missing <- switch(required_type,
+    exact = setdiff(required, vars),
+    pattern = required[!vapply(required, function(pattern) {
+      any(grepl(pattern, vars))
+    }, logical(1))]
+  )
+
+  if (length(missing) > 0) {
+    output_label <- switch(output_type,
+      "generated quantity" = "generated quantities",
+      "generated quantities" = "generated quantities",
+      "parameter group" = "parameter groups",
+      "parameter" = "parameters",
+      "parameters" = "parameters",
+      "Stan output" = "Stan output",
+      output_type
+    )
+
+    cli_abort(c(
+      "{context} requires Stan output that is not present in the fitted model.",
+      "i" = "Missing {output_label}: {.val {missing}}.",
+      "i" = "Custom Stan files must preserve the expected parameter and generated-quantity names."
+    ))
+  }
+
+  invisible(TRUE)
+}
+
 
 # ============================================================================
 # Shared Initialization Helpers

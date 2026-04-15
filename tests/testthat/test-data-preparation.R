@@ -16,6 +16,11 @@ test_that("prepare_dcvar_data rejects non-bivariate input", {
   expect_error(prepare_dcvar_data(df, vars = c("y1", "y2", "y3")), "Exactly 2")
 })
 
+test_that("prepare_dcvar_data rejects duplicate vars", {
+  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
+  expect_error(prepare_dcvar_data(df, vars = c("y1", "y1")), "distinct")
+})
+
 test_that("prepare_dcvar_data rejects missing columns", {
   df <- data.frame(time = 1:50, y1 = rnorm(50))
   expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "not found")
@@ -77,6 +82,18 @@ test_that("prepare_dcvar_data sets correct prior hyperparameters", {
   expect_equal(result$sigma_omega_prior, 0.2)
 })
 
+test_that("prepare_dcvar_data rejects invalid prior scalars", {
+  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), prior_mu_sd = 0),
+    "prior_mu_sd"
+  )
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), prior_sigma_eps_rate = -1),
+    "prior_sigma_eps_rate"
+  )
+})
+
 test_that("prepare_hmm_data adds HMM-specific fields", {
   df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
   result <- prepare_hmm_data(df, vars = c("y1", "y2"), K = 3)
@@ -92,12 +109,41 @@ test_that("prepare_hmm_data validates K consistently with dcvar_hmm", {
   expect_error(prepare_hmm_data(df, vars = c("y1", "y2"), K = 2.7), "integer >= 2")
 })
 
+test_that("prepare_hmm_data rejects invalid prior scalars", {
+  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
+  expect_error(
+    prepare_hmm_data(df, vars = c("y1", "y2"), prior_kappa = 0),
+    "prior_kappa"
+  )
+})
+
 test_that("prepare_constant_data adds copula prior", {
  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
   result <- prepare_constant_data(df, vars = c("y1", "y2"))
 
   expect_equal(result$z_rho_prior_sd, 1.0)
   expect_null(result$sigma_omega_prior)
+})
+
+test_that("prepare_constant_data rejects duplicate vars", {
+  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
+  expect_error(prepare_constant_data(df, vars = c("y1", "y1")), "distinct")
+})
+
+test_that("prepare_constant_data rejects invalid prior scalars", {
+  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
+  expect_error(
+    prepare_constant_data(df, vars = c("y1", "y2"), prior_mu_sd = 0),
+    "prior_mu_sd"
+  )
+  expect_error(
+    prepare_constant_data(df, vars = c("y1", "y2"), prior_sigma_eps_rate = -1),
+    "prior_sigma_eps_rate"
+  )
+  expect_error(
+    prepare_constant_data(df, vars = c("y1", "y2"), prior_z_rho_sd = Inf),
+    "prior_z_rho_sd"
+  )
 })
 
 test_that("data is sorted by time_var", {

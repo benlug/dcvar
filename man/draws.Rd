@@ -15,7 +15,7 @@ draws(object, ...)
 \arguments{
 \item{object}{A fitted model object.}
 
-\item{...}{Additional arguments passed to \verb{$draws()}.}
+\item{...}{Additional arguments (unused).}
 
 \item{variable}{Character vector of parameter names. \code{NULL} returns all.}
 
@@ -26,5 +26,5 @@ draws(object, ...)
 A posterior draws object.
 }
 \description{
-Thin wrapper around cmdstanr's draw extraction.
+Extract posterior draws from a fitted model.
 }

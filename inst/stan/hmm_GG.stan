@@ -60,24 +60,25 @@ transformed parameters {
   {
     real sqrt_shape = sqrt(shape_gam);
     real sigma_eps = 1e-9;
-    vector[D] sigma_lb;
+    vector[D] mean_lb;
+    vector[D] mean_gam;
     vector[D] sigma_gam;
     vector[D] rate_gam;
 
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
       for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-      sigma_lb[i] = fmax(m / sqrt_shape, 0);
-      sigma_gam[i] = sigma_lb[i] + exp(eta[i]) + sigma_eps;
+      mean_lb[i] = fmax(m, 0);
+      mean_gam[i] = mean_lb[i] + exp(eta[i]) + sigma_eps;
+      sigma_gam[i] = mean_gam[i] / sqrt_shape;
     }
-    rate_gam = sqrt_shape ./ sigma_gam;
+    rate_gam = shape_gam ./ mean_gam;
 
     for (t in 1:T_eff) {
       real marginal_ll = 0;
       vector[2] u_vec;
       for (i in 1:D) {
-        real mean_x = sqrt_shape * sigma_gam[i];
-        real x_shifted = mean_x + skew_direction[i] * eps[t, i];
+        real x_shifted = mean_gam[i] + skew_direction[i] * eps[t, i];
         marginal_ll += gamma_lpdf(x_shifted | shape_gam, rate_gam[i]);
         u_vec[i] = gamma_cdf(x_shifted | shape_gam, rate_gam[i]);
         if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
@@ -103,14 +104,14 @@ model {
   {
     real sqrt_shape = sqrt(shape_gam);
     real sigma_eps = 1e-9;
-    vector[D] sigma_lb;
-    vector[D] sigma_gam;
+    vector[D] mean_lb;
+    vector[D] mean_gam;
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
       for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-      sigma_lb[i] = fmax(m / sqrt_shape, 0);
-      sigma_gam[i] = sigma_lb[i] + exp(eta[i]) + sigma_eps;
-      target += lognormal_lpdf(sigma_gam[i] | 0, 0.5) + eta[i];
+      mean_lb[i] = fmax(m, 0);
+      mean_gam[i] = mean_lb[i] + exp(eta[i]) + sigma_eps;
+      target += lognormal_lpdf(mean_gam[i] | 0, 0.5) + eta[i];
     }
   }
 
@@ -123,6 +124,9 @@ generated quantities {
   vector[T_eff] rho_hmm;
   vector[T_eff] log_lik;
   matrix[T_eff, D] eps_rep;
+  vector[D] sigma_gam;
+  vector[D] b_gq;
+  vector[D] rate_gam;
 
   gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, T_eff, K);
 
@@ -131,6 +135,20 @@ generated quantities {
   rho_hmm = hmm_rho_average(gamma, rho_state, T_eff, K);
 
   log_lik = hmm_log_lik(log_alpha, T_eff, K);
+
+  {
+    real sqrt_shape = sqrt(shape_gam);
+    real sigma_eps = 1e-9;
+    vector[D] mean_gam;
+    for (i in 1:D) {
+      real m = -skew_direction[i] * eps[1, i];
+      for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+      b_gq[i] = fmax(m, 0);
+      mean_gam[i] = b_gq[i] + exp(eta[i]) + sigma_eps;
+      sigma_gam[i] = mean_gam[i] / sqrt_shape;
+      rate_gam[i] = shape_gam / mean_gam[i];
+    }
+  }
 
   // NOTE: eps_rep contains copula-level z-scores, not gamma residuals,
   // because Stan lacks a gamma inverse CDF. plot_ppc() rejects gamma

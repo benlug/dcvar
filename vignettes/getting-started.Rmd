@@ -8,40 +8,44 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-NOT_CRAN <- identical(Sys.getenv("NOT_CRAN"), "true")
-has_cmdstan <- requireNamespace("cmdstanr", quietly = TRUE) &&
-  !is.null(tryCatch(cmdstanr::cmdstan_path(), error = function(e) NULL))
+has_stan <- requireNamespace("rstan", quietly = TRUE)
+eval_fits <- identical(Sys.getenv("DCVAR_EVAL_VIGNETTES"), "true") && has_stan
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = NOT_CRAN && has_cmdstan
+  eval = eval_fits
 )
 ```
 
 ## Installation
 
-The dcvar package uses [CmdStan](https://mc-stan.org/users/interfaces/cmdstan) for
-Bayesian model fitting. You need to install **cmdstanr** and **CmdStan** first:
+The dcvar package uses [rstan](https://mc-stan.org/rstan/) as its default
+backend for Bayesian model fitting.
 
 ```{r install, eval = FALSE}
-# Install cmdstanr from R-universe (not on CRAN)
-install.packages("cmdstanr",
-  repos = c("https://stan-dev.r-universe.dev", getOption("repos"))
-)
-
-# Install the CmdStan backend
-cmdstanr::install_cmdstan()
+# Install rstan (available on CRAN)
+install.packages("rstan")
 
 # Install dcvar from GitHub
 install.packages("remotes")
 remotes::install_github("benlug/dcvar")
 ```
 
+Optionally, you can use [cmdstanr](https://mc-stan.org/cmdstanr/) as an
+alternative backend by installing it and CmdStan:
+
+```{r install-cmdstanr, eval = FALSE}
+install.packages("cmdstanr",
+  repos = c("https://stan-dev.r-universe.dev", getOption("repos"))
+)
+cmdstanr::install_cmdstan()
+```
+
 ## Simulating Data
 
 dcvar includes trajectory generators and a data simulator for testing:
 
-```{r simulate}
+```{r simulate, eval = TRUE}
 library(dcvar)
 
 # Generate a decreasing rho trajectory (therapy effect)
@@ -114,7 +118,7 @@ pred_90 <- predict(fit, ci_level = 0.90)
 
 ### Tidy Parameter Summary
 
-Use `as.data.frame()` to export the full cmdstanr summary as a tidy data frame:
+Use `as.data.frame()` to export the full parameter summary as a tidy data frame:
 
 ```{r as-data-frame}
 param_df <- as.data.frame(fit)

@@ -30,14 +30,16 @@
 #' @param refresh How often to print progress.
 #' @param init Custom init function or `NULL`.
 #' @param stan_file Custom Stan file path or `NULL`.
-#' @param ... Additional arguments passed to `cmdstanr::CmdStanModel$sample()`.
+#' @param backend Character: `"auto"` (default, uses rstan), `"rstan"`, or
+#'   `"cmdstanr"`. Can also be set globally via
+#'   `options(dcvar.backend = "cmdstanr")`.
+#' @param ... Additional backend-specific sampling arguments.
 #'
 #' @return A `dcvar_sem_fit` object.
 #'
 #' @details
-#' **Experimental extension.** This SEM variant currently has a narrower
-#' post-estimation interface than the core single-level models. `fitted()`,
-#' `predict()`, PIT diagnostics, and PSIS-LOO are not yet implemented.
+#' **Experimental extension.** This SEM variant supports `fitted()` and
+#' `predict()`, but PIT diagnostics and PSIS-LOO are not yet implemented.
 #'
 #' **Boundary constraints.** The SEM model constrains each VAR coefficient
 #' (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcvar models
@@ -53,7 +55,10 @@
 #' distributions. Non-normal margins (e.g., exponential, gamma) are not
 #' available; use [dcvar()], [dcvar_constant()], or [dcvar_hmm()] instead.
 #'
-#' Use [latent_states()] to extract estimated latent trajectories.
+#' **Post-estimation.** `fitted()` and `predict()` are available for both the
+#' latent-state scale (`type = "link"`) and the observed-indicator scale
+#' (`type = "response"`). Use [latent_states()] when you specifically need the
+#' full posterior summaries of the latent trajectories.
 #'
 #' @note This model currently supports normal marginal distributions only.
 #'   For non-normal margins, use [dcvar()], [dcvar_constant()], or [dcvar_hmm()].
@@ -77,8 +82,9 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
                       refresh = 500,
                       init = NULL,
                       stan_file = NULL,
+                      backend = getOption("dcvar.backend", "auto"),
                       ...) {
-  .check_cmdstanr()
+  backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
 
@@ -98,30 +104,32 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
   cli_inform("Fitting SEM copula VAR model (T = {T_obs}, J = {J})...")
 
   # Compile model
-  model <- .compile_model("sem", stan_file = stan_file)
+  model <- .compile_model("sem", stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
     init <- function() .init_sem_params(T_obs)
   }
 
-  if (is.null(cores)) cores <- parallel::detectCores(logical = FALSE)
+  cores <- .normalize_cores(cores, chains)
 
-  fit <- model$sample(
-    data = stan_data,
+  fit <- .sample_model(
+    compiled_model = model,
+    stan_data = stan_data,
+    backend = backend,
     chains = chains,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     adapt_delta = adapt_delta,
     max_treedepth = max_treedepth,
     seed = seed,
-    parallel_chains = cores,
+    cores = cores,
     init = init,
     refresh = refresh,
     ...
   )
 
-  .report_sampling_outcome(fit, "SEM copula VAR", chains = chains)
+  .report_sampling_outcome(fit, "SEM copula VAR", chains = chains, backend = backend)
 
   new_dcvar_sem_fit(
     fit = fit,
@@ -131,6 +139,7 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
     lambda = lambda,
     sigma_e = sigma_e,
     indicators = attr(stan_data, "indicators"),
+    backend = backend,
     priors = list(
       mu_sd = prior_mu_sd,
       phi_sd = prior_phi_sd,

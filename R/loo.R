@@ -9,16 +9,24 @@
 #'
 #' @return A `loo` object from the loo package.
 #'
-#' @details PSIS-LOO is available for the core single-level fits returned by
-#'   [dcvar()], [dcvar_hmm()], and [dcvar_constant()]. It is not supported for
-#'   [dcvar_multilevel()] or [dcvar_sem()] because their stored `log_lik`
-#'   quantities are not valid comparable pointwise predictive densities.
+#' @details PSIS-LOO is available for the three core single-level fit classes.
+#'   It is not supported for [dcvar_multilevel()] or [dcvar_sem()] because
+#'   their stored `log_lik` quantities are not comparable pointwise predictive
+#'   densities.
 #' @importFrom loo loo
 #' @name loo.dcvar
 NULL
 
 .loo_dcvar <- function(x, ...) {
-  log_lik <- x$fit$draws("log_lik", format = "draws_array")
+  log_lik <- .fit_draws(
+    x$fit, "log_lik",
+    format = "draws_array",
+    backend = x$backend,
+    required = .stan_output_group_pattern("log_lik"),
+    required_type = "pattern",
+    context = ".loo_dcvar()",
+    output_type = "generated quantity"
+  )
   r_eff <- loo::relative_eff(exp(log_lik))
   loo::loo(log_lik, r_eff = r_eff, ...)
 }

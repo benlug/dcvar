@@ -13,7 +13,8 @@ containing a \verb{$rho} element as returned by \code{\link[=compute_rho_metrics
 \value{
 A named list with:
 \itemize{
-\item \code{rho}: data frame of aggregated rho metrics (mean, SD, quantiles)
+\item \code{rho}: data frame of aggregated rho metrics (mean, SD, quantiles) for
+every field in the per-replication \code{rho} metric list
 \item \code{n_reps}: number of replications
 }
 }

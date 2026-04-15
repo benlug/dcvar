@@ -2,6 +2,22 @@
 # Data Simulation
 # ============================================================================
 
+#' Internal: validate a positive finite scalar for simulation inputs
+#' @noRd
+.simulate_validate_positive_scalar <- function(x, arg_name) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
+    cli_abort("{.arg {arg_name}} must be a single positive finite numeric value.")
+  }
+}
+
+#' Internal: validate a finite numeric vector for simulation inputs
+#' @noRd
+.simulate_validate_numeric_vector <- function(x, arg_name) {
+  if (!is.numeric(x) || length(x) == 0L || any(!is.finite(x))) {
+    cli_abort("{.arg {arg_name}} must be a non-empty finite numeric vector.")
+  }
+}
+
 #' Simulate data from a copula VAR(1) model
 #'
 #' Generates bivariate time series data with correlated innovations
@@ -72,6 +88,33 @@ simulate_dcvar <- function(T,
   .validate_margins(margins, skew_direction)
   if (margins == "normal" && length(sigma_eps) != D) {
     cli_abort("{.arg sigma_eps} must have length {.val {D}}, got {.val {length(sigma_eps)}}.")
+  }
+  if (margins == "normal") {
+    .simulate_validate_numeric_vector(sigma_eps, "sigma_eps")
+    if (any(sigma_eps <= 0)) {
+      cli_abort("{.arg sigma_eps} values must be positive.")
+    }
+  }
+  if (margins == "gamma") {
+    if (!is.null(skew_params) && !is.list(skew_params)) {
+      cli_abort("{.arg skew_params} must be a list when using gamma margins.")
+    }
+    gamma_shape <- if (is.null(skew_params) || is.null(skew_params$shape)) 1 else skew_params$shape
+    .simulate_validate_positive_scalar(gamma_shape, "skew_params$shape")
+  }
+  if (margins == "skew_normal") {
+    if (!is.null(skew_params) && !is.list(skew_params)) {
+      cli_abort("{.arg skew_params} must be a list when using skew_normal margins.")
+    }
+    alpha <- if (is.null(skew_params) || is.null(skew_params$alpha)) c(0, 0) else skew_params$alpha
+    .simulate_validate_numeric_vector(alpha, "skew_params$alpha")
+    if (length(alpha) != D) {
+      cli_abort("{.arg skew_params$alpha} must have length {.val {D}}, got {.val {length(alpha)}}.")
+    }
+    skew_params <- list(alpha = alpha)
+  }
+  if (margins == "gamma") {
+    skew_params <- list(shape = gamma_shape)
   }
 
   Y <- matrix(0, T, D)

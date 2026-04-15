@@ -14,6 +14,10 @@ jobs:
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
+    # The main matrix exercises the package API through the default rstan
+    # backend. Only the ubuntu-latest / R-release job also installs CmdStan
+    # so that cmdstanr-specific regression tests can run when the backend is
+    # actually available.
     strategy:
       fail-fast: false
       matrix:
@@ -27,7 +31,6 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      NOT_CRAN: true
 
     steps:
       - uses: actions/checkout@v4
@@ -39,12 +42,21 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
-          extra-repositories: https://stan-dev.r-universe.dev
 
+      # Keep the shared matrix on hard dependencies plus explicit test/vignette
+      # packages; optional backend tooling is installed only in the release lane.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
-          needs: check
+          dependencies: 'NA'
+          extra-packages: |
+            any::BH
+            any::RcppEigen
+            any::testthat
+            any::knitr
+            any::rmarkdown
+            any::withr
+            any::sn
+            any::rcmdcheck
 
       - name: Install qpdf (Linux)
         if: runner.os == 'Linux'
@@ -60,14 +72,45 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install qpdf --no-progress
 
+      # Install the optional backend only where we actually exercise it.
+      - name: Install cmdstanr
+        if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
+        run: |
+          install.packages(
+            "cmdstanr",
+            repos = c("https://stan-dev.r-universe.dev", getOption("repos"))
+          )
+        shell: Rscript {0}
+
       - name: Install CmdStan
+        if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
         run: |
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
           cmdstanr::install_cmdstan(cores = 2, quiet = TRUE)
+          cat(
+            paste0("CMDSTAN=", cmdstanr::cmdstan_path(), "\n"),
+            file = Sys.getenv("GITHUB_ENV"),
+            append = TRUE
+          )
         shell: Rscript {0}
 
-      - name: Focused CmdStan regression tests
+      - name: Verify cmdstanr backend availability
         if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
+        run: |
+          if (!requireNamespace("cmdstanr", quietly = TRUE)) {
+            stop("cmdstanr was expected to be installed for the backend lane.")
+          }
+          path <- cmdstanr::cmdstan_path()
+          message("Using CmdStan at: ", path)
+          message("CmdStan version: ", paste(cmdstanr::cmdstan_version(), collapse = "."))
+        shell: Rscript {0}
+
+      # Keep the package check itself CRAN-like; the heavier fit regressions run
+      # explicitly in these focused steps under NOT_CRAN.
+      - name: Focused rstan regression tests
+        if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
+        env:
+          NOT_CRAN: true
         run: |
           testthat::test_local(
             ".",
@@ -76,7 +119,35 @@ jobs:
           )
         shell: Rscript {0}
 
+      - name: Focused CmdStan regression tests
+        if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
+        env:
+          NOT_CRAN: true
+        run: |
+          if (!requireNamespace("cmdstanr", quietly = TRUE)) {
+            message("Skipping CmdStan regression tests: cmdstanr is not installed.")
+            quit(status = 0)
+          }
+          if (is.null(tryCatch(cmdstanr::cmdstan_path(), error = function(e) NULL))) {
+            message("Skipping CmdStan regression tests: CmdStan is not installed.")
+            quit(status = 0)
+          }
+          testthat::test_local(
+            ".",
+            filter = "cmdstanr",
+            reporter = testthat::SummaryReporter$new()
+          )
+        shell: Rscript {0}
+
       - uses: r-lib/actions/check-r-package@v2
+        env:
+          # The main matrix keeps optional backends out of the shared check
+          # path. The dedicated Ubuntu release lane installs cmdstanr
+          # explicitly, so it can still enforce Suggests handling there.
+          _R_CHECK_FORCE_SUGGESTS_: ${{ matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release' }}
         with:
+          # Keep check artifacts for one diagnostic rerun so platform-specific
+          # warnings/errors can be inspected from the uploaded 00check.log.
+          upload-results: true
           upload-snapshots: true
           build_args: 'c("--no-manual")'

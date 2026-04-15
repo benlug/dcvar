@@ -34,7 +34,8 @@ transformed parameters {
 }
 
 model {
-  vector[D] sigma_lb;
+  vector[D] mean_lb;
+  vector[D] mean_gam;
   vector[D] sigma_gam;
   vector[D] rate_gam;
   real sqrt_shape = sqrt(shape_gam);
@@ -49,22 +50,22 @@ model {
   for (i in 1:D) {
     real m = -skew_direction[i] * eps[1, i];
     for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-    sigma_lb[i] = fmax(m / sqrt_shape, 0);
+    mean_lb[i] = fmax(m, 0);
   }
 
-  for (i in 1:D) sigma_gam[i] = sigma_lb[i] + exp(eta[i]) + sigma_eps;
-  rate_gam = sqrt_shape ./ sigma_gam;
+  for (i in 1:D) mean_gam[i] = mean_lb[i] + exp(eta[i]) + sigma_eps;
+  sigma_gam = mean_gam / sqrt_shape;
+  rate_gam = shape_gam ./ mean_gam;
 
   for (i in 1:D) {
-    target += lognormal_lpdf(sigma_gam[i] | 0, 0.5) + eta[i];
+    target += lognormal_lpdf(mean_gam[i] | 0, 0.5) + eta[i];
   }
 
   for (t in 1:T_eff) {
     row_vector[D] res = eps[t];
     vector[2] u_vec;
     for (i in 1:D) {
-      real mean_x = sqrt_shape * sigma_gam[i];
-      real x_shifted = mean_x + skew_direction[i] * res[i];
+      real x_shifted = mean_gam[i] + skew_direction[i] * res[i];
       target += gamma_lpdf(x_shifted | shape_gam, rate_gam[i]);
       u_vec[i] = gamma_cdf(x_shifted | shape_gam, rate_gam[i]);
       if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
@@ -83,20 +84,21 @@ generated quantities {
   {
     real sqrt_shape = sqrt(shape_gam);
     real sigma_eps = 1e-9;
+    vector[D] mean_gam;
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
       for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-      b_gq[i] = m / sqrt_shape;
-      sigma_gam[i] = fmax(b_gq[i], 0) + exp(eta[i]) + sigma_eps;
-      rate_gam[i] = sqrt_shape / sigma_gam[i];
+      b_gq[i] = fmax(m, 0);
+      mean_gam[i] = b_gq[i] + exp(eta[i]) + sigma_eps;
+      sigma_gam[i] = mean_gam[i] / sqrt_shape;
+      rate_gam[i] = shape_gam / mean_gam[i];
     }
 
     for (t in 1:T_eff) {
       log_lik[t] = 0;
       vector[2] u_vec;
       for (i in 1:D) {
-        real mean_x = sqrt_shape * sigma_gam[i];
-        real x_shifted = mean_x + skew_direction[i] * eps[t, i];
+        real x_shifted = mean_gam[i] + skew_direction[i] * eps[t, i];
         log_lik[t] += gamma_lpdf(x_shifted | shape_gam, rate_gam[i]);
         u_vec[i] = gamma_cdf(x_shifted | shape_gam, rate_gam[i]);
         if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];

@@ -22,12 +22,12 @@ A data frame with columns \code{variable}, \code{ks_statistic}, \code{p_value}, 
 }
 \description{
 Runs a Kolmogorov-Smirnov test per variable to assess whether PIT values
-are uniformly distributed (as expected under correct model specification).
+are approximately uniform. This is a heuristic check on the plug-in PIT
+values returned by \code{\link[=pit_values]{pit_values()}}, not an exact posterior predictive test.
 }
 \details{
-Supported for the core single-level fits returned by
-\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}}. PIT tests are not currently
-implemented for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
-\code{\link[=dcvar_sem]{dcvar_sem()}}.
+This applies a Kolmogorov-Smirnov test to the approximate PIT values
+returned by \code{\link[=pit_values]{pit_values()}}. The result is a heuristic check and does not
+account for serial dependence or full posterior uncertainty. PIT tests are
+currently implemented for the three core single-level fit classes only.
 }

@@ -81,14 +81,26 @@ rho_trajectory.default <- function(object, ...) {
 #' @rdname rho_trajectory
 #' @export
 rho_trajectory.dcvar_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
-  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = .stan_output_group_pattern("rho"),
+    required_type = "pattern",
+    context = "rho_trajectory.dcvar_fit()",
+    output_type = "transformed parameter group"
+  ))
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
 
 #' @rdname rho_trajectory
 #' @export
 rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
-  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho_hmm"))
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho_hmm", backend = object$backend,
+    required = .stan_output_group_pattern("rho_hmm"),
+    required_type = "pattern",
+    context = "rho_trajectory.dcvar_hmm_fit()",
+    output_type = "generated quantity"
+  ))
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
 
@@ -99,7 +111,12 @@ rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
     cli_abort("{.arg probs} must be numeric values in [0, 1].")
   }
 
-  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = "rho",
+    context = ".rho_trajectory_constant_impl()",
+    output_type = "transformed parameter"
+  ))
 
   T_obs <- object$stan_data$T
   T_eff <- T_obs - 1
@@ -153,15 +170,40 @@ var_params.default <- function(object, ...) {
 #' @rdname var_params
 #' @export
 var_params.dcvar_model_fit <- function(object, ...) {
-  summ <- object$fit$summary(
-    variables = NULL,
+  margins <- object$margins %||% "normal"
+  required_patterns <- c("^mu\\[", "^Phi\\[")
+  switch(margins,
+    normal = {
+      required_patterns <- c(required_patterns, "^sigma_eps\\[")
+    },
+    exponential = {
+      required_patterns <- c(required_patterns, "^sigma_exp\\[")
+    },
+    skew_normal = {
+      required_patterns <- c(required_patterns, "^omega\\[", "^delta\\[")
+    },
+    gamma = {
+      required_patterns <- c(required_patterns, "^sigma_gam\\[", "^shape_gam$")
+    },
+    {
+      required_patterns <- c(required_patterns, "^sigma_eps\\[")
+    }
+  )
+  if (identical(object$model, "dcvar")) {
+    required_patterns <- c(required_patterns, "^sigma_omega$")
+  }
+
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "var_params.dcvar_model_fit()",
+    output_type = "parameter group",
     mean, sd,
     ~posterior::quantile2(.x, probs = c(0.025, 0.975))
   )
-
   extract_param <- function(pattern) {
     rows <- grep(pattern, summ$variable)
-    if (length(rows) == 0) return(NULL)
     data.frame(
       variable = summ$variable[rows],
       mean = summ$mean[rows],
@@ -177,7 +219,6 @@ var_params.dcvar_model_fit <- function(object, ...) {
   )
 
   # Margin-specific scale parameters
-  margins <- object$margins %||% "normal"
   switch(margins,
     normal = {
       result$sigma_eps <- extract_param("^sigma_eps\\[")
@@ -199,7 +240,7 @@ var_params.dcvar_model_fit <- function(object, ...) {
   )
 
   # sigma_omega is DC-VAR specific
-  so <- extract_param("^sigma_omega$")
+  so <- if (identical(object$model, "dcvar")) extract_param("^sigma_omega$") else NULL
   if (!is.null(so)) result$sigma_omega <- so
 
   result
@@ -239,7 +280,13 @@ hmm_states.dcvar_hmm_fit <- function(object, ...) {
 
   .safe_draws <- function(var_name) {
     tryCatch(
-      posterior::as_draws_matrix(object$fit$draws(var_name)),
+      posterior::as_draws_matrix(.fit_draws(
+        object$fit, var_name, backend = object$backend,
+        required = .stan_output_group_pattern(var_name),
+        required_type = "pattern",
+        context = "hmm_states.dcvar_hmm_fit()",
+        output_type = "Stan output group"
+      )),
       error = function(e) {
         cli_abort("Failed to extract {.val {var_name}} draws: {e$message}")
       }
@@ -338,8 +385,18 @@ random_effects.dcvar_multilevel_fit <- function(object, ...) {
   if (is.null(unit_ids)) {
     unit_ids <- seq_len(N)
   }
-  summ <- object$fit$summary(
-    variables = NULL,
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = paste0(
+      "phi_unit[",
+      rep(seq_len(N), each = 4),
+      ",",
+      rep(seq_len(4), times = N),
+      "]"
+    ),
+    required_type = "exact",
+    context = "random_effects.dcvar_multilevel_fit()",
+    output_type = "parameter",
     mean, sd,
     ~posterior::quantile2(.x, probs = c(0.025, 0.975))
   )
@@ -352,16 +409,21 @@ random_effects.dcvar_multilevel_fit <- function(object, ...) {
     for (k in 1:4) {
       var_name <- paste0("phi_unit[", i, ",", k, "]")
       row <- which(summ$variable == var_name)
-      if (length(row) == 1) {
-        results[[idx]] <- data.frame(
-          unit = unit_ids[i],
-          parameter = param_names[k],
-          mean = summ$mean[row],
-          sd = summ$sd[row],
-          q2.5 = summ$q2.5[row],
-          q97.5 = summ$q97.5[row]
-        )
+      if (length(row) != 1L) {
+        cli_abort(c(
+          "{.fun random_effects} requires unit-specific VAR coefficients that are not present in the fitted model.",
+          "i" = "Missing parameter: {.val {var_name}}.",
+          "i" = "Custom Stan files must preserve the expected parameter names."
+        ))
       }
+      results[[idx]] <- data.frame(
+        unit = unit_ids[i],
+        parameter = param_names[k],
+        mean = summ$mean[row],
+        sd = summ$sd[row],
+        q2.5 = summ$q2.5[row],
+        q97.5 = summ$q97.5[row]
+      )
       idx <- idx + 1
     }
   }
@@ -378,15 +440,17 @@ random_effects.dcvar_multilevel_fit <- function(object, ...) {
 #' `Phi`, `sigma_eps`, and `rho` in single-level models.
 #' @export
 var_params.dcvar_multilevel_fit <- function(object, ...) {
-  summ <- object$fit$summary(
-    variables = NULL,
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = c("^phi_bar\\[", "^tau_phi\\[", "^sigma\\[", "^rho$"),
+    required_type = "pattern",
+    context = "var_params.dcvar_multilevel_fit()",
+    output_type = "parameter group",
     mean, sd,
     ~posterior::quantile2(.x, probs = c(0.025, 0.975))
   )
-
   extract_param <- function(pattern) {
     rows <- grep(pattern, summ$variable)
-    if (length(rows) == 0) return(NULL)
     data.frame(
       variable = summ$variable[rows],
       mean = summ$mean[rows],
@@ -441,7 +505,13 @@ latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
     cli_abort("{.arg probs} must be numeric values in [0, 1].")
   }
 
-  state_draws <- posterior::as_draws_matrix(object$fit$draws("state"))
+  state_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "state", backend = object$backend,
+    required = .stan_output_group_pattern("state"),
+    required_type = "pattern",
+    context = "latent_states.dcvar_sem_fit()",
+    output_type = "transformed parameter group"
+  ))
   T_obs <- object$stan_data$T
   vars <- object$vars
   time_values <- .observed_time_values(object$stan_data)
@@ -476,15 +546,17 @@ latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
 #' @rdname var_params
 #' @export
 var_params.dcvar_sem_fit <- function(object, ...) {
-  summ <- object$fit$summary(
-    variables = NULL,
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = c("^mu\\[", "^Phi\\[", "^sigma\\[", "^rho$"),
+    required_type = "pattern",
+    context = "var_params.dcvar_sem_fit()",
+    output_type = "parameter group",
     mean, sd,
     ~posterior::quantile2(.x, probs = c(0.025, 0.975))
   )
-
   extract_param <- function(pattern) {
     rows <- grep(pattern, summ$variable)
-    if (length(rows) == 0) return(NULL)
     data.frame(
       variable = summ$variable[rows],
       mean = summ$mean[rows],
@@ -507,7 +579,12 @@ var_params.dcvar_sem_fit <- function(object, ...) {
 #' @export
 rho_trajectory.dcvar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
   # SEM has constant rho, expand to all T-1 time points
-  rho_draws <- posterior::as_draws_matrix(object$fit$draws("rho"))
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = "rho",
+    context = "rho_trajectory.dcvar_sem_fit()",
+    output_type = "transformed parameter"
+  ))
   T_obs <- object$stan_data$T
   T_eff <- T_obs - 1
 
@@ -532,13 +609,13 @@ rho_trajectory.dcvar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
 
 #' Extract posterior draws
 #'
-#' Thin wrapper around cmdstanr's draw extraction.
+#' Extract posterior draws from a fitted model.
 #'
 #' @param object A fitted model object.
 #' @param variable Character vector of parameter names. `NULL` returns all.
 #' @param format Draw format: `"draws_array"`, `"draws_matrix"`, or
 #'   `"draws_df"` (default: `"draws_array"`).
-#' @param ... Additional arguments passed to `$draws()`.
+#' @param ... Additional arguments (unused).
 #'
 #' @return A posterior draws object.
 #' @export
@@ -555,5 +632,5 @@ draws.default <- function(object, ...) {
 #' @rdname draws
 #' @export
 draws.dcvar_model_fit <- function(object, variable = NULL, format = "draws_array", ...) {
-  object$fit$draws(variables = variable, format = format, ...)
+  .fit_draws(object$fit, variables = variable, format = format, backend = object$backend)
 }

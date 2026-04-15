@@ -5,7 +5,8 @@
 #' Construct a dcvar_sem_fit object
 #' @noRd
 new_dcvar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
-                               indicators, priors, meta) {
+                               indicators, backend = "rstan",
+                               priors, meta) {
   structure(
     list(
       fit = fit,
@@ -18,6 +19,7 @@ new_dcvar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
       lambda = lambda,
       sigma_e = sigma_e,
       indicators = indicators,
+      backend = backend,
       priors = priors,
       meta = meta
     ),
@@ -42,11 +44,7 @@ print.dcvar_sem_fit <- function(x, ...) {
   cat(sprintf("T = %d, J = %d indicators per latent\n", x$stan_data$T, x$J))
   .print_fit_footer(x)
 
-  summ <- x$fit$summary()
-  rho_row <- grep("^rho$", summ$variable)
-  if (length(rho_row) > 0) {
-    cat(sprintf("rho: %.3f\n", summ$mean[rho_row]))
-  }
+  cat(sprintf("rho: %.3f\n", coef(x)$rho[[1]]))
   invisible(x)
 }
 
@@ -116,12 +114,12 @@ print.dcvar_sem_summary <- function(x, ...) {
 #' @return A named list of posterior means.
 #' @export
 coef.dcvar_sem_fit <- function(object, ...) {
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
   list(
-    mu = .extract_coef(summ, "^mu\\["),
-    Phi = .extract_coef(summ, "^Phi\\["),
-    sigma = .extract_coef(summ, "^sigma\\["),
-    rho = .extract_coef(summ, "^rho$")
+    mu = .extract_required_coef(summ, "^mu\\[", "mu", "coef.dcvar_sem_fit()"),
+    Phi = .extract_required_coef(summ, "^Phi\\[", "Phi", "coef.dcvar_sem_fit()"),
+    sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_sem_fit()"),
+    rho = .extract_required_coef(summ, "^rho$", "rho", "coef.dcvar_sem_fit()")
   )
 }
 

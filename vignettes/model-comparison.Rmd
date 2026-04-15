@@ -8,13 +8,12 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-NOT_CRAN <- identical(Sys.getenv("NOT_CRAN"), "true")
-has_cmdstan <- requireNamespace("cmdstanr", quietly = TRUE) &&
-  !is.null(tryCatch(cmdstanr::cmdstan_path(), error = function(e) NULL))
+has_stan <- requireNamespace("rstan", quietly = TRUE)
+eval_fits <- identical(Sys.getenv("DCVAR_EVAL_VIGNETTES"), "true") && has_stan
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = NOT_CRAN && has_cmdstan
+  eval = eval_fits
 )
 ```
 

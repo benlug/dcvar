@@ -29,6 +29,19 @@ test_that("simulate_dcvar validates sigma_eps length", {
   )
 })
 
+test_that("simulate_dcvar validates gamma shape", {
+  expect_error(
+    simulate_dcvar(
+      T = 50,
+      rho_trajectory = rho_constant(50, 0.5),
+      margins = "gamma",
+      skew_direction = c(1, 1),
+      skew_params = list(shape = 0)
+    ),
+    "shape"
+  )
+})
+
 test_that("simulate_dcvar is reproducible with seed", {
   traj <- rho_constant(50, 0.5)
   s1 <- simulate_dcvar(T = 50, rho_trajectory = traj, seed = 42)
@@ -44,6 +57,25 @@ test_that("simulate_dcvar stores true parameters", {
   expect_equal(sim$true_params$mu, c(0, 0))
   expect_equal(dim(sim$true_params$Phi), c(2, 2))
   expect_equal(sim$true_params$sigma_eps, c(1, 1))
+})
+
+test_that("simulate_dcvar stores default non-normal margin parameters in true_params", {
+  traj <- rho_constant(30, 0.2)
+
+  gamma_sim <- simulate_dcvar(
+    T = 30,
+    rho_trajectory = traj,
+    margins = "gamma",
+    skew_direction = c(1, 1)
+  )
+  expect_equal(gamma_sim$true_params$skew_params$shape, 1)
+
+  skew_sim <- simulate_dcvar(
+    T = 30,
+    rho_trajectory = traj,
+    margins = "skew_normal"
+  )
+  expect_equal(skew_sim$true_params$skew_params$alpha, c(0, 0))
 })
 
 test_that("simulate_dcvar Y_df time column is 1:T", {

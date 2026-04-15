@@ -25,6 +25,7 @@ dcvar_sem(
   refresh = 500,
   init = NULL,
   stan_file = NULL,
+  backend = getOption("dcvar.backend", "auto"),
   ...
 )
 }
@@ -74,7 +75,11 @@ columns per latent variable. For example:
 
 \item{stan_file}{Custom Stan file path or \code{NULL}.}
 
-\item{...}{Additional arguments passed to \code{cmdstanr::CmdStanModel$sample()}.}
+\item{backend}{Character: \code{"auto"} (default, uses rstan), \code{"rstan"}, or
+\code{"cmdstanr"}. Can also be set globally via
+\code{options(dcvar.backend = "cmdstanr")}.}
+
+\item{...}{Additional backend-specific sampling arguments.}
 }
 \value{
 A \code{dcvar_sem_fit} object.
@@ -86,9 +91,8 @@ are treated as parameters, making this model computationally intensive
 for large T.
 }
 \details{
-\strong{Experimental extension.} This SEM variant currently has a narrower
-post-estimation interface than the core single-level models. \code{fitted()},
-\code{predict()}, PIT diagnostics, and PSIS-LOO are not yet implemented.
+\strong{Experimental extension.} This SEM variant supports \code{fitted()} and
+\code{predict()}, but PIT diagnostics and PSIS-LOO are not yet implemented.
 
 \strong{Boundary constraints.} The SEM model constrains each VAR coefficient
 (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcvar models
@@ -104,7 +108,10 @@ are truncated.
 distributions. Non-normal margins (e.g., exponential, gamma) are not
 available; use \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_constant]{dcvar_constant()}}, or \code{\link[=dcvar_hmm]{dcvar_hmm()}} instead.
 
-Use \code{\link[=latent_states]{latent_states()}} to extract estimated latent trajectories.
+\strong{Post-estimation.} \code{fitted()} and \code{predict()} are available for both the
+latent-state scale (\code{type = "link"}) and the observed-indicator scale
+(\code{type = "response"}). Use \code{\link[=latent_states]{latent_states()}} when you specifically need the
+full posterior summaries of the latent trajectories.
 }
 \note{
 This model currently supports normal marginal distributions only.

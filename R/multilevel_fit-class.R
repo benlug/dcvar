@@ -7,7 +7,8 @@
 new_dcvar_multilevel_fit <- function(fit, stan_data, N, vars, centered,
                                      person_means, priors, meta,
                                      standardized = FALSE,
-                                     margins = "normal") {
+                                     margins = "normal",
+                                     backend = "rstan") {
   structure(
     list(
       fit = fit,
@@ -19,6 +20,7 @@ new_dcvar_multilevel_fit <- function(fit, stan_data, N, vars, centered,
       margins = margins,
       centered = centered,
       person_means = person_means,
+      backend = backend,
       priors = priors,
       meta = meta
     ),
@@ -43,11 +45,7 @@ print.dcvar_multilevel_fit <- function(x, ...) {
   cat(sprintf("N = %d units, T = %d per unit\n", x$N, x$stan_data$T))
   .print_fit_footer(x)
 
-  summ <- x$fit$summary()
-  rho_row <- grep("^rho$", summ$variable)
-  if (length(rho_row) > 0) {
-    cat(sprintf("rho (global): %.3f\n", summ$mean[rho_row]))
-  }
+  cat(sprintf("rho (global): %.3f\n", coef(x)$rho[[1]]))
   invisible(x)
 }
 
@@ -126,12 +124,12 @@ print.dcvar_multilevel_summary <- function(x, ...) {
 #' @return A named list of posterior means.
 #' @export
 coef.dcvar_multilevel_fit <- function(object, ...) {
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
   list(
-    phi_bar = .extract_coef(summ, "^phi_bar\\["),
-    tau_phi = .extract_coef(summ, "^tau_phi\\["),
-    sigma = .extract_coef(summ, "^sigma\\["),
-    rho = .extract_coef(summ, "^rho$")
+    phi_bar = .extract_required_coef(summ, "^phi_bar\\[", "phi_bar", "coef.dcvar_multilevel_fit()"),
+    tau_phi = .extract_required_coef(summ, "^tau_phi\\[", "tau_phi", "coef.dcvar_multilevel_fit()"),
+    sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_multilevel_fit()"),
+    rho = .extract_required_coef(summ, "^rho$", "rho", "coef.dcvar_multilevel_fit()")
   )
 }
 

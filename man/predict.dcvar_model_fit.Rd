@@ -8,9 +8,9 @@
 \usage{
 \method{predict}{dcvar_model_fit}(object, type = c("link", "response"), ci_level = 0.95, ...)
 
-\method{predict}{dcvar_multilevel_fit}(object, ...)
+\method{predict}{dcvar_multilevel_fit}(object, type = c("link", "response"), ci_level = 0.95, ...)
 
-\method{predict}{dcvar_sem_fit}(object, ...)
+\method{predict}{dcvar_sem_fit}(object, type = c("link", "response"), ci_level = 0.95, ...)
 }
 \arguments{
 \item{object}{A fitted model object.}
@@ -24,8 +24,9 @@ to the original data scale.}
 \item{...}{Additional arguments (unused).}
 }
 \value{
-A data frame with columns \code{time}, \code{variable}, \code{mean}, \code{lower},
-\code{upper} (marginal prediction interval at the specified level).
+A data frame of marginal prediction intervals at the specified
+level. Single-level and SEM fits return columns \code{time}, \code{variable},
+\code{mean}, \code{lower}, \code{upper}. Multilevel fits additionally include \code{unit}.
 }
 \description{
 Returns point predictions and \strong{marginal} prediction intervals by combining
@@ -34,9 +35,8 @@ computed per-variable using a normal approximation and do not account for
 the copula dependence structure between variables.
 }
 \details{
-Prediction intervals are currently available only for normal-margin
-fits from \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}}. The returned intervals are
-marginal, normal-approximation intervals and do not attempt to represent
-joint copula-calibrated predictive regions.
+\code{predict()} is implemented for the three core single-level models plus the
+multilevel and SEM variants. For multilevel fits, the methods return
+unit-specific trajectories. For SEM fits, \code{type = "link"} returns latent
+states and \code{type = "response"} returns observed indicator predictions.
 }

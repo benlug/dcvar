@@ -24,6 +24,7 @@ dcvar_multilevel(
   refresh = 500,
   init = NULL,
   stan_file = NULL,
+  backend = getOption("dcvar.backend", "auto"),
   ...
 )
 }
@@ -70,7 +71,11 @@ time, and two outcome variables.}
 
 \item{stan_file}{Custom Stan file path or \code{NULL}.}
 
-\item{...}{Additional arguments passed to \code{cmdstanr::CmdStanModel$sample()}.}
+\item{backend}{Character: \code{"auto"} (default, uses rstan), \code{"rstan"}, or
+\code{"cmdstanr"}. Can also be set globally via
+\code{options(dcvar.backend = "cmdstanr")}.}
+
+\item{...}{Additional backend-specific sampling arguments.}
 }
 \value{
 A \code{dcvar_multilevel_fit} object.
@@ -81,10 +86,8 @@ Fits a hierarchical copula VAR(1) model with unit-specific VAR coefficients
 parameterization for the random Phi coefficients.
 }
 \details{
-\strong{Experimental extension.} This multilevel variant currently has a
-narrower post-estimation interface than the core single-level models.
-\code{fitted()}, \code{predict()}, PIT diagnostics, and PSIS-LOO are not yet
-implemented.
+\strong{Experimental extension.} This multilevel variant supports \code{fitted()}
+and \code{predict()}, but PIT diagnostics and PSIS-LOO are not yet implemented.
 
 \code{adapt_delta} defaults to 0.90 and \code{max_treedepth} to 14 because
 the hierarchical structure with random effects benefits from deeper trees

@@ -4,7 +4,7 @@
 
 #' Convert a dcvar fit summary to a data frame
 #'
-#' Returns the full cmdstanr parameter summary as a tidy data frame with
+#' Returns the full parameter summary as a tidy data frame with
 #' correct 2.5%/97.5% quantiles.
 #'
 #' @param x A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
@@ -17,8 +17,8 @@
 #'   `q97.5`, `rhat`, `ess_bulk`, `ess_tail`.
 #' @export
 as.data.frame.dcvar_model_fit <- function(x, row.names = NULL, optional = FALSE, ...) {
-  summ <- x$fit$summary(
-    variables = NULL,
+  summ <- .fit_summary(
+    x$fit, variables = NULL, backend = x$backend,
     mean = mean,
     sd = sd,
     ~posterior::quantile2(.x, probs = c(0.025, 0.975)),

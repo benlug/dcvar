@@ -15,6 +15,38 @@
   xtfrm(x)
 }
 
+#' Internal: validate a positive finite scalar
+#' @noRd
+.prep_validate_positive_scalar <- function(x, arg_name) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
+    cli_abort("{.arg {arg_name}} must be a single positive finite numeric value.")
+  }
+}
+
+#' Internal: validate a scalar logical flag
+#' @noRd
+.prep_validate_scalar_logical <- function(x, arg_name) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+    cli_abort("{.arg {arg_name}} must be a single logical value.")
+  }
+}
+
+#' Internal: validate a finite numeric vector
+#' @noRd
+.prep_validate_numeric_vector <- function(x, arg_name) {
+  if (!is.numeric(x) || length(x) == 0L || any(!is.finite(x))) {
+    cli_abort("{.arg {arg_name}} must be a non-empty finite numeric vector.")
+  }
+}
+
+#' Internal: validate that a variable vector has no duplicates
+#' @noRd
+.prep_validate_unique_vars <- function(vars, context = "vars") {
+  if (anyDuplicated(vars)) {
+    cli_abort("{.arg {context}} must contain distinct variable names.")
+  }
+}
+
 #' Internal: validate ordered time values for VAR-style models
 #' @noRd
 .validate_time_values <- function(time_values, allow_gaps = FALSE, context = "data") {
@@ -92,8 +124,8 @@
 #' @param data A data frame.
 #' @param vars Character vector of exactly two variable names.
 #' @param time_var Name of the time column.
-#' @param standardize Whether to z-score the variables.
-#' @param allow_gaps Logical; if `FALSE` (default), interior missing values
+#' @param standardize Logical scalar; whether to z-score the variables.
+#' @param allow_gaps Logical scalar; if `FALSE` (default), interior missing values
 #'   cause an error. If `TRUE`, they produce a warning and are removed.
 #'
 #' @return A list with elements `Y`, `T`, `D`, and standardization metadata.
@@ -110,6 +142,9 @@
   if (length(vars) != 2) {
     cli_abort("Exactly 2 variables required (bivariate model). Got {.val {length(vars)}}.")
   }
+  .prep_validate_unique_vars(vars)
+  .prep_validate_scalar_logical(standardize, "standardize")
+  .prep_validate_scalar_logical(allow_gaps, "allow_gaps")
   missing_vars <- setdiff(c(vars, time_var), names(data))
   if (length(missing_vars) > 0) {
     cli_abort("Column{?s} not found in data: {.val {missing_vars}}")
@@ -239,6 +274,11 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
                                prior_rho_init_sd = 1,
                                allow_gaps = FALSE) {
   .validate_margins(margins, skew_direction)
+  .prep_validate_positive_scalar(prior_mu_sd, "prior_mu_sd")
+  .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
+  .prep_validate_positive_scalar(prior_sigma_eps_rate, "prior_sigma_eps_rate")
+  .prep_validate_positive_scalar(prior_sigma_omega_rate, "prior_sigma_omega_rate")
+  .prep_validate_positive_scalar(prior_rho_init_sd, "prior_rho_init_sd")
   prep <- .prepare_var_data(data, vars, time_var, standardize, allow_gaps)
 
   stan_data <- list(
@@ -306,6 +346,12 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
                              prior_z_rho_sd = 1.0,
                              allow_gaps = FALSE) {
   .validate_margins(margins, skew_direction)
+  .prep_validate_positive_scalar(prior_mu_sd, "prior_mu_sd")
+  .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
+  .prep_validate_positive_scalar(prior_sigma_eps_rate, "prior_sigma_eps_rate")
+  .prep_validate_positive_scalar(prior_kappa, "prior_kappa")
+  .prep_validate_positive_scalar(prior_alpha_off, "prior_alpha_off")
+  .prep_validate_positive_scalar(prior_z_rho_sd, "prior_z_rho_sd")
   if (!is.numeric(K) || length(K) != 1 || K < 2 || K != as.integer(K)) {
     cli_abort("{.arg K} must be an integer >= 2, got {.val {K}}.")
   }
@@ -357,7 +403,7 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
 #' @param vars Character vector of two variable names.
 #' @param id_var Name of the unit/person ID column.
 #' @param time_var Name of the time column.
-#' @param center Logical; person-mean center (default: `TRUE`).
+#' @param center Logical scalar; person-mean center (default: `TRUE`).
 #' @param prior_phi_bar_sd Prior SD for phi_bar.
 #' @param prior_tau_phi_scale Prior scale for tau_phi.
 #' @param prior_sigma_sd Prior SD for sigma.
@@ -372,9 +418,15 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
                                     prior_sigma_sd = 1,
                                     prior_rho_sd = 0.5) {
   if (!is.data.frame(data)) cli_abort("{.arg data} must be a data frame.")
+  .prep_validate_scalar_logical(center, "center")
   if (length(vars) != 2) {
     cli_abort("Exactly 2 variables required for multilevel models. Got {.val {length(vars)}}.")
   }
+  .prep_validate_unique_vars(vars)
+  .prep_validate_positive_scalar(prior_phi_bar_sd, "prior_phi_bar_sd")
+  .prep_validate_positive_scalar(prior_tau_phi_scale, "prior_tau_phi_scale")
+  .prep_validate_positive_scalar(prior_sigma_sd, "prior_sigma_sd")
+  .prep_validate_positive_scalar(prior_rho_sd, "prior_rho_sd")
   missing_cols <- setdiff(c(vars, id_var, time_var), names(data))
   if (length(missing_cols) > 0) {
     cli_abort("Column{?s} not found: {.val {missing_cols}}")
@@ -385,15 +437,27 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
     }
   }
 
+  id_values <- data[[id_var]]
+  if (anyNA(id_values)) {
+    cli_abort(c(
+      "{.arg id_var} contains missing values.",
+      "i" = "Remove or impute missing unit IDs before fitting the multilevel model."
+    ))
+  }
+  if (is.factor(id_values)) {
+    id_values <- droplevels(id_values)
+    data[[id_var]] <- id_values
+  }
+
   # Split by unit
-  ids <- unique(data[[id_var]])
+  ids <- unique(id_values)
   N <- length(ids)
 
   # Sort within each unit
   data <- data[order(data[[id_var]], data[[time_var]]), , drop = FALSE]
 
   # Check balanced panel
-  counts <- table(data[[id_var]])
+  counts <- table(id_values)
   if (length(unique(counts)) != 1) {
     cli_abort("Unbalanced panels not yet supported. All units must have the same number of observations.")
   }
@@ -486,14 +550,29 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
   if (!is.list(indicators) || length(indicators) != 2) {
     cli_abort("{.arg indicators} must be a list of two character vectors.")
   }
+  if (!is.numeric(J) || length(J) != 1L || !is.finite(J) || J < 1 || J != as.integer(J)) {
+    cli_abort("{.arg J} must be a positive integer.")
+  }
   if (length(indicators[[1]]) != J || length(indicators[[2]]) != J) {
     cli_abort("Each element of {.arg indicators} must have {.val {J}} indicator names.")
   }
+  .prep_validate_numeric_vector(lambda, "lambda")
   if (length(lambda) != J) {
     cli_abort("{.arg lambda} must have length {.val {J}}.")
   }
+  .prep_validate_positive_scalar(sigma_e, "sigma_e")
+  .prep_validate_positive_scalar(prior_mu_sd, "prior_mu_sd")
+  .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
+  .prep_validate_positive_scalar(prior_sigma_sd, "prior_sigma_sd")
+  .prep_validate_positive_scalar(prior_rho_sd, "prior_rho_sd")
 
   all_ind <- c(indicators[[1]], indicators[[2]])
+  if (anyDuplicated(all_ind)) {
+    cli_abort(c(
+      "Indicator names must be unique across both latent variables.",
+      "i" = "No indicator may appear in both measurement blocks."
+    ))
+  }
   missing_cols <- setdiff(c(all_ind, time_var), names(data))
   if (length(missing_cols) > 0) {
     cli_abort("Column{?s} not found in data: {.val {missing_cols}}")
@@ -567,6 +646,11 @@ prepare_constant_data <- function(data, vars, time_var = "time",
                                   prior_sigma_eps_rate = 1,
                                   prior_z_rho_sd = 1.0,
                                   allow_gaps = FALSE) {
+  .prep_validate_unique_vars(vars)
+  .prep_validate_positive_scalar(prior_mu_sd, "prior_mu_sd")
+  .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
+  .prep_validate_positive_scalar(prior_sigma_eps_rate, "prior_sigma_eps_rate")
+  .prep_validate_positive_scalar(prior_z_rho_sd, "prior_z_rho_sd")
   .validate_margins(margins, skew_direction)
   prep <- .prepare_var_data(data, vars, time_var, standardize, allow_gaps)
 

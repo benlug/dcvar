@@ -1,5 +1,5 @@
 test_that("dcvar_hmm() returns a dcvar_hmm_fit object", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   expect_s3_class(fit, "dcvar_hmm_fit")
@@ -9,7 +9,7 @@ test_that("dcvar_hmm() returns a dcvar_hmm_fit object", {
 })
 
 test_that("print.dcvar_hmm_fit runs without error", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   out <- capture.output(print(fit))
@@ -18,7 +18,7 @@ test_that("print.dcvar_hmm_fit runs without error", {
 })
 
 test_that("summary.dcvar_hmm_fit returns expected class", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   s <- summary(fit)
@@ -28,7 +28,7 @@ test_that("summary.dcvar_hmm_fit returns expected class", {
 })
 
 test_that("coef.dcvar_hmm_fit returns named list", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   co <- coef(fit)
@@ -37,7 +37,7 @@ test_that("coef.dcvar_hmm_fit returns named list", {
 })
 
 test_that("plot.dcvar_hmm_fit dispatches without error", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   expect_s3_class(plot(fit, type = "rho"), "ggplot")
@@ -45,7 +45,7 @@ test_that("plot.dcvar_hmm_fit dispatches without error", {
 })
 
 test_that("dcvar_hmm() fits exponential margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_exponential_fit()
   expect_s3_class(fit, "dcvar_hmm_fit")
@@ -54,7 +54,7 @@ test_that("dcvar_hmm() fits exponential margins", {
 })
 
 test_that("dcvar_hmm() fits gamma margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_gamma_fit()
   expect_s3_class(fit, "dcvar_hmm_fit")
@@ -63,11 +63,20 @@ test_that("dcvar_hmm() fits gamma margins", {
 })
 
 test_that("dcvar_hmm() fits skew-normal margins", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   skip_if_not_installed("sn")
 
   fit <- get_hmm_skew_normal_fit()
   expect_s3_class(fit, "dcvar_hmm_fit")
   expect_equal(fit$margins, "skew_normal")
   expect_equal(fit$K, 2)
+})
+
+test_that("hmm fit cache emits only known diagnostic warnings", {
+  skip_if_no_rstan()
+
+  expect_known_fit_warnings(get_hmm_fit_warnings(), "hmm")
+  expect_known_fit_warnings(get_hmm_exponential_fit_warnings(), "hmm exponential")
+  expect_known_fit_warnings(get_hmm_gamma_fit_warnings(), "hmm gamma")
+  expect_known_fit_warnings(get_hmm_skew_normal_fit_warnings(), "hmm skew-normal")
 })

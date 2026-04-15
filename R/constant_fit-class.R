@@ -6,7 +6,7 @@
 #' @noRd
 new_dcvar_constant_fit <- function(fit, stan_data, vars, standardized,
                                    margins = "normal", skew_direction = NULL,
-                                   priors, meta) {
+                                   backend = "rstan", priors, meta) {
   structure(
     list(
       fit = fit,
@@ -16,6 +16,7 @@ new_dcvar_constant_fit <- function(fit, stan_data, vars, standardized,
       standardized = standardized,
       margins = margins,
       skew_direction = skew_direction,
+      backend = backend,
       priors = priors,
       meta = meta
     ),
@@ -115,15 +116,15 @@ print.dcvar_constant_summary <- function(x, ...) {
 #' @return A named list with elements `mu`, `Phi`, `sigma_eps`, and `rho`.
 #' @export
 coef.dcvar_constant_fit <- function(object, ...) {
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
   result <- list(
-    mu = .extract_coef(summ, "^mu\\["),
-    Phi = .extract_coef(summ, "^Phi\\[")
+    mu = .extract_required_coef(summ, "^mu\\[", "mu", "coef.dcvar_constant_fit()"),
+    Phi = .extract_required_coef(summ, "^Phi\\[", "Phi", "coef.dcvar_constant_fit()")
   )
   # Margin-specific scale params before rho
   margins <- object$margins %||% "normal"
   result <- c(result, .extract_margin_coefs(summ, margins))
-  result$rho <- .extract_coef(summ, "^rho$")
+  result$rho <- .extract_required_coef(summ, "^rho$", "rho", "coef.dcvar_constant_fit()")
   result
 }
 

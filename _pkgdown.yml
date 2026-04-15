@@ -32,7 +32,7 @@ reference:
       - as.data.frame.dcvar_model_fit
 
   - title: Diagnostics
-    desc: MCMC diagnostics, PIT checks, and model comparison.
+    desc: MCMC diagnostics, PIT heuristics, and model comparison.
     contents:
       - dcvar_diagnostics
       - pit_values
@@ -101,3 +101,8 @@ reference:
   - title: Utilities
     contents:
       - dcvar_stan_path
+
+articles:
+  - title: Walkthrough
+    contents:
+      - dcvar-walkthrough

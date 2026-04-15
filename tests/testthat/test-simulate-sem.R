@@ -66,6 +66,28 @@ test_that("simulate_dcvar_sem errors when lambda length mismatches J", {
   )
 })
 
+test_that("simulate_dcvar_sem validates lambda finiteness and sigma_e", {
+  expect_error(
+    simulate_dcvar_sem(T = 50, J = 2, lambda = c(0.8, NA_real_), rho = 0.5),
+    "lambda"
+  )
+  expect_error(
+    simulate_dcvar_sem(T = 50, J = 2, lambda = c(0.8, 0.8), sigma_e = 0, rho = 0.5),
+    "sigma_e"
+  )
+})
+
+test_that("simulate_dcvar_sem validates Phi and sigma shapes", {
+  expect_error(
+    simulate_dcvar_sem(T = 20, Phi = matrix(1:3, nrow = 1), rho = 0.5),
+    "Phi"
+  )
+  expect_error(
+    simulate_dcvar_sem(T = 20, sigma = c(1, 1, 1), rho = 0.5),
+    "sigma"
+  )
+})
+
 test_that("simulate_dcvar_sem works with different J values", {
   for (J in c(2, 4, 5)) {
     sim <- simulate_dcvar_sem(T = 40, J = J,

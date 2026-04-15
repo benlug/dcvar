@@ -1,5 +1,5 @@
 test_that("as.data.frame() works for dcvar_fit", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   df <- as.data.frame(fit)
@@ -11,7 +11,7 @@ test_that("as.data.frame() works for dcvar_fit", {
 })
 
 test_that("as.data.frame() works for dcvar_hmm_fit", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   df <- as.data.frame(fit)
@@ -22,7 +22,7 @@ test_that("as.data.frame() works for dcvar_hmm_fit", {
 })
 
 test_that("as.data.frame() works for dcvar_constant_fit", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_constant_fit()
   df <- as.data.frame(fit)

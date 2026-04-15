@@ -31,10 +31,8 @@ A \code{loo} object from the loo package.
 Compute LOO-CV for a fitted model
 }
 \details{
-PSIS-LOO is available for the core single-level fits returned by
-\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}}. It is not supported for
-\code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
+PSIS-LOO is available for the three core single-level fit classes.
+It is not supported for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
 \code{\link[=dcvar_sem]{dcvar_sem()}} because their stored \code{log_lik}
-quantities are not valid comparable pointwise predictive densities.
+quantities are not comparable pointwise predictive densities.
 }

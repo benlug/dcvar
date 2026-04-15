@@ -44,6 +44,14 @@ test_that("rho_step has correct levels before and after breakpoint", {
   expect_equal(result[99], 0.2)
 })
 
+test_that("rho_step validates rho bounds and breakpoint arguments", {
+  expect_error(rho_step(100, rho_before = 1.2), "\\[-1, 1\\]")
+  expect_error(rho_step(100, rho_after = -1.2), "\\[-1, 1\\]")
+  expect_error(rho_step(100, breakpoint = -0.1), "breakpoint")
+  expect_error(rho_step(100, breakpoint = 1.4), "breakpoint")
+  expect_error(rho_step(100, transition_width = -1), "transition_width")
+})
+
 test_that("rho_double_step returns correct length", {
   result <- rho_double_step(100)
   expect_equal(length(result), 99)
@@ -54,6 +62,13 @@ test_that("rho_double_step has three phases", {
   expect_equal(result[1], 0.8)
   expect_equal(result[50], 0.2)
   expect_equal(result[99], 0.8)
+})
+
+test_that("rho_double_step validates levels and breakpoints", {
+  expect_error(rho_double_step(100, rho_levels = c(0.8, 1.2, 0.7)), "\\[-1, 1\\]")
+  expect_error(rho_double_step(100, breakpoints = c(0.7, 0.2)), "strictly increasing")
+  expect_error(rho_double_step(100, breakpoints = c(-0.1, 0.2)), "breakpoints")
+  expect_error(rho_double_step(100, transition_width = -0.5), "transition_width")
 })
 
 test_that("rho_scenario works for all named scenarios", {

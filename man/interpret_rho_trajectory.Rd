@@ -2,7 +2,7 @@
 % Please edit documentation in R/interpret.R
 \name{interpret_rho_trajectory}
 \alias{interpret_rho_trajectory}
-\title{Summarize a rho trajectory using heuristic thresholds}
+\title{Interpret a rho trajectory in clinical terms}
 \usage{
 interpret_rho_trajectory(
   object,
@@ -21,12 +21,10 @@ interpret_rho_trajectory(
 considered "meaningful" (default: 0.1).}
 
 \item{strength_breaks}{Named numeric vector of thresholds for classifying
-correlation strength. The defaults are heuristic and can be overridden
-(default: \code{c(strong = 0.7, moderate = 0.4, weak = 0.2)}).}
+correlation strength (default: \code{c(strong = 0.7, moderate = 0.4, weak = 0.2)}). Values above the highest threshold are "strong", etc.}
 
 \item{magnitude_breaks}{Named numeric vector of thresholds for classifying
-the magnitude of trajectory range. The defaults are heuristic and can be
-overridden (default: \code{c(large = 0.5, moderate = 0.3, small = 0.1)}).}
+the magnitude of trajectory range (default: \code{c(large = 0.5, moderate = 0.3, small = 0.1)}).}
 
 \item{fluctuation_threshold}{Proportion of sign changes in first differences
 to flag "substantial fluctuation" (default: 0.3).}

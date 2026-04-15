@@ -59,8 +59,11 @@ test_that("zero-variance column errors on standardize", {
 
 test_that("zero-variance column after NA removal errors", {
   df <- data.frame(time = 1:10, y1 = c(5, 5, NA, 5, 5, 5, 5, 5, 5, 5), y2 = rnorm(10))
-  expect_error(prepare_dcvar_data(df, vars = c("y1", "y2"),
-                                  allow_gaps = TRUE), "zero|variance")
+  expect_warning(
+    expect_error(prepare_dcvar_data(df, vars = c("y1", "y2"),
+                                    allow_gaps = TRUE), "zero|variance"),
+    "Removing 1 row"
+  )
 })
 
 # --- Margin validation ------------------------------------------------------
@@ -89,22 +92,38 @@ test_that("normal margins work without skew_direction", {
   expect_equal(result$T, 20)
 })
 
+test_that("prepare_dcvar_data validates scalar logical flags", {
+  df <- data.frame(time = 1:20, y1 = rnorm(20), y2 = rnorm(20))
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), standardize = 1),
+    "single logical"
+  )
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), allow_gaps = c(TRUE, FALSE)),
+    "single logical"
+  )
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2"), standardize = NA),
+    "single logical"
+  )
+})
+
 # --- HMM K validation -------------------------------------------------------
 
 test_that("K must be integer-like", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   sim <- simulate_dcvar(T = 30, rho_trajectory = rho_step(30), seed = 1)
   expect_error(dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2.5), "integer")
 })
 
 test_that("K < 2 errors", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   sim <- simulate_dcvar(T = 30, rho_trajectory = rho_step(30), seed = 1)
   expect_error(dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 1), "integer.*>= 2")
 })
 
 test_that("non-numeric K errors", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   sim <- simulate_dcvar(T = 30, rho_trajectory = rho_step(30), seed = 1)
   expect_error(dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = "two"), "integer")
 })
@@ -132,6 +151,32 @@ test_that("multilevel errors on non-dataframe input", {
                "data frame")
 })
 
+test_that("multilevel rejects missing unit ids", {
+  df <- data.frame(
+    time = c(1, 2, 1, 2),
+    y1 = rnorm(4),
+    y2 = rnorm(4),
+    id = c("A", NA, "B", "B")
+  )
+  expect_error(
+    prepare_multilevel_data(df, vars = c("y1", "y2"), id_var = "id"),
+    "missing values"
+  )
+})
+
+test_that("multilevel drops unused factor levels in ids", {
+  df <- data.frame(
+    time = c(1, 2, 1, 2),
+    y1 = rnorm(4),
+    y2 = rnorm(4),
+    id = factor(c("A", "A", "B", "B"), levels = c("A", "B", "C"))
+  )
+  out <- prepare_multilevel_data(df, vars = c("y1", "y2"), id_var = "id")
+  expect_equal(out$N, 2)
+  expect_equal(as.character(attr(out, "ids")), c("A", "B"))
+  expect_equal(levels(attr(out, "ids")), c("A", "B"))
+})
+
 test_that("multilevel errors on NAs in unit data", {
   df <- data.frame(
     time = rep(1:5, 2),
@@ -157,7 +202,7 @@ test_that("multilevel errors on Inf values", {
 # --- SEM validation ----------------------------------------------------------
 
 test_that("SEM errors on wrong indicator count", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   expect_error(
     dcvar_sem(data.frame(), indicators = list(a = "x1", b = c("x2", "x3")),
               J = 2, lambda = c(1, 1), sigma_e = 1),
@@ -176,7 +221,7 @@ test_that("SEM errors on mismatched lambda length", {
 })
 
 test_that("J must be a positive integer", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   expect_error(dcvar_sem(data.frame(), indicators = list(), J = 0,
                          lambda = numeric(), sigma_e = 1), "positive integer|J")
   expect_error(dcvar_sem(data.frame(), indicators = list(), J = -1,
@@ -186,7 +231,7 @@ test_that("J must be a positive integer", {
 # --- Probs validation -------------------------------------------------------
 
 test_that("probs must be in [0, 1]", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_dcvar_fit()
   expect_error(rho_trajectory(fit, probs = c(-0.5, 0.5)), "probs")
   expect_error(rho_trajectory(fit, probs = c(0.5, 1.5)), "probs")

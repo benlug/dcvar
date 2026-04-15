@@ -26,6 +26,7 @@ dcvar_constant(
   refresh = 500,
   init = NULL,
   stan_file = NULL,
+  backend = getOption("dcvar.backend", "auto"),
   ...
 )
 }
@@ -83,7 +84,11 @@ silent operation.}
 \item{stan_file}{Path to a custom Stan file, or \code{NULL} to use the bundled
 model.}
 
-\item{...}{Additional arguments passed to \code{cmdstanr::CmdStanModel$sample()}.}
+\item{backend}{Character: \code{"auto"} (default, uses rstan), \code{"rstan"}, or
+\code{"cmdstanr"}. Can also be set globally via
+\code{options(dcvar.backend = "cmdstanr")}.}
+
+\item{...}{Additional backend-specific sampling arguments.}
 }
 \value{
 A \code{dcvar_constant_fit} object.

@@ -1,26 +1,28 @@
-# CRAN submission comments
-
-## Resubmission
-
-- This is the first submission of `dcvar`.
-
 ## Test environments
 
-- Local Ubuntu 24.04, R 4.5.x
+- Local macOS Tahoe 26.3.1, R 4.5.2
+- GitHub Actions:
+  - ubuntu-latest (release, devel, oldrel-1)
+  - macos-latest (release)
+  - windows-latest (release)
 
 ## R CMD check results
 
-- Local `R CMD check --as-cran` completed with no errors.
-- A local warning about `qpdf` may appear when the utility is not installed.
-- URL-check failures on restricted hosts are expected when outbound network
-  access is blocked.
+- 0 errors
+- 0 warnings
+- 2 notes
 
-## Notes for reviewers
+## Notes
 
-- The package uses `cmdstanr` from the Stan r-universe and requires an external
-  CmdStan installation (`SystemRequirements: CmdStan`).
-- Stan-backed fitting examples and tests skip gracefully when `cmdstanr` or
-  CmdStan is unavailable. The non-Stan parts of the package continue to check
-  normally in those environments.
-- The source tarball excludes development-only files such as `data-raw/` and
-  the Quarto walkthrough source.
+1. `Suggests or Enhances not in mainstream repositories: cmdstanr`
+
+`cmdstanr` is an optional backend only. The default backend remains `rstan`,
+which is in `Imports`. The package installs, checks, and runs examples without
+`cmdstanr`. When available, `cmdstanr` enables an additional backend path that
+is exercised by dedicated regression tests. It is declared in `Suggests` and
+resolved via `Additional_repositories: https://stan-dev.r-universe.dev`.
+
+2. `unable to verify current time`
+
+This note was produced by the local macOS check environment and is not caused
+by package code or metadata.

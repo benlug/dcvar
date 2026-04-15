@@ -18,6 +18,17 @@
 #' @export
 plot_rho <- function(object, show_ci = TRUE, ci_level = 0.95, inner_level = 0.80,
                      true_rho = NULL, title = NULL, ...) {
+  .validate_interval_level(ci_level, arg_name = "ci_level")
+  if (!is.null(inner_level)) {
+    .validate_interval_level(inner_level, arg_name = "inner_level")
+    if (inner_level >= ci_level) {
+      cli_abort(c(
+        "{.arg inner_level} must be smaller than {.arg ci_level}.",
+        "i" = "The inner ribbon must be narrower than the outer ribbon."
+      ))
+    }
+  }
+
   # Compute the quantile probs needed for the requested CI levels
   alpha_outer <- (1 - ci_level) / 2
   probs <- c(alpha_outer, 1 - alpha_outer, 0.5)
@@ -73,7 +84,17 @@ plot_rho <- function(object, show_ci = TRUE, ci_level = 0.95, inner_level = 0.80
   }
 
   if (!is.null(true_rho)) {
-    true_df <- data.frame(time = 2:(length(true_rho) + 1), rho = true_rho)
+    time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+    if (!is.numeric(true_rho)) {
+      cli_abort("{.arg true_rho} must be a numeric vector.")
+    }
+    if (length(true_rho) != length(time_values)) {
+      cli_abort(c(
+        "{.arg true_rho} must have the same length as the observed rho time axis.",
+        "i" = "Use the fit's stored time values for simulation overlays."
+      ))
+    }
+    true_df <- data.frame(time = time_values, rho = true_rho)
     p <- p + ggplot2::geom_line(
       data = true_df,
       ggplot2::aes(x = .data$time, y = .data$rho),
@@ -120,8 +141,12 @@ plot_rho <- function(object, show_ci = TRUE, ci_level = 0.95, inner_level = 0.80
 #' @return A ggplot object.
 #' @export
 plot_phi <- function(object, var_names = NULL, ...) {
-  summ <- object$fit$summary(
-    variables = NULL,
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = .stan_output_group_pattern("Phi"),
+    required_type = "pattern",
+    context = "plot_phi()",
+    output_type = "parameter group",
     mean,
     ~posterior::quantile2(.x, probs = c(0.025, 0.975))
   )
@@ -184,8 +209,6 @@ plot_phi <- function(object, var_names = NULL, ...) {
 #' @return A combined ggplot object (via patchwork).
 #' @export
 plot_diagnostics <- function(object, ...) {
-  draws_array <- object$fit$draws(format = "draws_array")
-
   margins <- object$margins %||% "normal"
 
   trace_pars <- if (object$model == "multilevel") {
@@ -210,10 +233,33 @@ plot_diagnostics <- function(object, ...) {
   }
   if (object$model == "constant") trace_pars <- c(trace_pars, "rho")
 
+  required_patterns <- unique(vapply(
+    trace_pars,
+    .stan_output_group_pattern,
+    character(1)
+  ))
+
+  draws_array <- .fit_draws(
+    object$fit,
+    format = "draws_array",
+    backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "plot_diagnostics()",
+    output_type = "parameter group"
+  )
+
   p1 <- bayesplot::mcmc_trace(draws_array, pars = trace_pars) +
     ggplot2::ggtitle("Trace Plots")
 
-  summ <- object$fit$summary()
+  summ <- .fit_summary(
+    object$fit,
+    backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "plot_diagnostics()",
+    output_type = "parameter group"
+  )
   rhats <- summ$rhat[is.finite(summ$rhat)]
   p2 <- bayesplot::mcmc_rhat(rhats) +
     ggplot2::ggtitle("R-hat Diagnostics")
@@ -266,8 +312,20 @@ plot_ppc <- function(object, n_sample = 100, ...) {
     cli_abort("Posterior predictive checks are not implemented for {.val {margins}} margins.")
   }
 
-  eps_rep_draws <- posterior::as_draws_matrix(object$fit$draws("eps_rep"))
-  eps_obs_draws <- posterior::as_draws_matrix(object$fit$draws("eps"))
+  eps_rep_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "eps_rep", backend = object$backend,
+    required = .stan_output_group_pattern("eps_rep"),
+    required_type = "pattern",
+    context = "plot_ppc()",
+    output_type = "generated quantity"
+  ))
+  eps_obs_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "eps", backend = object$backend,
+    required = .stan_output_group_pattern("eps"),
+    required_type = "pattern",
+    context = "plot_ppc()",
+    output_type = "transformed parameter"
+  ))
   eps_rep_cols_1 <- grep("eps_rep\\[.*,1\\]", colnames(eps_rep_draws))
   eps_rep_cols_2 <- grep("eps_rep\\[.*,2\\]", colnames(eps_rep_draws))
   eps_obs_cols_1 <- grep("eps\\[.*,1\\]", colnames(eps_obs_draws))
@@ -422,11 +480,21 @@ plot_latent_states <- function(object, true_states = NULL, ...) {
     ggplot2::theme_minimal() +
     ggplot2::theme(
       plot.title = ggplot2::element_text(face = "bold")
-    )
+  )
 
   if (!is.null(true_states)) {
+    time_values <- .observed_time_values(object$stan_data)
+    if (!is.matrix(true_states) || ncol(true_states) != 2) {
+      cli_abort("{.arg true_states} must be a matrix with 2 columns.")
+    }
+    if (nrow(true_states) != length(time_values)) {
+      cli_abort(c(
+        "{.arg true_states} must have one row per observed time point.",
+        "i" = "Use the fit's stored time values for simulation overlays."
+      ))
+    }
     true_df <- data.frame(
-      time = rep(seq_len(nrow(true_states)), 2),
+      time = rep(time_values, 2),
       variable = rep(object$vars, each = nrow(true_states)),
       value = c(true_states[, 1], true_states[, 2])
     )

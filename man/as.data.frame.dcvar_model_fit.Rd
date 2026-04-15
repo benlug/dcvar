@@ -21,6 +21,6 @@ A data frame with columns \code{variable}, \code{mean}, \code{sd}, \code{q2.5},
 \code{q97.5}, \code{rhat}, \code{ess_bulk}, \code{ess_tail}.
 }
 \description{
-Returns the full cmdstanr parameter summary as a tidy data frame with
+Returns the full parameter summary as a tidy data frame with
 correct 2.5\%/97.5\% quantiles.
 }

@@ -1,5 +1,5 @@
 test_that("rho_trajectory() returns correct structure for dcvar", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   rho_df <- rho_trajectory(fit)
@@ -13,7 +13,7 @@ test_that("rho_trajectory() returns correct structure for dcvar", {
 })
 
 test_that("rho_trajectory() returns correct structure for hmm", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   rho_df <- rho_trajectory(fit)
@@ -24,7 +24,7 @@ test_that("rho_trajectory() returns correct structure for hmm", {
 })
 
 test_that("rho_trajectory() returns full trajectory for constant", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_constant_fit()
   rho_df <- rho_trajectory(fit)
@@ -40,7 +40,7 @@ test_that("rho_trajectory() returns full trajectory for constant", {
 })
 
 test_that("var_params() returns correct structure", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   vp <- var_params(fit)
@@ -52,7 +52,7 @@ test_that("var_params() returns correct structure", {
 })
 
 test_that("extractors work for non-normal fitted objects", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   rho_df <- rho_trajectory(get_dcvar_exponential_fit())
   expect_s3_class(rho_df, "data.frame")
@@ -69,7 +69,7 @@ test_that("extractors work for non-normal fitted objects", {
 })
 
 test_that("hmm_states() returns correct structure", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   states <- hmm_states(fit)
@@ -81,18 +81,18 @@ test_that("hmm_states() returns correct structure", {
 })
 
 test_that("hmm_states() returns a Viterbi path observed in the posterior draws", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   states <- hmm_states(fit)
-  viterbi_draws <- posterior::as_draws_matrix(fit$fit$draws("viterbi_state"))
+  viterbi_draws <- draws(fit, variable = "viterbi_state", format = "draws_matrix")
   draw_paths <- apply(viterbi_draws, 1, paste, collapse = ",")
 
   expect_true(paste(states$viterbi, collapse = ",") %in% draw_paths)
 })
 
 test_that("draws() returns posterior draws", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   d <- draws(fit, variable = "mu")
@@ -100,7 +100,7 @@ test_that("draws() returns posterior draws", {
 })
 
 test_that("dcvar_diagnostics() returns correct fields", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   diag <- dcvar_diagnostics(fit)
@@ -112,7 +112,7 @@ test_that("dcvar_diagnostics() returns correct fields", {
 })
 
 test_that("rho_trajectory() supports a single quantile request", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   rho_df <- rho_trajectory(fit, probs = 0.5)
@@ -121,7 +121,7 @@ test_that("rho_trajectory() supports a single quantile request", {
 })
 
 test_that("latent_states() supports a single quantile request", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_sem_fit()
   states <- latent_states(fit, probs = 0.5)
@@ -130,7 +130,7 @@ test_that("latent_states() supports a single quantile request", {
 })
 
 test_that("rho_trajectory() and latent_states() honor preserved time values", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
   attr(fit$stan_data, "time_values") <- 101:(100 + fit$stan_data$T)
@@ -152,11 +152,71 @@ test_that("rho_trajectory() and latent_states() honor preserved time values", {
 })
 
 test_that("random_effects() preserves original unit ids", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
 
   fit <- get_multilevel_fit()
   attr(fit$stan_data, "ids") <- c("A", "B", "C")
   re <- random_effects(fit)
 
   expect_equal(unique(re$unit), c("A", "B", "C"))
+})
+
+test_that("custom Stan output mismatches fail clearly in extractors", {
+  make_stub_draws <- function(variables) {
+    posterior::as_draws_array(
+      array(
+        seq_len(4L * length(variables)),
+        dim = c(4L, 1L, length(variables)),
+        dimnames = list(NULL, NULL, variables)
+      )
+    )
+  }
+
+  dcvar_fit <- structure(
+    list(
+      fit = make_stub_draws(c("Phi[1,1]", "Phi[1,2]", "Phi[2,1]", "Phi[2,2]", "sigma_eps[1]", "sigma_eps[2]", "sigma_omega")),
+      stan_data = list(T = 5, D = 2),
+      model = "dcvar",
+      vars = c("y1", "y2"),
+      standardized = TRUE,
+      margins = "normal",
+      backend = "rstan",
+      priors = list(),
+      meta = list()
+    ),
+    class = c("dcvar_fit", "dcvar_model_fit")
+  )
+  expect_error(coef(dcvar_fit), "Custom Stan files must preserve the expected parameter names")
+  expect_error(var_params(dcvar_fit), "Custom Stan files must preserve")
+
+  multilevel_fit <- structure(
+    list(
+      fit = make_stub_draws(c("phi_unit[1,2]", "phi_unit[1,3]", "phi_unit[1,4]")),
+      stan_data = structure(list(T = 4), ids = c("A")),
+      model = "multilevel",
+      N = 1,
+      vars = c("y1", "y2"),
+      centered = TRUE,
+      person_means = NULL,
+      backend = "rstan",
+      priors = list(),
+      meta = list()
+    ),
+    class = c("dcvar_multilevel_fit", "dcvar_model_fit")
+  )
+  expect_error(random_effects(multilevel_fit), "Custom Stan files must preserve")
+
+  sem_fit <- structure(
+    list(
+      fit = make_stub_draws("rho"),
+      stan_data = list(T = 4),
+      model = "sem",
+      vars = c("latent1", "latent2"),
+      backend = "rstan",
+      priors = list(),
+      meta = list()
+    ),
+    class = c("dcvar_sem_fit", "dcvar_model_fit")
+  )
+  expect_error(latent_states(sem_fit), "Custom Stan files must preserve the expected parameter and generated-quantity names")
 })

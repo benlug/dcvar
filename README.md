@@ -5,23 +5,30 @@
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/benlug/dcvar/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/benlug/dcvar/actions/workflows/R-CMD-check.yaml)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: GPL v3+](https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 <!-- badges: end -->
 
 `dcvar` is an R package for fitting Bayesian Gaussian-copula VAR(1) models to
 bivariate time series. Its core scope is the single-level Gaussian-copula
 family: continuous random-walk, regime-switching, and constant-copula
-specifications, all estimated through
-[CmdStan](https://mc-stan.org/users/interfaces/cmdstan). The package also
-ships experimental multilevel and SEM extensions with a narrower
-post-estimation interface.
+specifications, all estimated through [Stan](https://mc-stan.org/). The
+package also ships experimental multilevel and SEM extensions.
 
 ## Installation
 
-`dcvar` depends on [`cmdstanr`](https://mc-stan.org/cmdstanr/) and a working
-CmdStan installation.
+`dcvar` uses [`rstan`](https://mc-stan.org/rstan/) as its default backend.
 
-Install `cmdstanr` and CmdStan:
+Install `rstan` and `dcvar`:
+
+```r
+install.packages("rstan")
+
+install.packages("remotes")
+remotes::install_github("benlug/dcvar")
+```
+
+Optionally, you can use [`cmdstanr`](https://mc-stan.org/cmdstanr/) as an
+alternative backend:
 
 ```r
 install.packages(
@@ -31,12 +38,8 @@ install.packages(
 cmdstanr::install_cmdstan()
 ```
 
-Install `dcvar` from GitHub:
-
-```r
-install.packages("remotes")
-remotes::install_github("benlug/dcvar")
-```
+CI includes a dedicated Ubuntu release lane that runs the `backend = "cmdstanr"`
+regression tests when both `cmdstanr` and CmdStan are available.
 
 For skew-normal margins, install `sn`:
 
@@ -91,16 +94,24 @@ If you are reading the accompanying manuscript, note that `dcvar` currently
 implements Gaussian-copula workflows only. Clayton-copula models and the
 paper-specific exponential-indicator SEM variant are not part of the package.
 
-`fitted()`, `predict()`, `pit_values()`, `pit_test()`, and `loo()` are
-currently implemented for the three core time-series models only. `plot_ppc()`
-is available for normal and exponential margins; gamma and skew-normal fits do
+`fitted()` and `predict()` are implemented for all five fit classes. The
+multilevel methods return unit-specific trajectories and intervals; the SEM
+methods support both latent-state (`type = "link"`) and indicator-scale
+(`type = "response"`) summaries. `pit_values()`, `pit_test()`, and `loo()`
+currently support the three core single-level models only. `plot_ppc()` is
+available for normal and exponential margins; gamma and skew-normal fits do
 not yet have replicated residuals on the observed margin scale.
+
+`pit_values()` and `pit_test()` are approximate residual diagnostics based on
+posterior means. They are useful as heuristic checks, not exact posterior
+predictive calibration tests.
 
 ## Documentation
 
 - Getting started vignette: [vignettes/getting-started.Rmd](vignettes/getting-started.Rmd)
 - Model comparison vignette: [vignettes/model-comparison.Rmd](vignettes/model-comparison.Rmd)
 - Simulation tools vignette: [vignettes/simulation-tools.Rmd](vignettes/simulation-tools.Rmd)
+- Full Quarto walkthrough: [vignettes/dcvar-walkthrough.qmd](https://github.com/benlug/dcvar/blob/main/vignettes/dcvar-walkthrough.qmd)
 - Source code and issue tracker: <https://github.com/benlug/dcvar>
 
 ## Citation

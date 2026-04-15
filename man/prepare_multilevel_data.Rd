@@ -25,7 +25,7 @@ prepare_multilevel_data(
 
 \item{time_var}{Name of the time column.}
 
-\item{center}{Logical; person-mean center (default: \code{TRUE}).}
+\item{center}{Logical scalar; person-mean center (default: \code{TRUE}).}
 
 \item{prior_phi_bar_sd}{Prior SD for phi_bar.}
 

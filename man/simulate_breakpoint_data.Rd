@@ -49,8 +49,7 @@ simulate_breakpoint_data(
 \item{seed}{Random seed.}
 }
 \value{
-A named list as returned by \code{\link[=simulate_dcvar]{simulate_dcvar()}}, with breakpoint
-metadata added to \code{true_params}.
+A named list as returned by \code{\link[=simulate_dcvar]{simulate_dcvar()}}.
 }
 \description{
 Convenience wrapper that combines \code{\link[=rho_step]{rho_step()}} or \code{\link[=rho_double_step]{rho_double_step()}} with

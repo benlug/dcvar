@@ -6,18 +6,22 @@ utils::globalVariables("count")
 
 #' Extract PIT values from a fitted model
 #'
-#' Computes posterior-mean plug-in Probability Integral Transform values.
-#' Under correct model specification, PIT values should be uniformly
-#' distributed on \[0, 1\].
+#' Computes approximate Probability Integral Transform values using posterior
+#' mean residuals and posterior mean margin parameters. Large departures from
+#' uniformity can indicate model misfit, but these are not exact posterior
+#' predictive PIT values.
 #'
 #' @param object A fitted model object.
 #' @param ... Additional arguments (unused).
 #'
 #' @return A data frame with columns `time`, `variable`, `pit`.
 #'
-#' @details Supported for the core single-level fits returned by [dcvar()],
-#'   [dcvar_hmm()], and [dcvar_constant()]. PIT diagnostics are not currently
-#'   implemented for [dcvar_multilevel()] or [dcvar_sem()].
+#' @details
+#' PIT values are computed from posterior mean residuals and posterior mean
+#' margin parameters. Treat them as a fast plug-in diagnostic rather than an
+#' exact posterior predictive transform that integrates over full posterior
+#' uncertainty. PIT diagnostics are currently implemented for the three core
+#' single-level fit classes only.
 #' @export
 pit_values <- function(object, ...) {
   UseMethod("pit_values")
@@ -35,7 +39,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
 
   # Extract posterior mean residuals and parameters
-  eps_draws <- posterior::as_draws_matrix(object$fit$draws("eps"))
+  eps_draws <- posterior::as_draws_matrix(.fit_draws(object$fit, "eps", backend = object$backend))
   T_eff <- object$stan_data$T - 1
   D <- object$stan_data$D
 
@@ -68,7 +72,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 
   switch(margins,
     normal = {
-      summ <- object$fit$summary()
+      summ <- .fit_summary(object$fit, backend = object$backend)
       sigma_rows <- grep("^sigma_eps\\[", summ$variable)
       sigma_mean <- summ$mean[sigma_rows]
       pit_mat <- matrix(NA_real_, T_eff, D)
@@ -96,7 +100,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 .pit_exponential <- function(object, eps_mean) {
   T_eff <- nrow(eps_mean)
   D <- ncol(eps_mean)
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
   skew_dir <- object$skew_direction
 
   sigma_rows <- grep("^sigma_exp\\[", summ$variable)
@@ -122,7 +126,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   }
   T_eff <- nrow(eps_mean)
   D <- ncol(eps_mean)
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
 
   omega_rows <- grep("^omega\\[", summ$variable)
   delta_rows <- grep("^delta\\[", summ$variable)
@@ -147,7 +151,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 .pit_gamma <- function(object, eps_mean) {
   T_eff <- nrow(eps_mean)
   D <- ncol(eps_mean)
-  summ <- object$fit$summary()
+  summ <- .fit_summary(object$fit, backend = object$backend)
   skew_dir <- object$skew_direction
 
   sigma_rows <- grep("^sigma_gam\\[", summ$variable)
@@ -173,16 +177,19 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 #' KS test for PIT uniformity
 #'
 #' Runs a Kolmogorov-Smirnov test per variable to assess whether PIT values
-#' are uniformly distributed (as expected under correct model specification).
+#' are approximately uniform. This is a heuristic check on the plug-in PIT
+#' values returned by [pit_values()], not an exact posterior predictive test.
 #'
 #' @param object A fitted model object.
 #' @param ... Additional arguments (unused).
 #'
 #' @return A data frame with columns `variable`, `ks_statistic`, `p_value`, `n`.
 #'
-#' @details Supported for the core single-level fits returned by [dcvar()],
-#'   [dcvar_hmm()], and [dcvar_constant()]. PIT tests are not currently
-#'   implemented for [dcvar_multilevel()] or [dcvar_sem()].
+#' @details
+#' This applies a Kolmogorov-Smirnov test to the approximate PIT values
+#' returned by [pit_values()]. The result is a heuristic check and does not
+#' account for serial dependence or full posterior uncertainty. PIT tests are
+#' currently implemented for the three core single-level fit classes only.
 #' @export
 pit_test <- function(object, ...) {
   UseMethod("pit_test")
@@ -237,8 +244,10 @@ pit_test.dcvar_sem_fit <- function(object, ...) {
 
 #' Plot PIT histograms
 #'
-#' Creates faceted histograms of PIT values. Under correct specification,
-#' these should be approximately uniform (flat).
+#' Creates faceted histograms of the approximate PIT values returned by
+#' [pit_values()]. Under good model fit, these histograms should be roughly
+#' uniform, but they remain plug-in diagnostics rather than exact posterior
+#' predictive checks.
 #'
 #' @param object A fitted model object.
 #' @param bins Number of histogram bins (default: 20).
@@ -246,9 +255,9 @@ pit_test.dcvar_sem_fit <- function(object, ...) {
 #'
 #' @return A ggplot object.
 #'
-#' @details Supported for the core single-level fits returned by [dcvar()],
-#'   [dcvar_hmm()], and [dcvar_constant()]. PIT histograms are not currently
-#'   available for [dcvar_multilevel()] or [dcvar_sem()].
+#' @details PIT histograms visualize the approximate plug-in PIT values
+#'   returned by [pit_values()]. They are currently implemented for the three
+#'   core single-level fit classes only.
 #' @export
 plot_pit <- function(object, bins = 20, ...) {
   pit_df <- pit_values(object)
@@ -266,8 +275,8 @@ plot_pit <- function(object, bins = 20, ...) {
     ggplot2::labs(
       x = "PIT Value",
       y = "Density",
-      title = "Probability Integral Transform Diagnostics",
-      subtitle = "Red dashed line: uniform reference (correct specification)"
+      title = "Approximate PIT Diagnostics",
+      subtitle = "Red dashed line: uniform plug-in reference"
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(

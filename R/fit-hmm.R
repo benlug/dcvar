@@ -15,6 +15,11 @@
 #' @param prior_alpha_off Sticky Dirichlet off-diagonal concentration (default: 1).
 #' @param prior_z_rho_sd Prior SD for state-specific z_rho (default: 1.0).
 #'
+#' @param backend Character: `"auto"` (default, uses rstan), `"rstan"`, or
+#'   `"cmdstanr"`. Can also be set globally via
+#'   `options(dcvar.backend = "cmdstanr")`.
+#' @param ... Additional backend-specific sampling arguments.
+#'
 #' @return A `dcvar_hmm_fit` object.
 #'
 #' @seealso [dcvar()] for the smooth time-varying model,
@@ -52,8 +57,9 @@ dcvar_hmm <- function(data, vars, K = 2,
                       refresh = 500,
                       init = NULL,
                       stan_file = NULL,
+                      backend = getOption("dcvar.backend", "auto"),
                       ...) {
-  .check_cmdstanr()
+  backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
   .validate_margins(margins, skew_direction)
@@ -74,7 +80,7 @@ dcvar_hmm <- function(data, vars, K = 2,
   cli_inform("Fitting HMM copula model{margins_label} (T = {stan_data$T}, D = {stan_data$D}, K = {K})...")
 
   # Compile model
-  model <- .compile_model("hmm", margins = margins, stan_file = stan_file)
+  model <- .compile_model("hmm", margins = margins, stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
@@ -82,24 +88,26 @@ dcvar_hmm <- function(data, vars, K = 2,
     init <- function() .init_hmm_params(D, K, margins)
   }
 
-  if (is.null(cores)) cores <- parallel::detectCores(logical = FALSE)
+  cores <- .normalize_cores(cores, chains)
 
   # Fit
-  fit <- model$sample(
-    data = stan_data,
+  fit <- .sample_model(
+    compiled_model = model,
+    stan_data = stan_data,
+    backend = backend,
     chains = chains,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     adapt_delta = adapt_delta,
     max_treedepth = max_treedepth,
     seed = seed,
-    parallel_chains = cores,
+    cores = cores,
     init = init,
     refresh = refresh,
     ...
   )
 
-  .report_sampling_outcome(fit, "HMM copula", chains = chains)
+  .report_sampling_outcome(fit, "HMM copula", chains = chains, backend = backend)
 
   # Wrap in S3 class
   new_dcvar_hmm_fit(
@@ -110,6 +118,7 @@ dcvar_hmm <- function(data, vars, K = 2,
     standardized = standardize,
     margins = margins,
     skew_direction = skew_direction,
+    backend = backend,
     priors = list(
       mu_sd = prior_mu_sd,
       phi_sd = prior_phi_sd,

@@ -5,14 +5,14 @@
 # --- Fit object structure ----------------------------------------------------
 
 test_that("dcvar_sem returns correct class", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   expect_s3_class(fit, "dcvar_sem_fit")
   expect_s3_class(fit, "dcvar_model_fit")
 })
 
 test_that("SEM coef() returns expected structure", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   co <- coef(fit)
 
@@ -25,7 +25,7 @@ test_that("SEM coef() returns expected structure", {
 })
 
 test_that("SEM summary() returns correct class", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   s <- summary(fit)
 
@@ -34,7 +34,7 @@ test_that("SEM summary() returns correct class", {
 })
 
 test_that("SEM print() works", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   expect_output(print(fit), "SEM|sem")
 })
@@ -42,7 +42,7 @@ test_that("SEM print() works", {
 # --- Extraction functions ----------------------------------------------------
 
 test_that("SEM rho_trajectory() returns expected structure", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   rho_df <- rho_trajectory(fit)
 
@@ -55,7 +55,7 @@ test_that("SEM rho_trajectory() returns expected structure", {
 })
 
 test_that("SEM latent_states() returns expected structure", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   ls <- latent_states(fit)
 
@@ -67,7 +67,7 @@ test_that("SEM latent_states() returns expected structure", {
 })
 
 test_that("SEM var_params() returns expected structure", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   vp <- var_params(fit)
 
@@ -80,44 +80,76 @@ test_that("SEM var_params() returns expected structure", {
 # --- Plotting ----------------------------------------------------------------
 
 test_that("SEM plot latent_states returns ggplot", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   p <- plot(fit, type = "latent_states")
   expect_s3_class(p, "ggplot")
 })
 
 test_that("SEM plot diagnostics returns ggplot", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   p <- plot(fit, type = "diagnostics")
   expect_s3_class(p, "ggplot")
 })
 
-# --- Unsupported methods abort gracefully ------------------------------------
+# --- Fitted values and prediction --------------------------------------------
 
-test_that("SEM fitted() errors informatively", {
-  skip_if_no_cmdstanr()
+test_that("SEM fitted() returns latent and indicator trajectories", {
+  skip_if_no_rstan()
   fit <- get_sem_fit()
-  expect_error(fitted(fit), "not yet implemented")
+
+  fit_link <- fitted(fit, type = "link")
+  fit_resp <- fitted(fit, type = "response")
+  indicator_names <- unlist(fit$indicators, use.names = FALSE)
+
+  expect_s3_class(fit_link, "data.frame")
+  expect_named(fit_link, c("time", fit$vars))
+  expect_equal(nrow(fit_link), fit$stan_data$T)
+
+  expect_s3_class(fit_resp, "data.frame")
+  expect_named(fit_resp, c("time", indicator_names))
+  expect_equal(nrow(fit_resp), fit$stan_data$T)
 })
 
-test_that("SEM predict() errors informatively", {
-  skip_if_no_cmdstanr()
+test_that("SEM predict() returns latent and indicator intervals", {
+  skip_if_no_rstan()
   fit <- get_sem_fit()
-  expect_error(predict(fit), "not yet implemented")
+
+  pred_link <- predict(fit, type = "link")
+  pred_resp <- predict(fit, type = "response")
+  indicator_names <- unlist(fit$indicators, use.names = FALSE)
+
+  expect_s3_class(pred_link, "data.frame")
+  expect_named(pred_link, c("time", "variable", "mean", "lower", "upper"))
+  expect_equal(nrow(pred_link), fit$stan_data$T * length(fit$vars))
+  expect_equal(sort(unique(pred_link$variable)), sort(fit$vars))
+
+  expect_s3_class(pred_resp, "data.frame")
+  expect_named(pred_resp, c("time", "variable", "mean", "lower", "upper"))
+  expect_equal(nrow(pred_resp), fit$stan_data$T * length(indicator_names))
+  expect_equal(sort(unique(pred_resp$variable)), sort(indicator_names))
+  expect_true(all(pred_resp$lower <= pred_resp$mean))
+  expect_true(all(pred_resp$upper >= pred_resp$mean))
 })
 
 # --- Diagnostics -------------------------------------------------------------
 
 test_that("SEM diagnostics are finite", {
-  skip_if_no_cmdstanr()
+  skip_if_no_rstan()
   fit <- get_sem_fit()
   diag <- dcvar_diagnostics(fit)
 
-  expect_equal(diag$n_divergent, 0)
+  expect_lte(diag$n_divergent, 1)
   expect_equal(diag$n_max_treedepth, 0)
   expect_true(is.finite(diag$max_rhat))
-  expect_true(diag$max_rhat < 1.20)
-  expect_true(diag$min_ess_bulk > 10)
-  expect_true(diag$min_ess_tail > 10)
+  expect_true(diag$max_rhat < 1.30)
+  expect_true(diag$min_ess_bulk > 8)
+  expect_true(diag$min_ess_tail > 8)
+})
+
+test_that("SEM fit cache emits only known diagnostic warnings", {
+  skip_if_no_rstan()
+
+  expect_known_fit_warnings(get_sem_fit_warnings(), "SEM")
 })

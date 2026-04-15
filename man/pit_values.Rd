@@ -21,14 +21,15 @@ pit_values(object, ...)
 A data frame with columns \code{time}, \code{variable}, \code{pit}.
 }
 \description{
-Computes posterior-mean plug-in Probability Integral Transform values.
-Under correct model specification, PIT values should be
-uniformly distributed on [0, 1].
+Computes approximate Probability Integral Transform values using posterior
+mean residuals and posterior mean margin parameters. Large departures from
+uniformity can indicate model misfit, but these are not exact posterior
+predictive PIT values.
 }
 \details{
-Supported for the core single-level fits returned by
-\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}}. PIT diagnostics are not currently
-implemented for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
-\code{\link[=dcvar_sem]{dcvar_sem()}}.
+PIT values are computed from posterior mean residuals and posterior mean
+margin parameters. Treat them as a fast plug-in diagnostic rather than an
+exact posterior predictive transform that integrates over full posterior
+uncertainty. PIT diagnostics are currently implemented for the three core
+single-level fit classes only.
 }

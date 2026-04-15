@@ -5,22 +5,25 @@
 \alias{dcvar-package}
 \title{dcvar: Gaussian-copula VAR models for bivariate time series}
 \description{
-The package's core scope is the Gaussian-copula family for bivariate VAR(1)
-time series. \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}} support normal, exponential,
-skew-normal, and gamma margins.
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and
-\code{\link[=dcvar_sem]{dcvar_sem()}} currently support normal margins only and
-provide a narrower post-estimation interface than the core single-level models.
+\code{dcvar} focuses on Gaussian-copula VAR(1) workflows for bivariate time
+series. The core single-level models \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
+\code{\link[=dcvar_constant]{dcvar_constant()}} support normal, exponential, skew-normal, and gamma
+margins.
 
-\code{dcvar} currently implements Gaussian-copula models only. Clayton copulas
-and the paper-specific exponential-indicator SEM variant are not part of the
-package API.
+Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and \code{\link[=dcvar_sem]{dcvar_sem()}}
+currently support normal margins only and provide a narrower diagnostic interface than
+the core models.
 
-PIT diagnostics and LOO-CV comparison are available for the supported
-single-level models. See \code{\link[=pit_values]{pit_values()}}, \code{\link[=pit_test]{pit_test()}},
-\code{\link[loo:loo]{loo()}}, and \code{\link[=dcvar_compare]{dcvar_compare()}}.
+The package implements Gaussian-copula models only. Clayton copulas and the
+paper-specific exponential-indicator SEM variant are not part of the public
+API.
+
+Estimation uses Stan through \code{rstan} by default, with optional \code{cmdstanr}
+backend support. PIT diagnostics are approximate posterior-mean plug-in
+diagnostics. PSIS-LOO model comparison is available for the supported
+single-level models.
 }
 \seealso{
 Useful links:

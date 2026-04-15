@@ -37,7 +37,10 @@
 #' @param init Custom init function or `NULL` for smart defaults.
 #' @param stan_file Path to a custom Stan file, or `NULL` to use the bundled
 #'   model.
-#' @param ... Additional arguments passed to `cmdstanr::CmdStanModel$sample()`.
+#' @param backend Character: `"auto"` (default, uses rstan), `"rstan"`, or
+#'   `"cmdstanr"`. Can also be set globally via
+#'   `options(dcvar.backend = "cmdstanr")`.
+#' @param ... Additional backend-specific sampling arguments.
 #'
 #' @return A `dcvar_fit` object.
 #'
@@ -75,8 +78,9 @@ dcvar <- function(data, vars, time_var = "time",
                   refresh = 500,
                   init = NULL,
                   stan_file = NULL,
+                  backend = getOption("dcvar.backend", "auto"),
                   ...) {
-  .check_cmdstanr()
+  backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
   .validate_margins(margins, skew_direction)
@@ -93,7 +97,8 @@ dcvar <- function(data, vars, time_var = "time",
   cli_inform("Fitting DC-VAR model{margins_label} (T = {stan_data$T}, D = {stan_data$D})...")
 
   # Compile model
-  model <- .compile_model("dcvar", margins = margins, stan_file = stan_file)
+  model <- .compile_model("dcvar", margins = margins, stan_file = stan_file,
+                          backend = backend)
 
   # Default init
   if (is.null(init)) {
@@ -102,24 +107,26 @@ dcvar <- function(data, vars, time_var = "time",
     init <- function() .init_dcvar_params(D, T_obs, margins)
   }
 
-  if (is.null(cores)) cores <- parallel::detectCores(logical = FALSE)
+  cores <- .normalize_cores(cores, chains)
 
   # Fit
-  fit <- model$sample(
-    data = stan_data,
+  fit <- .sample_model(
+    compiled_model = model,
+    stan_data = stan_data,
+    backend = backend,
     chains = chains,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     adapt_delta = adapt_delta,
     max_treedepth = max_treedepth,
     seed = seed,
-    parallel_chains = cores,
+    cores = cores,
     init = init,
     refresh = refresh,
     ...
   )
 
-  .report_sampling_outcome(fit, "DC-VAR", chains = chains)
+  .report_sampling_outcome(fit, "DC-VAR", chains = chains, backend = backend)
 
   # Wrap in S3 class
   new_dcvar_fit(
@@ -129,6 +136,7 @@ dcvar <- function(data, vars, time_var = "time",
     standardized = standardize,
     margins = margins,
     skew_direction = skew_direction,
+    backend = backend,
     priors = list(
       mu_sd = prior_mu_sd,
       phi_sd = prior_phi_sd,

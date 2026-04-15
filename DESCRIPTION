@@ -13,12 +13,12 @@ Description: Fits Bayesian copula VAR(1) models for bivariate time series with
     include multilevel models with random VAR coefficients for panel data and
     structural equation models with fixed measurement models for latent
     process estimation; these extensions currently support normal margins only
-    and provide a narrower post-estimation interface than the core models.
-    Estimation is via Hamiltonian Monte Carlo in Stan through the 'cmdstanr'
-    interface. Includes tools for simulation, trajectory extraction,
-    posterior-mean PIT diagnostics, and LOO-CV model comparison for the
-    supported single-level models.
-License: MIT + file LICENSE
+    and have narrower diagnostic support than the core models. Estimation is
+    via Hamiltonian Monte Carlo in Stan through 'rstan', with optional
+    'cmdstanr' backend support. Includes tools for simulation, approximate
+    PIT diagnostics, trajectory extraction, fitted and prediction summaries,
+    and LOO-CV model comparison for supported fits.
+License: GPL (>= 3)
 URL: https://github.com/benlug/dcvar
 BugReports: https://github.com/benlug/dcvar/issues
 Encoding: UTF-8
@@ -28,6 +28,7 @@ RoxygenNote: 7.3.3
 Depends:
     R (>= 4.1.0)
 Imports:
+    rstan (>= 2.26.0),
     posterior (>= 1.5.0),
     loo (>= 2.7.0),
     ggplot2 (>= 3.4.0),
@@ -47,7 +48,6 @@ Suggests:
     withr,
     sn
 Additional_repositories: https://stan-dev.r-universe.dev
-SystemRequirements: CmdStan (https://mc-stan.org/users/interfaces/cmdstan)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 LazyData: false

@@ -17,13 +17,13 @@ plot_pit(object, bins = 20, ...)
 A ggplot object.
 }
 \description{
-Creates faceted histograms of PIT values. Under correct specification,
-these should be approximately uniform (flat).
+Creates faceted histograms of the approximate PIT values returned by
+\code{\link[=pit_values]{pit_values()}}. Under good model fit, these histograms should be roughly
+uniform, but they remain plug-in diagnostics rather than exact posterior
+predictive checks.
 }
 \details{
-Supported for the core single-level fits returned by
-\code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}}. PIT histograms are not currently
-available for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or
-\code{\link[=dcvar_sem]{dcvar_sem()}}.
+PIT histograms visualize the approximate plug-in PIT values returned by
+\code{\link[=pit_values]{pit_values()}}. They are currently implemented for the three
+core single-level fit classes only.
 }

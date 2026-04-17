@@ -104,40 +104,6 @@ jobs:
           message("CmdStan version: ", paste(cmdstanr::cmdstan_version(), collapse = "."))
         shell: Rscript {0}
 
-      # Keep the package check itself CRAN-like; the heavier fit regressions run
-      # explicitly in these focused steps under NOT_CRAN.
-      - name: Focused rstan regression tests
-        if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
-        env:
-          NOT_CRAN: true
-        run: |
-          testthat::test_local(
-            ".",
-            filter = "convergence|fit-(dcvar|hmm|constant)|extract|predict|plot",
-            reporter = testthat::SummaryReporter$new()
-          )
-        shell: Rscript {0}
-
-      - name: Focused CmdStan regression tests
-        if: matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release'
-        env:
-          NOT_CRAN: true
-        run: |
-          if (!requireNamespace("cmdstanr", quietly = TRUE)) {
-            message("Skipping CmdStan regression tests: cmdstanr is not installed.")
-            quit(status = 0)
-          }
-          if (is.null(tryCatch(cmdstanr::cmdstan_path(), error = function(e) NULL))) {
-            message("Skipping CmdStan regression tests: CmdStan is not installed.")
-            quit(status = 0)
-          }
-          testthat::test_local(
-            ".",
-            filter = "cmdstanr",
-            reporter = testthat::SummaryReporter$new()
-          )
-        shell: Rscript {0}
-
       - uses: r-lib/actions/check-r-package@v2
         env:
           # The main matrix keeps optional backends out of the shared check

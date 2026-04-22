@@ -1,6 +1,6 @@
 test_that("simulate_dcvar with exponential margins (positive skew) works", {
   traj <- rho_constant(50, 0.5)
-  sim <- simulate_dcvar(T = 50, rho_trajectory = traj,
+  sim <- simulate_dcvar(n_time = 50, rho_trajectory = traj,
                         margins = "exponential",
                         skew_direction = c(1, 1),
                         seed = 1)
@@ -16,7 +16,7 @@ test_that("simulate_dcvar with exponential margins (positive skew) works", {
 
 test_that("simulate_dcvar with exponential margins (negative skew) works", {
   traj <- rho_constant(50, 0.5)
-  sim <- simulate_dcvar(T = 50, rho_trajectory = traj,
+  sim <- simulate_dcvar(n_time = 50, rho_trajectory = traj,
                         margins = "exponential",
                         skew_direction = c(-1, -1),
                         seed = 2)
@@ -29,7 +29,7 @@ test_that("simulate_dcvar with exponential margins (negative skew) works", {
 
 test_that("simulate_dcvar with gamma margins works", {
   traj <- rho_constant(50, 0.5)
-  sim <- simulate_dcvar(T = 50, rho_trajectory = traj,
+  sim <- simulate_dcvar(n_time = 50, rho_trajectory = traj,
                         margins = "gamma",
                         skew_direction = c(1, 1),
                         skew_params = list(shape = 2),
@@ -46,7 +46,7 @@ test_that("simulate_dcvar with skew_normal margins works", {
   skip_if_not_installed("sn")
 
   traj <- rho_constant(50, 0.5)
-  sim <- simulate_dcvar(T = 50, rho_trajectory = traj,
+  sim <- simulate_dcvar(n_time = 50, rho_trajectory = traj,
                         margins = "skew_normal",
                         skew_params = list(alpha = c(3, -3)),
                         seed = 4)
@@ -59,7 +59,7 @@ test_that("simulate_dcvar with skew_normal margins works", {
 
 test_that("simulate_dcvar with non-normal margins has correct Y_df columns", {
   traj <- rho_constant(30, 0.3)
-  sim <- simulate_dcvar(T = 30, rho_trajectory = traj,
+  sim <- simulate_dcvar(n_time = 30, rho_trajectory = traj,
                         margins = "exponential",
                         skew_direction = c(1, -1),
                         seed = 5)
@@ -70,10 +70,10 @@ test_that("simulate_dcvar with non-normal margins has correct Y_df columns", {
 
 test_that("simulate_dcvar with non-normal margins is reproducible with seed", {
   traj <- rho_constant(40, 0.5)
-  s1 <- simulate_dcvar(T = 40, rho_trajectory = traj,
+  s1 <- simulate_dcvar(n_time = 40, rho_trajectory = traj,
                        margins = "exponential",
                        skew_direction = c(1, 1), seed = 42)
-  s2 <- simulate_dcvar(T = 40, rho_trajectory = traj,
+  s2 <- simulate_dcvar(n_time = 40, rho_trajectory = traj,
                        margins = "exponential",
                        skew_direction = c(1, 1), seed = 42)
   expect_identical(s1$Y, s2$Y)
@@ -81,7 +81,7 @@ test_that("simulate_dcvar with non-normal margins is reproducible with seed", {
 
 test_that("simulate_dcvar normal margins stores sigma_eps in true_params", {
   traj <- rho_constant(30, 0.5)
-  sim <- simulate_dcvar(T = 30, rho_trajectory = traj,
+  sim <- simulate_dcvar(n_time = 30, rho_trajectory = traj,
                         margins = "normal", seed = 6)
 
   expect_equal(sim$true_params$margins, "normal")

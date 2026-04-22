@@ -105,9 +105,21 @@ adaptation without significant computational cost, reducing occasional
 divergences near the rho boundary.
 }
 \examples{
-\dontrun{
-sim <- simulate_dcvar(T = 100, rho_trajectory = rho_constant(100, 0.5))
-fit <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"))
+\donttest{
+sim <- simulate_dcvar(
+  n_time = 12,
+  rho_trajectory = rho_constant(12, rho = 0.5),
+  seed = 1
+)
+fit <- dcvar_constant(
+  sim$Y_df,
+  vars = c("y1", "y2"),
+  chains = 1,
+  iter_warmup = 10,
+  iter_sampling = 10,
+  refresh = 0,
+  seed = 1
+)
 print(fit)
 }
 }

@@ -6,7 +6,7 @@
 \usage{
 simulate_dcvar_multilevel(
   N = 40,
-  T = 100,
+  n_time = 100,
   phi_bar = c(0.3, 0.1, 0.1, 0.3),
   tau_phi = c(0.1, 0.05, 0.05, 0.1),
   sigma = c(1, 1),
@@ -19,7 +19,7 @@ simulate_dcvar_multilevel(
 \arguments{
 \item{N}{Number of units.}
 
-\item{T}{Number of time points per unit.}
+\item{n_time}{Number of time points per unit.}
 
 \item{phi_bar}{Population mean for VAR coefficients (length-4 vector:
 phi11, phi12, phi21, phi22).}

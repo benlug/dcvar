@@ -9,7 +9,7 @@ test_that("pit_values returns correct structure for constant fit", {
 
   expect_s3_class(pit_df, "data.frame")
   expect_named(pit_df, c("time", "variable", "pit"))
-  expect_equal(nrow(pit_df), (fit$stan_data$T - 1) * fit$stan_data$D)
+  expect_equal(nrow(pit_df), (fit$stan_data$n_time - 1) * fit$stan_data$D)
   expect_true(all(pit_df$pit >= 0 & pit_df$pit <= 1))
   expect_equal(unique(pit_df$time), attr(fit$stan_data, "time_values")[-1])
 })
@@ -89,7 +89,7 @@ test_that("pit_values honor preserved time values", {
   attr(fit$stan_data, "time_values") <- seq.Date(
     as.Date("2022-01-01"),
     by = "week",
-    length.out = fit$stan_data$T
+    length.out = fit$stan_data$n_time
   )
   pit_df <- pit_values(fit)
 

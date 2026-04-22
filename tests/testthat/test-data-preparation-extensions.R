@@ -5,13 +5,13 @@
 # --- prepare_multilevel_data ------------------------------------------------
 
 test_that("prepare_multilevel_data returns correct Stan data structure", {
-  sim <- simulate_dcvar_multilevel(N = 5, T = 20, rho = 0.5, seed = 1)
+  sim <- simulate_dcvar_multilevel(N = 5, n_time = 20, rho = 0.5, seed = 1)
   stan_data <- prepare_multilevel_data(sim$data, vars = c("y1", "y2"),
                                        id_var = "id")
 
   expect_type(stan_data, "list")
   expect_equal(stan_data$N, 5)
-  expect_equal(stan_data$T, 20)
+  expect_equal(stan_data$n_time, 20)
   expect_type(stan_data$y, "list")
   expect_equal(length(stan_data$y), 5)
 
@@ -21,7 +21,7 @@ test_that("prepare_multilevel_data returns correct Stan data structure", {
 })
 
 test_that("prepare_multilevel_data includes prior hyperparameters", {
-  sim <- simulate_dcvar_multilevel(N = 3, T = 15, rho = 0.5, seed = 2)
+  sim <- simulate_dcvar_multilevel(N = 3, n_time = 15, rho = 0.5, seed = 2)
   stan_data <- prepare_multilevel_data(sim$data, vars = c("y1", "y2"),
                                        id_var = "id",
                                        prior_phi_bar_sd = 0.8,
@@ -52,7 +52,7 @@ test_that("prepare_multilevel_data errors on missing columns", {
 })
 
 test_that("prepare_multilevel_data validates vars length", {
-  sim <- simulate_dcvar_multilevel(N = 3, T = 10, rho = 0.5, seed = 5)
+  sim <- simulate_dcvar_multilevel(N = 3, n_time = 10, rho = 0.5, seed = 5)
   expect_error(
     prepare_multilevel_data(sim$data, vars = "y1", id_var = "id"),
     "Exactly 2 variables"
@@ -60,7 +60,7 @@ test_that("prepare_multilevel_data validates vars length", {
 })
 
 test_that("prepare_multilevel_data validates numeric columns", {
-  sim <- simulate_dcvar_multilevel(N = 3, T = 10, rho = 0.5, seed = 6)
+  sim <- simulate_dcvar_multilevel(N = 3, n_time = 10, rho = 0.5, seed = 6)
   sim$data$y1 <- as.character(sim$data$y1)
   expect_error(
     prepare_multilevel_data(sim$data, vars = c("y1", "y2"), id_var = "id"),
@@ -69,7 +69,7 @@ test_that("prepare_multilevel_data validates numeric columns", {
 })
 
 test_that("prepare_multilevel_data rejects duplicate vars and invalid priors", {
-  sim <- simulate_dcvar_multilevel(N = 3, T = 10, rho = 0.5, seed = 7)
+  sim <- simulate_dcvar_multilevel(N = 3, n_time = 10, rho = 0.5, seed = 7)
   expect_error(
     prepare_multilevel_data(sim$data, vars = c("y1", "y1"), id_var = "id"),
     "distinct"
@@ -87,7 +87,7 @@ test_that("prepare_multilevel_data rejects duplicate vars and invalid priors", {
 })
 
 test_that("prepare_multilevel_data handles centering correctly", {
-  sim <- simulate_dcvar_multilevel(N = 3, T = 20, rho = 0.5,
+  sim <- simulate_dcvar_multilevel(N = 3, n_time = 20, rho = 0.5,
                                    center = FALSE, seed = 3)
   stan_centered <- prepare_multilevel_data(sim$data, vars = c("y1", "y2"),
                                            id_var = "id", center = TRUE)
@@ -105,7 +105,7 @@ test_that("prepare_multilevel_data handles centering correctly", {
 })
 
 test_that("prepare_multilevel_data stores attributes", {
-  sim <- simulate_dcvar_multilevel(N = 4, T = 15, rho = 0.5, seed = 4)
+  sim <- simulate_dcvar_multilevel(N = 4, n_time = 15, rho = 0.5, seed = 4)
   stan_data <- prepare_multilevel_data(sim$data, vars = c("y1", "y2"),
                                        id_var = "id")
 
@@ -148,7 +148,7 @@ test_that("prepare_multilevel_data rejects duplicate unit time values", {
 
 test_that("prepare_sem_data returns correct Stan data structure", {
   J <- 3
-  sim <- simulate_dcvar_sem(T = 50, J = J,
+  sim <- simulate_dcvar_sem(n_time = 50, J = J,
                             lambda = rep(0.8, J),
                             rho = 0.5, seed = 10)
   indicators <- list(
@@ -160,7 +160,7 @@ test_that("prepare_sem_data returns correct Stan data structure", {
                                 sigma_e = sqrt(0.2))
 
   expect_type(stan_data, "list")
-  expect_equal(stan_data$T, 50)
+  expect_equal(stan_data$n_time, 50)
   expect_equal(stan_data$J, J)
   expect_equal(nrow(stan_data$y), 50)
   expect_equal(ncol(stan_data$y), 2 * J)
@@ -273,7 +273,7 @@ test_that("prepare_sem_data errors when indicators is not a list of length 2", {
 
 test_that("prepare_sem_data errors when lambda length mismatches J", {
   J <- 3
-  sim <- simulate_dcvar_sem(T = 30, J = J, lambda = rep(0.8, J),
+  sim <- simulate_dcvar_sem(n_time = 30, J = J, lambda = rep(0.8, J),
                             rho = 0.5, seed = 11)
   indicators <- list(
     latent1 = paste0("y1_", seq_len(J)),
@@ -289,7 +289,7 @@ test_that("prepare_sem_data errors when lambda length mismatches J", {
 
 test_that("prepare_sem_data correct dimensions for indicator matrix", {
   for (J in c(2, 4)) {
-    sim <- simulate_dcvar_sem(T = 40, J = J, lambda = rep(0.8, J),
+    sim <- simulate_dcvar_sem(n_time = 40, J = J, lambda = rep(0.8, J),
                               rho = 0.5, seed = 200 + J)
     indicators <- list(
       latent1 = paste0("y1_", seq_len(J)),
@@ -307,7 +307,7 @@ test_that("prepare_sem_data correct dimensions for indicator matrix", {
 
 test_that("prepare_sem_data stores latent variable name attributes", {
   J <- 2
-  sim <- simulate_dcvar_sem(T = 30, J = J, lambda = rep(0.8, J),
+  sim <- simulate_dcvar_sem(n_time = 30, J = J, lambda = rep(0.8, J),
                             rho = 0.5, seed = 12)
   indicators <- list(
     anxiety = paste0("y1_", seq_len(J)),

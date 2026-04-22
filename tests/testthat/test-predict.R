@@ -6,7 +6,7 @@ test_that("fitted() returns correct structure for dcvar", {
 
   expect_s3_class(fit_df, "data.frame")
   expect_true(all(c("time", "y1", "y2") %in% names(fit_df)))
-  expect_equal(nrow(fit_df), fit$stan_data$T - 1)
+  expect_equal(nrow(fit_df), fit$stan_data$n_time - 1)
   expect_equal(fit_df$time, attr(fit$stan_data, "time_values")[-1])
 })
 
@@ -17,7 +17,7 @@ test_that("fitted() returns correct structure for hmm", {
   fit_df <- fitted(fit)
 
   expect_s3_class(fit_df, "data.frame")
-  expect_equal(nrow(fit_df), fit$stan_data$T - 1)
+  expect_equal(nrow(fit_df), fit$stan_data$n_time - 1)
 })
 
 test_that("fitted() returns correct structure for constant", {
@@ -27,7 +27,7 @@ test_that("fitted() returns correct structure for constant", {
   fit_df <- fitted(fit)
 
   expect_s3_class(fit_df, "data.frame")
-  expect_equal(nrow(fit_df), fit$stan_data$T - 1)
+  expect_equal(nrow(fit_df), fit$stan_data$n_time - 1)
 })
 
 test_that("predict() returns correct structure", {
@@ -39,7 +39,7 @@ test_that("predict() returns correct structure", {
   expect_s3_class(pred_df, "data.frame")
   expect_true(all(c("time", "variable", "mean", "lower", "upper") %in% names(pred_df)))
   # Two variables, each with T-1 rows
-  expect_equal(nrow(pred_df), 2 * (fit$stan_data$T - 1))
+  expect_equal(nrow(pred_df), 2 * (fit$stan_data$n_time - 1))
   expect_true(all(pred_df$lower <= pred_df$mean))
   expect_true(all(pred_df$upper >= pred_df$mean))
 })
@@ -136,7 +136,7 @@ test_that("fitted() and predict() honor preserved time values", {
   attr(fit$stan_data, "time_values") <- seq.Date(
     as.Date("2021-01-01"),
     by = "day",
-    length.out = fit$stan_data$T
+    length.out = fit$stan_data$n_time
   )
 
   fit_df <- fitted(fit)
@@ -153,7 +153,7 @@ test_that("multilevel and SEM fitted()/predict() honor preserved time values", {
   attr(ml_fit$stan_data, "time_values") <- seq.Date(
     as.Date("2022-01-01"),
     by = "day",
-    length.out = ml_fit$stan_data$T
+    length.out = ml_fit$stan_data$n_time
   )
   ml_fitted <- fitted(ml_fit)
   ml_pred <- predict(ml_fit)
@@ -164,7 +164,7 @@ test_that("multilevel and SEM fitted()/predict() honor preserved time values", {
   attr(sem_fit$stan_data, "time_values") <- seq.Date(
     as.Date("2022-03-01"),
     by = "day",
-    length.out = sem_fit$stan_data$T
+    length.out = sem_fit$stan_data$n_time
   )
   sem_fitted <- fitted(sem_fit, type = "link")
   sem_pred <- predict(sem_fit, type = "response")
@@ -186,7 +186,7 @@ test_that("predictive methods fail clearly when required Stan outputs are missin
   single_fit <- structure(
     list(
       fit = make_stub_draws(c("Phi[1,1]", "Phi[1,2]", "Phi[2,1]", "Phi[2,2]", "sigma_eps[1]", "sigma_eps[2]")),
-      stan_data = list(T = 5, D = 2, Y = matrix(0, nrow = 5, ncol = 2)),
+      stan_data = list(n_time = 5, D = 2, Y = matrix(0, nrow = 5, ncol = 2)),
       model = "dcvar",
       vars = c("y1", "y2"),
       standardized = FALSE,
@@ -203,7 +203,7 @@ test_that("predictive methods fail clearly when required Stan outputs are missin
   sem_fit <- structure(
     list(
       fit = make_stub_draws(c("rho", "Phi[1,1]", "Phi[1,2]", "Phi[2,1]", "Phi[2,2]")),
-      stan_data = list(T = 4),
+      stan_data = list(n_time = 4),
       model = "sem",
       vars = c("latent1", "latent2"),
       J = 2,

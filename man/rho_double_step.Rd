@@ -5,26 +5,26 @@
 \title{Generate a double-breakpoint (relapse pattern) rho trajectory}
 \usage{
 rho_double_step(
-  T,
+  n_time,
   rho_levels = c(0.7, 0.3, 0.7),
   breakpoints = c(1/3, 2/3),
   transition_width = 0
 )
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{rho_levels}{Numeric vector of three rho levels (default:
 \code{c(0.7, 0.3, 0.7)}).}
 
 \item{breakpoints}{Numeric vector of two breakpoint positions (default:
-\code{c(1/3, 2/3)}). Interpreted as proportions of T-1 if <= 1.}
+\code{c(1/3, 2/3)}). Interpreted as proportions of \code{n_time - 1} if <= 1.}
 
 \item{transition_width}{Number of time points for smooth transitions
 (default: 0).}
 }
 \value{
-Numeric vector of length T-1.
+Numeric vector of length \code{n_time - 1}.
 }
 \description{
 Three-phase trajectory: level A -> level B -> level C.

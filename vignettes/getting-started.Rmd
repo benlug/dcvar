@@ -49,11 +49,11 @@ dcvar includes trajectory generators and a data simulator for testing:
 library(dcvar)
 
 # Generate a decreasing rho trajectory (therapy effect)
-rho_true <- rho_decreasing(T = 150, rho_start = 0.7, rho_end = 0.3)
+rho_true <- rho_decreasing(n_time = 150, rho_start = 0.7, rho_end = 0.3)
 
 # Simulate bivariate VAR(1) data with this trajectory
 sim <- simulate_dcvar(
-  T = 150,
+  n_time = 150,
   rho_trajectory = rho_true,
   seed = 42
 )

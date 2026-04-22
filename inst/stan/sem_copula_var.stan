@@ -7,9 +7,9 @@ functions {
 }
 
 data {
-  int<lower=1> T;
+  int<lower=1> n_time;
   int<lower=1> J;
-  matrix[T, 2 * J] y;              // indicators: y11..y1J y21..y2J
+  matrix[n_time, 2 * J] y;              // indicators: y11..y1J y21..y2J
   vector[J] lambda;                 // fixed factor loadings
   real<lower=0> sigma_e;            // fixed measurement error SD
 
@@ -34,12 +34,12 @@ parameters {
   real<lower=-0.99, upper=0.99> phi22;
   vector<lower=0>[2] sigma;         // innovation SDs
   real rho_raw;                     // unconstrained; rho = 0.97 * tanh(rho_raw)
-  matrix[T, 2] zeta;               // latent innovations
+  matrix[n_time, 2] zeta;               // latent innovations
 }
 
 transformed parameters {
   matrix[2, 2] B;
-  matrix[T, 2] state;
+  matrix[n_time, 2] state;
   real rho;
 
   // Map rho_raw in (-Inf, Inf) to rho in (-0.97, 0.97) via scaled tanh.
@@ -55,7 +55,7 @@ transformed parameters {
   // convention directly rather than returning post-burn-in states.
   {
     vector[2] s;
-    for (t in 1:T) {
+    for (t in 1:n_time) {
       vector[2] zt = to_vector(zeta[t]);
       s = (t == 1) ? (mu + zt) : (mu + B * s + zt);
       state[t, 1] = s[1];
@@ -77,7 +77,7 @@ model {
   // Innovation density: Normal margins + Gaussian copula (z-score form)
   {
     real log_sigma_sum = log(sigma[1]) + log(sigma[2]);
-    for (t in 1:T) {
+    for (t in 1:n_time) {
       vector[2] z;
       z[1] = zeta[t, 1] / sigma[1];
       z[2] = zeta[t, 2] / sigma[2];
@@ -87,7 +87,7 @@ model {
   }
 
   // Measurement model (independent Normal errors)
-  for (t in 1:T) {
+  for (t in 1:n_time) {
     for (j in 1:J) {
       y[t, j]     ~ normal(lambda[j] * state[t, 1], sigma_e);
       y[t, J + j] ~ normal(lambda[j] * state[t, 2], sigma_e);
@@ -97,14 +97,14 @@ model {
 
 generated quantities {
   matrix[2, 2] Phi;
-  vector[T] log_lik;
+  vector[n_time] log_lik;
 
   Phi[1, 1] = phi11; Phi[1, 2] = phi12;
   Phi[2, 1] = phi21; Phi[2, 2] = phi22;
 
   {
     real log_sigma_sum = log(sigma[1]) + log(sigma[2]);
-    for (t in 1:T) {
+    for (t in 1:n_time) {
       vector[2] z;
       z[1] = zeta[t, 1] / sigma[1];
       z[2] = zeta[t, 2] / sigma[2];

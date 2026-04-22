@@ -31,6 +31,6 @@ A named list with:
 \description{
 Returns a summary of sampling diagnostics including divergences,
 tree depth warnings, Rhat, and effective sample size.
-The headline convergence summary is computed from sampled parameters only and
+The convergence headline is computed from sampled parameters only and
 excludes generated quantities and deterministic transformed outputs.
 }

@@ -7,9 +7,9 @@ functions {
 }
 
 data {
-  int<lower=1> T;
+  int<lower=1> n_time;
   int<lower=1> J;
-  matrix[T, 2 * J] y;              // indicators: y11..y1J y21..y2J
+  matrix[n_time, 2 * J] y;              // indicators: y11..y1J y21..y2J
   vector[J] lambda;                // fixed factor loadings
   real<lower=0> sigma_e;           // fixed measurement error SD
   vector[2] skew_direction;        // +1 / -1 exponential skew directions
@@ -29,12 +29,12 @@ parameters {
   real<lower=-0.99, upper=0.99> phi22;
   vector[2] eta;                   // unconstrained: sigma_exp = lb + exp(eta)
   real rho_raw;                    // unconstrained; rho = 0.97 * tanh(rho_raw)
-  matrix[T, 2] zeta;               // latent innovations
+  matrix[n_time, 2] zeta;               // latent innovations
 }
 
 transformed parameters {
   matrix[2, 2] B;
-  matrix[T, 2] state;
+  matrix[n_time, 2] state;
   vector[2] sigma_lb;
   vector[2] sigma_exp;
   vector[2] rate_exp;
@@ -46,7 +46,7 @@ transformed parameters {
 
   for (i in 1:2) {
     real m = -skew_direction[i] * zeta[1, i];
-    for (t in 2:T) {
+    for (t in 2:n_time) {
       m = fmax(m, -skew_direction[i] * zeta[t, i]);
     }
     sigma_lb[i] = fmax(m, 0);
@@ -56,7 +56,7 @@ transformed parameters {
 
   {
     vector[2] s;
-    for (t in 1:T) {
+    for (t in 1:n_time) {
       vector[2] zt = to_vector(zeta[t]);
       s = (t == 1) ? (mu + zt) : (mu + B * s + zt);
       state[t, 1] = s[1];
@@ -79,7 +79,7 @@ model {
   }
 
   // Latent innovation density: shifted exponential margins + Gaussian copula.
-  for (t in 1:T) {
+  for (t in 1:n_time) {
     vector[2] u_vec;
     for (i in 1:2) {
       real x_shifted = sigma_exp[i] + skew_direction[i] * zeta[t, i];
@@ -93,7 +93,7 @@ model {
   }
 
   // Measurement model (independent Normal errors)
-  for (t in 1:T) {
+  for (t in 1:n_time) {
     for (j in 1:J) {
       y[t, j]     ~ normal(lambda[j] * state[t, 1], sigma_e);
       y[t, J + j] ~ normal(lambda[j] * state[t, 2], sigma_e);
@@ -103,12 +103,12 @@ model {
 
 generated quantities {
   matrix[2, 2] Phi;
-  vector[T] log_lik;
+  vector[n_time] log_lik;
 
   Phi[1, 1] = phi11; Phi[1, 2] = phi12;
   Phi[2, 1] = phi21; Phi[2, 2] = phi22;
 
-  for (t in 1:T) {
+  for (t in 1:n_time) {
     vector[2] u_vec;
     log_lik[t] = 0;
 

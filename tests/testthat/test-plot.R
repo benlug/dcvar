@@ -24,7 +24,7 @@ test_that("plot_rho() returns ggplot for constant", {
 
 test_that("plot_rho() rejects invalid interval levels", {
   fit <- structure(
-    list(model = "dcvar", stan_data = list(T = 5)),
+    list(model = "dcvar", stan_data = list(n_time = 5)),
     class = "dcvar_fit"
   )
   expect_error(plot_rho(fit, ci_level = 0), "ci_level")
@@ -76,13 +76,13 @@ test_that("plot_hmm_states() returns ggplot with expected structure", {
 
 test_that("plot_rho() uses preserved time values for true_rho overlays", {
   fit <- structure(
-    list(model = "dcvar", stan_data = list(T = 5)),
+    list(model = "dcvar", stan_data = list(n_time = 5)),
     class = "dcvar_fit"
   )
   time_values <- seq.Date(
     as.Date("2021-01-01"),
     by = "day",
-    length.out = fit$stan_data$T
+    length.out = fit$stan_data$n_time
   )
   fit$stan_data <- structure(fit$stan_data, time_values = time_values)
 
@@ -103,7 +103,7 @@ test_that("plot_rho() uses preserved time values for true_rho overlays", {
     .package = "dcvar"
   )
 
-  true_rho <- rep(0.2, fit$stan_data$T - 1)
+  true_rho <- rep(0.2, fit$stan_data$n_time - 1)
   p <- plot_rho(fit, true_rho = true_rho)
   overlay_data <- p$layers[[length(p$layers)]]$data
 
@@ -115,14 +115,14 @@ test_that("plot_latent_states() uses preserved time values for true_states overl
   fit <- structure(
     list(
       vars = c("latent1", "latent2"),
-      stan_data = list(T = 5)
+      stan_data = list(n_time = 5)
     ),
     class = "dcvar_sem_fit"
   )
   time_values <- seq.Date(
     as.Date("2021-01-01"),
     by = "day",
-    length.out = fit$stan_data$T
+    length.out = fit$stan_data$n_time
   )
   fit$stan_data <- structure(fit$stan_data, time_values = time_values)
 
@@ -142,8 +142,8 @@ test_that("plot_latent_states() uses preserved time values for true_states overl
   )
 
   true_states <- cbind(
-    latent1 = seq_len(fit$stan_data$T),
-    latent2 = seq_len(fit$stan_data$T) * 2
+    latent1 = seq_len(fit$stan_data$n_time),
+    latent2 = seq_len(fit$stan_data$n_time) * 2
   )
   p <- plot_latent_states(fit, true_states = true_states)
   overlay_data <- p$layers[[length(p$layers)]]$data
@@ -222,7 +222,7 @@ test_that("plot methods fail clearly when required Stan outputs are missing", {
       model = "dcvar",
       vars = c("y1", "y2"),
       margins = "normal",
-      stan_data = list(T = 5, D = 2),
+      stan_data = list(n_time = 5, D = 2),
       backend = "rstan",
       meta = list(iter_sampling = 10, chains = 1)
     ),
@@ -236,7 +236,7 @@ test_that("plot methods fail clearly when required Stan outputs are missing", {
       model = "dcvar",
       vars = c("y1", "y2"),
       margins = "normal",
-      stan_data = list(T = 3, D = 2),
+      stan_data = list(n_time = 3, D = 2),
       backend = "rstan",
       meta = list(iter_sampling = 10, chains = 1)
     ),

@@ -97,9 +97,9 @@ dcvar_multilevel <- function(data, vars,
   )
 
   N <- stan_data$N
-  T_obs <- stan_data$T
+  n_time_obs <- stan_data$n_time
 
-  cli_inform("Fitting multilevel copula VAR model (N = {N}, T = {T_obs})...")
+  cli_inform("Fitting multilevel copula VAR model (N = {N}, n_time = {n_time_obs})...")
 
   # Compile model
   model <- .compile_model("multilevel", stan_file = stan_file, backend = backend)

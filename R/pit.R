@@ -40,13 +40,13 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 
   # Extract posterior mean residuals and parameters
   eps_draws <- posterior::as_draws_matrix(.fit_draws(object$fit, "eps", backend = object$backend))
-  T_eff <- object$stan_data$T - 1
+  n_time_eff <- object$stan_data$n_time - 1L
   D <- object$stan_data$D
 
   # Posterior mean residuals
-  eps_mean <- matrix(NA_real_, T_eff, D)
+  eps_mean <- matrix(NA_real_, n_time_eff, D)
   for (d in seq_len(D)) {
-    cols <- paste0("eps[", seq_len(T_eff), ",", d, "]")
+    cols <- paste0("eps[", seq_len(n_time_eff), ",", d, "]")
     eps_mean[, d] <- colMeans(eps_draws[, cols, drop = FALSE])
   }
 
@@ -58,7 +58,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
   data.frame(
     time = rep(time_values, D),
-    variable = rep(var_names, each = T_eff),
+    variable = rep(var_names, each = n_time_eff),
     pit = as.vector(pit_mat)
   )
 }

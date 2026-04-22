@@ -107,9 +107,22 @@ state-specific correlations. Uses ordered z_rho constraint to prevent
 label switching and a sticky Dirichlet prior to encourage state persistence.
 }
 \examples{
-\dontrun{
-sim <- simulate_dcvar(T = 100, rho_trajectory = rho_step(100))
-fit <- dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2)
+\donttest{
+sim <- simulate_dcvar(
+  n_time = 12,
+  rho_trajectory = rho_step(12),
+  seed = 1
+)
+fit <- dcvar_hmm(
+  sim$Y_df,
+  vars = c("y1", "y2"),
+  K = 2,
+  chains = 1,
+  iter_warmup = 10,
+  iter_sampling = 10,
+  refresh = 0,
+  seed = 1
+)
 print(fit)
 hmm_states(fit)
 }

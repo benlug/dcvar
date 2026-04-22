@@ -39,7 +39,7 @@ NULL
 #' @export
 print.dcvar_constant_fit <- function(x, ...) {
   .print_fit_header(x, "Constant Copula Model Fit")
-  cat(sprintf("T = %d, D = %d\n", x$stan_data$T, x$stan_data$D))
+  cat(sprintf("n_time = %d, D = %d\n", x$stan_data$n_time, x$stan_data$D))
   .print_fit_footer(x)
 
   rho_df <- rho_trajectory(x)
@@ -62,7 +62,7 @@ summary.dcvar_constant_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...
 
   out <- list(
     model = "constant",
-    T = object$stan_data$T,
+    n_time = object$stan_data$n_time,
     D = object$stan_data$D,
     rho = rho_df,
     var_params = vp,
@@ -87,7 +87,7 @@ print.dcvar_constant_summary <- function(x, ...) {
 
   cat("Constant Copula Model Summary\n")
   cat(strrep("=", 50), "\n")
-  cat(sprintf("T = %d, D = %d\n\n", x$T, x$D))
+  cat(sprintf("n_time = %d, D = %d\n\n", x$n_time, x$D))
 
   cat(sprintf("Rho (constant): %.3f", x$rho$mean[1]))
   if (length(quantile_cols) >= 2) {

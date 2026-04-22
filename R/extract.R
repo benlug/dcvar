@@ -14,7 +14,7 @@
 #'
 #' @return A data frame with columns `time`, `mean`, `sd`, and one column per
 #'   quantile (e.g., `q2.5`, `q10`, `q50`, `q90`, `q97.5`). For
-#'   `dcvar_constant_fit` objects, the constant rho is expanded to all T-1
+#'   `dcvar_constant_fit` objects, the constant rho is expanded to all `n_time - 1`
 #'   time points for consistency with the time-varying models.
 #'
 #' @seealso [plot_rho()] to visualise the trajectory,
@@ -36,7 +36,7 @@ rho_trajectory.default <- function(object, ...) {
 .observed_time_values <- function(stan_data, drop_first = FALSE) {
   time_values <- attr(stan_data, "time_values")
   if (is.null(time_values)) {
-    time_values <- seq_len(stan_data$T)
+    time_values <- seq_len(stan_data$n_time)
   }
 
   if (drop_first) {
@@ -53,11 +53,11 @@ rho_trajectory.default <- function(object, ...) {
     cli_abort("{.arg probs} must be numeric values in [0, 1].")
   }
 
-  T_eff <- ncol(rho_draws)
+  n_time_eff <- ncol(rho_draws)
   if (is.null(time_values)) {
-    time_values <- 2:(T_eff + 1)
+    time_values <- 2:(n_time_eff + 1)
   }
-  if (length(time_values) != T_eff) {
+  if (length(time_values) != n_time_eff) {
     cli_abort("Time axis length does not match rho draw length.")
   }
 
@@ -118,8 +118,8 @@ rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
     output_type = "transformed parameter"
   ))
 
-  T_obs <- object$stan_data$T
-  T_eff <- T_obs - 1
+  n_time_obs <- object$stan_data$n_time
+  n_time_eff <- n_time_obs - 1L
 
   rho_mean <- mean(rho_draws[, 1])
   rho_sd <- sd(rho_draws[, 1])
@@ -128,12 +128,12 @@ rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
 
   rho_summary <- data.frame(
     time = time_values,
-    mean = rep(rho_mean, T_eff),
-    sd = rep(rho_sd, T_eff)
+    mean = rep(rho_mean, n_time_eff),
+    sd = rep(rho_sd, n_time_eff)
   )
 
   for (i in seq_along(probs)) {
-    rho_summary[[paste0("q", probs[i] * 100)]] <- rep(quants[i], T_eff)
+    rho_summary[[paste0("q", probs[i] * 100)]] <- rep(quants[i], n_time_eff)
   }
 
   rho_summary
@@ -276,7 +276,7 @@ hmm_states.default <- function(object, ...) {
 #' @export
 hmm_states.dcvar_hmm_fit <- function(object, ...) {
   K <- object$K
-  T_eff <- object$stan_data$T - 1
+  n_time_eff <- object$stan_data$n_time - 1L
 
   .safe_draws <- function(var_name) {
     tryCatch(
@@ -297,15 +297,15 @@ hmm_states.dcvar_hmm_fit <- function(object, ...) {
   gamma_draws <- .safe_draws("gamma")
 
   # Validate gamma columns exist upfront
-  expected_gamma_cols <- paste0("gamma[", rep(seq_len(T_eff), K), ",", rep(seq_len(K), each = T_eff), "]")
+  expected_gamma_cols <- paste0("gamma[", rep(seq_len(n_time_eff), K), ",", rep(seq_len(K), each = n_time_eff), "]")
   missing_gamma <- setdiff(expected_gamma_cols, colnames(gamma_draws))
   if (length(missing_gamma) > 0) {
     cli_abort("Expected gamma columns missing from draws: {.val {head(missing_gamma, 5)}}")
   }
 
-  gamma_mean <- matrix(NA_real_, T_eff, K)
+  gamma_mean <- matrix(NA_real_, n_time_eff, K)
   for (k in 1:K) {
-    cols <- paste0("gamma[", 1:T_eff, ",", k, "]")
+    cols <- paste0("gamma[", seq_len(n_time_eff), ",", k, "]")
     gamma_mean[, k] <- colMeans(gamma_draws[, cols, drop = FALSE])
   }
 
@@ -512,13 +512,13 @@ latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
     context = "latent_states.dcvar_sem_fit()",
     output_type = "transformed parameter group"
   ))
-  T_obs <- object$stan_data$T
+  n_time_obs <- object$stan_data$n_time
   vars <- object$vars
   time_values <- .observed_time_values(object$stan_data)
 
   results <- vector("list", 2)
   for (d in 1:2) {
-    cols <- paste0("state[", seq_len(T_obs), ",", d, "]")
+    cols <- paste0("state[", seq_len(n_time_obs), ",", d, "]")
     draws_d <- state_draws[, cols, drop = FALSE]
 
     df <- data.frame(
@@ -594,15 +594,15 @@ var_params.dcvar_sem_fit <- function(object, ...) {
 #' @rdname rho_trajectory
 #' @export
 rho_trajectory.dcvar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
-  # SEM has constant rho, expand to all T-1 time points
+  # SEM has constant rho, expand to all n_time - 1 time points
   rho_draws <- posterior::as_draws_matrix(.fit_draws(
     object$fit, "rho", backend = object$backend,
     required = "rho",
     context = "rho_trajectory.dcvar_sem_fit()",
     output_type = "transformed parameter"
   ))
-  T_obs <- object$stan_data$T
-  T_eff <- T_obs - 1
+  n_time_obs <- object$stan_data$n_time
+  n_time_eff <- n_time_obs - 1L
 
   rho_mean <- mean(rho_draws[, 1])
   rho_sd <- sd(rho_draws[, 1])
@@ -611,12 +611,12 @@ rho_trajectory.dcvar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
 
   rho_summary <- data.frame(
     time = time_values,
-    mean = rep(rho_mean, T_eff),
-    sd = rep(rho_sd, T_eff)
+    mean = rep(rho_mean, n_time_eff),
+    sd = rep(rho_sd, n_time_eff)
   )
 
   for (i in seq_along(probs)) {
-    rho_summary[[paste0("q", probs[i] * 100)]] <- rep(quants[i], T_eff)
+    rho_summary[[paste0("q", probs[i] * 100)]] <- rep(quants[i], n_time_eff)
   }
 
   rho_summary

@@ -23,7 +23,7 @@
 #' Generates indicator-level time series data from a latent VAR(1) process
 #' with Gaussian copula dependence and a fixed measurement model.
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param J Number of indicators per latent variable.
 #' @param lambda Numeric vector of length J with factor loadings.
 #' @param sigma_e Measurement error SD (scalar).
@@ -47,10 +47,10 @@
 #'   - `data`: data frame with columns `time`, `y1_1`, ..., `y1_J`,
 #'     `y2_1`, ..., `y2_J`
 #'   - `true_params`: list of true parameter values
-#'   - `latent_states`: T x 2 matrix of true latent states
-#'   - `innovations`: T x 2 matrix of true innovations
+#'   - `latent_states`: `n_time x 2` matrix of true latent states
+#'   - `innovations`: `n_time x 2` matrix of true innovations
 #' @export
-simulate_dcvar_sem <- function(T = 200, J = 3,
+simulate_dcvar_sem <- function(n_time = 200, J = 3,
                                 lambda = rep(sqrt(0.8), 3),
                                 sigma_e = sqrt(0.2),
                                 Phi = matrix(c(0.5, 0.15, 0.15, 0.3), 2, 2),
@@ -64,8 +64,8 @@ simulate_dcvar_sem <- function(T = 200, J = 3,
                                 seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
   .validate_sem_margins(margins, skew_direction)
-  if (!is.numeric(T) || length(T) != 1L || T != as.integer(T) || T < 1) {
-    cli_abort("{.arg T} must be an integer >= 1, got {.val {T}}.")
+  if (!is.numeric(n_time) || length(n_time) != 1L || n_time != as.integer(n_time) || n_time < 1) {
+    cli_abort("{.arg n_time} must be an integer >= 1, got {.val {n_time}}.")
   }
   if (!is.numeric(J) || length(J) != 1L || J != as.integer(J) || J < 1) {
     cli_abort("{.arg J} must be an integer >= 1, got {.val {J}}.")
@@ -115,37 +115,37 @@ simulate_dcvar_sem <- function(T = 200, J = 3,
 
   # Generate correlated innovations via Gaussian copula
   L <- matrix(c(1, rho, 0, sqrt(1 - rho^2)), 2, 2)
-  zeta <- matrix(NA_real_, T, 2)
-  for (t in seq_len(T)) {
+  zeta <- matrix(NA_real_, n_time, 2)
+  for (time_index in seq_len(n_time)) {
     z <- rnorm(2)
     w <- drop(L %*% z)
     if (identical(margins, "normal")) {
-      zeta[t, ] <- w * sigma
+      zeta[time_index, ] <- w * sigma
     } else {
       u <- stats::pnorm(w)
       for (i in seq_len(2L)) {
         x_raw <- stats::qexp(u[i], rate = 1 / sigma_exp[i])
-        zeta[t, i] <- skew_direction[i] * (x_raw - sigma_exp[i])
+        zeta[time_index, i] <- skew_direction[i] * (x_raw - sigma_exp[i])
       }
     }
   }
 
   # Latent VAR(1) recursion matching the SEM Stan model, which conditions on x_0 = 0.
-  state <- matrix(0, T, 2)
+  state <- matrix(0, n_time, 2)
   state[1, ] <- mu + zeta[1, ]
-  for (t in 2:T) {
-    state[t, ] <- mu + as.vector(Phi %*% state[t - 1, ]) + zeta[t, ]
+  for (time_index in 2:n_time) {
+    state[time_index, ] <- mu + as.vector(Phi %*% state[time_index - 1L, ]) + zeta[time_index, ]
   }
 
   # Measurement model: y_{ij,t} = lambda_j * state_{i,t} + e_{ij,t}
-  y <- matrix(NA_real_, T, 2 * J)
+  y <- matrix(NA_real_, n_time, 2 * J)
   for (j in seq_len(J)) {
-    y[, j]     <- lambda[j] * state[, 1] + rnorm(T, 0, sigma_e)
-    y[, J + j] <- lambda[j] * state[, 2] + rnorm(T, 0, sigma_e)
+    y[, j]     <- lambda[j] * state[, 1] + rnorm(n_time, 0, sigma_e)
+    y[, J + j] <- lambda[j] * state[, 2] + rnorm(n_time, 0, sigma_e)
   }
   colnames(y) <- c(paste0("y1_", seq_len(J)), paste0("y2_", seq_len(J)))
 
-  data <- data.frame(time = seq_len(T), y, check.names = FALSE)
+  data <- data.frame(time = seq_len(n_time), y, check.names = FALSE)
 
   true_params <- list(
     Phi = Phi,

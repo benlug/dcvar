@@ -7,9 +7,9 @@ functions {
 }
 
 data {
-  int<lower=2> T;
+  int<lower=2> n_time;
   int<lower=2> D;
-  matrix[T, D] Y;
+  matrix[n_time, D] Y;
   int<lower=2> K;
 
   real<lower=0> sigma_mu_prior;
@@ -20,7 +20,7 @@ data {
 }
 
 transformed data {
-  int T_eff = T - 1;
+  int n_time_eff = n_time - 1;
   real SQRT_2_OVER_PI = sqrt(2.0 / pi());
   array[K] vector[K] dirichlet_prior;
   for (k in 1:K) {
@@ -42,13 +42,13 @@ parameters {
 
 transformed parameters {
   vector[K] rho_state;
-  matrix[T_eff, D] eps;
+  matrix[n_time_eff, D] eps;
   vector[D] sn_alpha;  // renamed to avoid conflict with alpha_off
   vector[D] xi;
-  matrix[T_eff, K] obs_ll;
+  matrix[n_time_eff, K] obs_ll;
   matrix[K, K] log_A;
   vector[K] log_pi0;
-  matrix[T_eff, K] log_alpha;
+  matrix[n_time_eff, K] log_alpha;
 
   sn_alpha = delta ./ sqrt(1 - square(delta));
   xi = -omega .* (delta * SQRT_2_OVER_PI);
@@ -60,9 +60,9 @@ transformed parameters {
     for (k in 1:K) log_A[j, k] = log(A[j][k]);
   }
 
-  eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
+  eps = compute_var_residuals(Y, mu, Phi, n_time_eff, D);
 
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     real marginal_ll = 0;
     vector[2] u_vec;
     for (i in 1:D) {
@@ -74,7 +74,7 @@ transformed parameters {
     }
   }
 
-  log_alpha = hmm_forward(obs_ll, log_A, log_pi0, T_eff, K);
+  log_alpha = hmm_forward(obs_ll, log_A, log_pi0, n_time_eff, K);
 }
 
 model {
@@ -86,29 +86,29 @@ model {
   omega ~ normal(0, 1);
   delta ~ normal(0, 0.5);
 
-  target += log_sum_exp(to_vector(log_alpha[T_eff, ]));
+  target += log_sum_exp(to_vector(log_alpha[n_time_eff, ]));
 }
 
 generated quantities {
-  matrix[T_eff, K] gamma;
-  array[T_eff] int viterbi_state;
-  vector[T_eff] rho_hmm;
-  vector[T_eff] log_lik;
-  matrix[T_eff, D] eps_rep;
+  matrix[n_time_eff, K] gamma;
+  array[n_time_eff] int viterbi_state;
+  vector[n_time_eff] rho_hmm;
+  vector[n_time_eff] log_lik;
+  matrix[n_time_eff, D] eps_rep;
 
-  gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, T_eff, K);
+  gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, n_time_eff, K);
 
-  viterbi_state = hmm_viterbi(obs_ll, log_A, log_pi0, T_eff, K);
+  viterbi_state = hmm_viterbi(obs_ll, log_A, log_pi0, n_time_eff, K);
 
-  rho_hmm = hmm_rho_average(gamma, rho_state, T_eff, K);
+  rho_hmm = hmm_rho_average(gamma, rho_state, n_time_eff, K);
 
-  log_lik = hmm_log_lik(log_alpha, T_eff, K);
+  log_lik = hmm_log_lik(log_alpha, n_time_eff, K);
 
   // NOTE: eps_rep contains copula-level z-scores, not skew-normal residuals,
   // because Stan lacks a skew-normal inverse CDF. plot_ppc() rejects
   // skew-normal fits until replicated residuals are available on the
   // margin scale.
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     real z1_rep = std_normal_rng();
     real z2_rep = rho_hmm[t] * z1_rep + sqrt(1 - square(rho_hmm[t])) * std_normal_rng();
     eps_rep[t, 1] = z1_rep;

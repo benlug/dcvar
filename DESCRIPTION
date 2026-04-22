@@ -4,29 +4,23 @@ Version: 0.1.0
 Authors@R:
     person("Benedikt", "Lugauer", , "benedikt.lugauer@uni-leipzig.de",
            role = c("aut", "cre"))
-Description: Fits Bayesian copula VAR(1) models for bivariate time series with
-    three approaches to modelling dependence dynamics: continuous random-walk
-    correlation (DC-VAR), discrete regime-switching via hidden Markov models
-    (HMM Copula), and time-invariant correlation (Constant Copula). The core
-    single-level models support Gaussian, exponential, skew-normal, and gamma
-    marginal distributions via Gaussian copula. Experimental extensions
-    include multilevel models with random VAR coefficients for panel data and
-    structural equation models with fixed measurement models for latent
-    process estimation; these extensions have narrower diagnostic support
-    than the core models. The multilevel extension currently supports normal
-    margins only, while the SEM extension supports normal and exponential
-    latent innovation margins. Estimation is via Hamiltonian Monte Carlo in
-    Stan through 'rstan', with optional 'cmdstanr' backend support. Includes
-    tools for simulation, approximate PIT diagnostics, trajectory extraction,
-    fitted and prediction summaries, and LOO-CV model comparison for
-    supported fits.
+Description: Fits Bayesian copula vector autoregressive models for bivariate
+    time series with dynamic, regime-switching, and constant dependence
+    structures. The package includes simulation, data preparation,
+    estimation with 'Stan' through 'rstan' or 'cmdstanr', posterior
+    summaries, diagnostics, trajectory extraction, fitted and predictive
+    summaries, and approximate leave-one-out cross-validation model
+    comparison for supported fits. For Bayesian computation and model
+    comparison, see Carpenter et al. (2017)
+    <doi:10.18637/jss.v076.i01> and Vehtari, Gelman and Gabry (2017)
+    <doi:10.1007/s11222-016-9696-4>.
 License: GPL (>= 3)
 URL: https://github.com/benlug/dcvar
 BugReports: https://github.com/benlug/dcvar/issues
 Encoding: UTF-8
 Language: en-US
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+RoxygenNote: 7.3.2
 Depends:
     R (>= 4.1.0)
 Imports:

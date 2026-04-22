@@ -50,18 +50,18 @@
 
 #' Generate a constant rho trajectory
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param rho Constant correlation value (default: 0.5). Must be in \[-1, 1\].
 #'
-#' @return Numeric vector of length T-1.
+#' @return Numeric vector of length `n_time - 1`.
 #' @export
 #'
 #' @examples
 #' rho_constant(100, rho = 0.5)
-rho_constant <- function(T, rho = 0.5) {
-  if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
+rho_constant <- function(n_time, rho = 0.5) {
+  if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
   .trajectory_validate_rho_scalar(rho, "rho")
-  rep(rho, T - 1)
+  rep(rho, n_time - 1)
 }
 
 
@@ -69,22 +69,22 @@ rho_constant <- function(T, rho = 0.5) {
 #'
 #' Mimics a therapy effect where coupling decreases from high to low.
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param rho_start Starting rho value (default: 0.7).
 #' @param rho_end Ending rho value (default: 0.3).
-#' @param midpoint Time point of inflection (default: `T/2`).
+#' @param midpoint Time point of inflection (default: `n_time/2`).
 #' @param steepness Controls transition sharpness (default: 0.05).
 #'
-#' @return Numeric vector of length T-1.
+#' @return Numeric vector of length `n_time - 1`.
 #' @export
 #'
 #' @examples
 #' rho_decreasing(100)
-rho_decreasing <- function(T, rho_start = 0.7, rho_end = 0.3,
+rho_decreasing <- function(n_time, rho_start = 0.7, rho_end = 0.3,
                             midpoint = NULL, steepness = 0.05) {
-  if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
-  if (is.null(midpoint)) midpoint <- T / 2
-  t_vec <- 1:(T - 1)
+  if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
+  if (is.null(midpoint)) midpoint <- n_time / 2
+  t_vec <- seq_len(n_time - 1L)
   rho_end + (rho_start - rho_end) / (1 + exp(steepness * (t_vec - midpoint)))
 }
 
@@ -97,16 +97,16 @@ rho_decreasing <- function(T, rho_start = 0.7, rho_end = 0.3,
 #' @param rho_start Starting rho value (default: 0.3).
 #' @param rho_end Ending rho value (default: 0.7).
 #'
-#' @return Numeric vector of length T-1.
+#' @return Numeric vector of length `n_time - 1`.
 #' @export
 #'
 #' @examples
 #' rho_increasing(100)
-rho_increasing <- function(T, rho_start = 0.3, rho_end = 0.7,
+rho_increasing <- function(n_time, rho_start = 0.3, rho_end = 0.7,
                             midpoint = NULL, steepness = 0.05) {
-  if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
-  if (is.null(midpoint)) midpoint <- T / 2
-  t_vec <- 1:(T - 1)
+  if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
+  if (is.null(midpoint)) midpoint <- n_time / 2
+  t_vec <- seq_len(n_time - 1L)
   rho_start + (rho_end - rho_start) / (1 + exp(-steepness * (t_vec - midpoint)))
 }
 
@@ -115,29 +115,29 @@ rho_increasing <- function(T, rho_start = 0.3, rho_end = 0.7,
 #'
 #' Stochastic trajectory matching the DC-VAR data-generating process.
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param z_init Initial value on Fisher-z scale (default: 0.5, corresponding
 #'   to rho = 0.46).
 #' @param sigma_omega Innovation SD for the random walk (default: 0.05).
 #' @param seed Random seed for reproducibility.
 #'
-#' @return Numeric vector of length T-1.
+#' @return Numeric vector of length `n_time - 1`.
 #' @export
 #'
 #' @examples
 #' rho_random_walk(100, seed = 42)
-rho_random_walk <- function(T, z_init = 0.5, sigma_omega = 0.05, seed = NULL) {
-  if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
+rho_random_walk <- function(n_time, z_init = 0.5, sigma_omega = 0.05, seed = NULL) {
+  if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
   if (!is.null(seed)) set.seed(seed)
   if (sigma_omega < 0) {
     cli_abort("{.arg sigma_omega} must be non-negative, got {.val {sigma_omega}}.")
   }
 
-  z <- numeric(T - 1)
+  z <- numeric(n_time - 1L)
   z[1] <- z_init + rnorm(1, 0, sigma_omega)
-  if (T > 2) {
-    for (t in 2:(T - 1)) {
-      z[t] <- z[t - 1] + rnorm(1, 0, sigma_omega)
+  if (n_time > 2) {
+    for (time_index in 2:(n_time - 1L)) {
+      z[time_index] <- z[time_index - 1L] + rnorm(1, 0, sigma_omega)
     }
   }
 
@@ -152,29 +152,29 @@ rho_random_walk <- function(T, z_init = 0.5, sigma_omega = 0.05, seed = NULL) {
 #'
 #' Abrupt change from one rho level to another at a specified time.
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param rho_before Rho before breakpoint (default: 0.7).
 #' @param rho_after Rho after breakpoint (default: 0.3).
-#' @param breakpoint Breakpoint location as a proportion of T-1 (if <= 1)
+#' @param breakpoint Breakpoint location as a proportion of `n_time - 1` (if <= 1)
 #'   or an absolute time index (default: 0.5).
 #' @param transition_width Number of time points for smooth transition.
 #'   0 = abrupt (default: 0).
 #'
-#' @return Numeric vector of length T-1.
+#' @return Numeric vector of length `n_time - 1`.
 #' @export
 #'
 #' @examples
 #' rho_step(100, rho_before = 0.7, rho_after = 0.3)
-rho_step <- function(T, rho_before = 0.7, rho_after = 0.3,
+rho_step <- function(n_time, rho_before = 0.7, rho_after = 0.3,
                       breakpoint = 0.5, transition_width = 0) {
-  if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
+  if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
   .trajectory_validate_rho_scalar(rho_before, "rho_before")
   .trajectory_validate_rho_scalar(rho_after, "rho_after")
-  T_eff <- T - 1
+  n_time_eff <- n_time - 1L
   .trajectory_validate_transition_width(transition_width)
-  bp_time <- .trajectory_resolve_breakpoint(breakpoint, T_eff)
+  bp_time <- .trajectory_resolve_breakpoint(breakpoint, n_time_eff)
 
-  t_vec <- 1:T_eff
+  t_vec <- seq_len(n_time_eff)
 
   if (transition_width == 0) {
     ifelse(t_vec <= bp_time, rho_before, rho_after)
@@ -189,32 +189,32 @@ rho_step <- function(T, rho_before = 0.7, rho_after = 0.3,
 #'
 #' Three-phase trajectory: level A -> level B -> level C.
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param rho_levels Numeric vector of three rho levels (default:
 #'   `c(0.7, 0.3, 0.7)`).
 #' @param breakpoints Numeric vector of two breakpoint positions (default:
-#'   `c(1/3, 2/3)`). Interpreted as proportions of T-1 if <= 1.
+#'   `c(1/3, 2/3)`). Interpreted as proportions of `n_time - 1` if <= 1.
 #' @param transition_width Number of time points for smooth transitions
 #'   (default: 0).
 #'
-#' @return Numeric vector of length T-1.
+#' @return Numeric vector of length `n_time - 1`.
 #' @export
 #'
 #' @examples
 #' rho_double_step(100, rho_levels = c(0.7, 0.3, 0.7))
-rho_double_step <- function(T, rho_levels = c(0.7, 0.3, 0.7),
+rho_double_step <- function(n_time, rho_levels = c(0.7, 0.3, 0.7),
                              breakpoints = c(1 / 3, 2 / 3),
                              transition_width = 0) {
-  if (T < 2) cli_abort("{.arg T} must be >= 2, got {.val {T}}.")
+  if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
   .trajectory_validate_rho_levels(rho_levels, "rho_levels")
   if (!is.numeric(breakpoints) || length(breakpoints) != 2L || any(!is.finite(breakpoints))) {
     cli_abort("{.arg breakpoints} must be a length-2 finite numeric vector.")
   }
   .trajectory_validate_transition_width(transition_width)
-  T_eff <- T - 1
+  n_time_eff <- n_time - 1L
 
-  bp1 <- .trajectory_resolve_breakpoint(breakpoints[1], T_eff, "breakpoints[1]")
-  bp2 <- .trajectory_resolve_breakpoint(breakpoints[2], T_eff, "breakpoints[2]")
+  bp1 <- .trajectory_resolve_breakpoint(breakpoints[1], n_time_eff, "breakpoints[1]")
+  bp2 <- .trajectory_resolve_breakpoint(breakpoints[2], n_time_eff, "breakpoints[2]")
   if (bp2 <= bp1) {
     cli_abort(c(
       "{.arg breakpoints} must resolve to two strictly increasing breakpoint positions.",
@@ -222,7 +222,7 @@ rho_double_step <- function(T, rho_levels = c(0.7, 0.3, 0.7),
     ))
   }
 
-  t_vec <- 1:T_eff
+  t_vec <- seq_len(n_time_eff)
 
   if (transition_width == 0) {
     ifelse(t_vec <= bp1, rho_levels[1],
@@ -244,16 +244,16 @@ rho_double_step <- function(T, rho_levels = c(0.7, 0.3, 0.7),
 #'   - Smooth: `"constant"`, `"decreasing"`, `"increasing"`, `"random_walk"`
 #'   - Step: `"single_middle"`, `"large_change"`, `"small_change"`,
 #'     `"increase"`, `"double_relapse"`
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param ... Additional arguments passed to the generator.
 #'
-#' @return Numeric vector of length T-1.
+#' @return Numeric vector of length `n_time - 1`.
 #' @export
 #'
 #' @examples
-#' rho_scenario("decreasing", T = 100)
-#' rho_scenario("double_relapse", T = 150)
-rho_scenario <- function(scenario, T, ...) {
+#' rho_scenario("decreasing", n_time = 100)
+#' rho_scenario("double_relapse", n_time = 150)
+rho_scenario <- function(scenario, n_time, ...) {
   scenarios <- list(
     constant = list(fn = rho_constant, defaults = list(rho = 0.5)),
     decreasing = list(fn = rho_decreasing, defaults = list(rho_start = 0.7, rho_end = 0.3)),
@@ -272,5 +272,5 @@ rho_scenario <- function(scenario, T, ...) {
 
   scenario_spec <- scenarios[[scenario]]
   args <- utils::modifyList(scenario_spec$defaults, list(...))
-  do.call(scenario_spec$fn, c(list(T = T), args))
+  do.call(scenario_spec$fn, c(list(n_time = n_time), args))
 }

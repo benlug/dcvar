@@ -77,7 +77,7 @@ test_that("loo() fails clearly when custom Stan output omits log_lik", {
           dimnames = list(NULL, NULL, c("mu[1]", "mu[2]"))
         )
       ),
-      stan_data = list(T = 5, D = 2),
+      stan_data = list(n_time = 5, D = 2),
       model = "dcvar",
       vars = c("y1", "y2"),
       standardized = TRUE,

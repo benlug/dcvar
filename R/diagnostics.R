@@ -67,7 +67,7 @@ dcvar_diagnostics.default <- function(object, ...) {
   }
 
   if (identical(model, "sem")) {
-    T_obs <- .diagnostic_positive_int(object$stan_data$T, "T", "stan_data")
+    n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
     margin_vars <- if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {
@@ -80,9 +80,9 @@ dcvar_diagnostics.default <- function(object, ...) {
       "rho_raw",
       paste0(
         "zeta[",
-        rep(seq_len(T_obs), each = 2),
+        rep(seq_len(n_time_obs), each = 2),
         ",",
-        rep(seq_len(2), times = T_obs),
+        rep(seq_len(2), times = n_time_obs),
         "]"
       )
     ))
@@ -116,14 +116,14 @@ dcvar_diagnostics.default <- function(object, ...) {
   }
 
   if (identical(model, "dcvar")) {
-    T_obs <- .diagnostic_positive_int(object$stan_data$T, "T", "stan_data")
+    n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
     return(c(
       mu_vars,
       phi_vars,
       margin_vars,
       "z_rho_init",
       "sigma_omega",
-      paste0("omega_raw[", seq_len(T_obs - 1), "]")
+      paste0("omega_raw[", seq_len(n_time_obs - 1L), "]")
     ))
   }
 

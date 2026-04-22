@@ -109,7 +109,7 @@ margin_iter_sampling <- 300
     output_type = "transformed parameter group"
   ))
 
-  T_eff <- fit$stan_data$T - 1
+  T_eff <- fit$stan_data$n_time - 1
   D <- fit$stan_data$D
   eps_mean <- matrix(NA_real_, nrow = T_eff, ncol = D)
 
@@ -125,7 +125,7 @@ margin_iter_sampling <- 300
 
 get_dcvar_fit <- function() {
   .cache_fit_result("dcvar_fit", function() {
-    sim <- simulate_dcvar(T = 50, rho_trajectory = rho_decreasing(50), seed = 42)
+    sim <- simulate_dcvar(n_time = 50, rho_trajectory = rho_decreasing(50), seed = 42)
     dcvar(
       sim$Y_df, vars = c("y1", "y2"),
       chains = 2,
@@ -139,7 +139,7 @@ get_dcvar_fit <- function() {
 
 get_dcvar_fit_warnings <- function() {
   .cache_fit_result("dcvar_fit", function() {
-    sim <- simulate_dcvar(T = 50, rho_trajectory = rho_decreasing(50), seed = 42)
+    sim <- simulate_dcvar(n_time = 50, rho_trajectory = rho_decreasing(50), seed = 42)
     dcvar(
       sim$Y_df, vars = c("y1", "y2"),
       chains = 2,
@@ -153,7 +153,7 @@ get_dcvar_fit_warnings <- function() {
 
 get_hmm_fit <- function() {
   .cache_fit_result("hmm_fit", function() {
-    sim <- simulate_dcvar(T = 50, rho_trajectory = rho_step(50), seed = 42)
+    sim <- simulate_dcvar(n_time = 50, rho_trajectory = rho_step(50), seed = 42)
     dcvar_hmm(
       sim$Y_df, vars = c("y1", "y2"), K = 2,
       chains = 2,
@@ -168,7 +168,7 @@ get_hmm_fit <- function() {
 
 get_hmm_fit_warnings <- function() {
   .cache_fit_result("hmm_fit", function() {
-    sim <- simulate_dcvar(T = 50, rho_trajectory = rho_step(50), seed = 42)
+    sim <- simulate_dcvar(n_time = 50, rho_trajectory = rho_step(50), seed = 42)
     dcvar_hmm(
       sim$Y_df, vars = c("y1", "y2"), K = 2,
       chains = 2,
@@ -183,7 +183,7 @@ get_hmm_fit_warnings <- function() {
 
 get_constant_fit <- function() {
   .cache_fit_result("constant_fit", function() {
-    sim <- simulate_dcvar(T = 50, rho_trajectory = rho_constant(50, 0.5), seed = 42)
+    sim <- simulate_dcvar(n_time = 50, rho_trajectory = rho_constant(50, 0.5), seed = 42)
     dcvar_constant(
       sim$Y_df, vars = c("y1", "y2"),
       chains = 2,
@@ -197,7 +197,7 @@ get_constant_fit <- function() {
 
 get_constant_fit_warnings <- function() {
   .cache_fit_result("constant_fit", function() {
-    sim <- simulate_dcvar(T = 50, rho_trajectory = rho_constant(50, 0.5), seed = 42)
+    sim <- simulate_dcvar(n_time = 50, rho_trajectory = rho_constant(50, 0.5), seed = 42)
     dcvar_constant(
       sim$Y_df, vars = c("y1", "y2"),
       chains = 2,
@@ -211,7 +211,7 @@ get_constant_fit_warnings <- function() {
 
 get_multilevel_fit <- function() {
   .cache_fit_result("multilevel_fit", function() {
-    sim <- simulate_dcvar_multilevel(N = 3, T = 20, rho = 0.5, seed = 42)
+    sim <- simulate_dcvar_multilevel(N = 3, n_time = 20, rho = 0.5, seed = 42)
     dcvar_multilevel(
       sim$data, vars = c("y1", "y2"), id_var = "id",
       chains = 2,
@@ -226,7 +226,7 @@ get_multilevel_fit <- function() {
 
 get_multilevel_fit_warnings <- function() {
   .cache_fit_result("multilevel_fit", function() {
-    sim <- simulate_dcvar_multilevel(N = 3, T = 20, rho = 0.5, seed = 42)
+    sim <- simulate_dcvar_multilevel(N = 3, n_time = 20, rho = 0.5, seed = 42)
     dcvar_multilevel(
       sim$data, vars = c("y1", "y2"), id_var = "id",
       chains = 2,
@@ -242,7 +242,7 @@ get_multilevel_fit_warnings <- function() {
 get_sem_fit <- function() {
   .cache_fit_result("sem_fit", function() {
     J <- 2
-    sim <- simulate_dcvar_sem(T = 50, J = J, lambda = rep(0.8, J),
+    sim <- simulate_dcvar_sem(n_time = 50, J = J, lambda = rep(0.8, J),
                               rho = 0.5, seed = 42)
     indicators <- list(
       latent1 = paste0("y1_", seq_len(J)),
@@ -264,7 +264,7 @@ get_sem_fit <- function() {
 get_sem_fit_warnings <- function() {
   .cache_fit_result("sem_fit", function() {
     J <- 2
-    sim <- simulate_dcvar_sem(T = 50, J = J, lambda = rep(0.8, J),
+    sim <- simulate_dcvar_sem(n_time = 50, J = J, lambda = rep(0.8, J),
                               rho = 0.5, seed = 42)
     indicators <- list(
       latent1 = paste0("y1_", seq_len(J)),
@@ -287,7 +287,7 @@ get_sem_exponential_fit <- function() {
   .cache_fit_result("sem_fit_exponential", function() {
     J <- 2
     sim <- simulate_dcvar_sem(
-      T = 50,
+      n_time = 50,
       J = J,
       lambda = rep(0.8, J),
       margins = "exponential",
@@ -323,7 +323,7 @@ get_sem_exponential_fit_warnings <- function() {
   .cache_fit_result("sem_fit_exponential", function() {
     J <- 2
     sim <- simulate_dcvar_sem(
-      T = 50,
+      n_time = 50,
       J = J,
       lambda = rep(0.8, J),
       margins = "exponential",
@@ -358,7 +358,7 @@ get_sem_exponential_fit_warnings <- function() {
 get_dcvar_exponential_fit <- function() {
   .cache_fit_result("dcvar_fit_exponential", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_decreasing(30),
       margins = "exponential",
       skew_direction = c(1, -1),
@@ -382,7 +382,7 @@ get_dcvar_exponential_fit <- function() {
 get_dcvar_exponential_fit_warnings <- function() {
   .cache_fit_result("dcvar_fit_exponential", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_decreasing(30),
       margins = "exponential",
       skew_direction = c(1, -1),
@@ -406,7 +406,7 @@ get_dcvar_exponential_fit_warnings <- function() {
 get_dcvar_gamma_fit <- function() {
   .cache_fit_result("dcvar_fit_gamma", function() {
     sim <- simulate_dcvar(
-      T = 100,
+      n_time = 100,
       rho_trajectory = rho_decreasing(100),
       margins = "gamma",
       skew_direction = c(1, 1),
@@ -432,7 +432,7 @@ get_dcvar_gamma_fit <- function() {
 get_dcvar_gamma_fit_warnings <- function() {
   .cache_fit_result("dcvar_fit_gamma", function() {
     sim <- simulate_dcvar(
-      T = 100,
+      n_time = 100,
       rho_trajectory = rho_decreasing(100),
       margins = "gamma",
       skew_direction = c(1, 1),
@@ -460,7 +460,7 @@ get_dcvar_skew_normal_fit <- function() {
 
   .cache_fit_result("dcvar_fit_skew_normal", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_decreasing(30),
       margins = "skew_normal",
       skew_params = list(alpha = c(3, -3)),
@@ -484,7 +484,7 @@ get_dcvar_skew_normal_fit_warnings <- function() {
 
   .cache_fit_result("dcvar_fit_skew_normal", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_decreasing(30),
       margins = "skew_normal",
       skew_params = list(alpha = c(3, -3)),
@@ -508,7 +508,7 @@ get_hmm_exponential_fit <- function() {
     # Use a strongly separated step trajectory so the tiny test fit remains
     # identifiable across platforms and avoids pathological treedepth behavior.
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_step(30, rho_before = 0.9, rho_after = 0.1),
       margins = "exponential",
       skew_direction = c(1, -1),
@@ -534,7 +534,7 @@ get_hmm_exponential_fit <- function() {
 get_hmm_exponential_fit_warnings <- function() {
   .cache_fit_result("hmm_fit_exponential", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_step(30, rho_before = 0.9, rho_after = 0.1),
       margins = "exponential",
       skew_direction = c(1, -1),
@@ -560,7 +560,7 @@ get_hmm_exponential_fit_warnings <- function() {
 get_hmm_gamma_fit <- function() {
   .cache_fit_result("hmm_fit_gamma", function() {
     sim <- simulate_dcvar(
-      T = 100,
+      n_time = 100,
       rho_trajectory = rho_step(100, rho_before = 0.9, rho_after = 0.1),
       margins = "gamma",
       skew_direction = c(1, 1),
@@ -587,7 +587,7 @@ get_hmm_gamma_fit <- function() {
 get_hmm_gamma_fit_warnings <- function() {
   .cache_fit_result("hmm_fit_gamma", function() {
     sim <- simulate_dcvar(
-      T = 100,
+      n_time = 100,
       rho_trajectory = rho_step(100, rho_before = 0.9, rho_after = 0.1),
       margins = "gamma",
       skew_direction = c(1, 1),
@@ -616,7 +616,7 @@ get_hmm_skew_normal_fit <- function() {
 
   .cache_fit_result("hmm_fit_skew_normal", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_step(30, rho_before = 0.8, rho_after = 0.2),
       margins = "skew_normal",
       skew_params = list(alpha = c(3, -3)),
@@ -643,7 +643,7 @@ get_hmm_skew_normal_fit_warnings <- function() {
 
   .cache_fit_result("hmm_fit_skew_normal", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_step(30, rho_before = 0.8, rho_after = 0.2),
       margins = "skew_normal",
       skew_params = list(alpha = c(3, -3)),
@@ -670,7 +670,7 @@ get_constant_gamma_fit <- function() {
     # Gamma-margin smoke fits need a bit more adaptation headroom than the
     # normal/exponential cases to stay stable across older R/rstan toolchains.
     sim <- simulate_dcvar(
-      T = 100,
+      n_time = 100,
       rho_trajectory = rho_constant(100, 0.4),
       margins = "gamma",
       skew_direction = c(1, 1),
@@ -696,7 +696,7 @@ get_constant_gamma_fit <- function() {
 get_constant_gamma_fit_warnings <- function() {
   .cache_fit_result("constant_fit_gamma", function() {
     sim <- simulate_dcvar(
-      T = 100,
+      n_time = 100,
       rho_trajectory = rho_constant(100, 0.4),
       margins = "gamma",
       skew_direction = c(1, 1),
@@ -724,7 +724,7 @@ get_constant_skew_normal_fit <- function() {
 
   .cache_fit_result("constant_fit_skew_normal", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_constant(30, 0.4),
       margins = "skew_normal",
       skew_params = list(alpha = c(3, -3)),
@@ -748,7 +748,7 @@ get_constant_skew_normal_fit_warnings <- function() {
 
   .cache_fit_result("constant_fit_skew_normal", function() {
     sim <- simulate_dcvar(
-      T = 30,
+      n_time = 30,
       rho_trajectory = rho_constant(30, 0.4),
       margins = "skew_normal",
       skew_params = list(alpha = c(3, -3)),
@@ -771,7 +771,7 @@ get_dcvar_cmdstanr_fit <- function() {
   .cache_fit_result("dcvar_cmdstanr_fit", function() {
     skip_if_no_cmdstanr_backend()
 
-    sim <- simulate_dcvar(T = 24, rho_trajectory = rho_decreasing(24), seed = 42)
+    sim <- simulate_dcvar(n_time = 24, rho_trajectory = rho_decreasing(24), seed = 42)
     dcvar(
       sim$Y_df, vars = c("y1", "y2"),
       chains = 1,
@@ -789,7 +789,7 @@ get_hmm_cmdstanr_fit <- function() {
   .cache_fit_result("hmm_cmdstanr_fit", function() {
     skip_if_no_cmdstanr_backend()
 
-    sim <- simulate_dcvar(T = 24, rho_trajectory = rho_step(24), seed = 42)
+    sim <- simulate_dcvar(n_time = 24, rho_trajectory = rho_step(24), seed = 42)
     dcvar_hmm(
       sim$Y_df, vars = c("y1", "y2"), K = 2,
       chains = 1,
@@ -807,7 +807,7 @@ get_constant_cmdstanr_fit <- function() {
   .cache_fit_result("constant_cmdstanr_fit", function() {
     skip_if_no_cmdstanr_backend()
 
-    sim <- simulate_dcvar(T = 24, rho_trajectory = rho_constant(24, 0.5), seed = 42)
+    sim <- simulate_dcvar(n_time = 24, rho_trajectory = rho_constant(24, 0.5), seed = 42)
     dcvar_constant(
       sim$Y_df, vars = c("y1", "y2"),
       chains = 1,

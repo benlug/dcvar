@@ -33,9 +33,21 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_constant(100, 0.5))
-#' fit <- dcvar_constant(sim$Y_df, vars = c("y1", "y2"))
+#' \donttest{
+#' sim <- simulate_dcvar(
+#'   n_time = 12,
+#'   rho_trajectory = rho_constant(12, rho = 0.5),
+#'   seed = 1
+#' )
+#' fit <- dcvar_constant(
+#'   sim$Y_df,
+#'   vars = c("y1", "y2"),
+#'   chains = 1,
+#'   iter_warmup = 10,
+#'   iter_sampling = 10,
+#'   refresh = 0,
+#'   seed = 1
+#' )
 #' print(fit)
 #' }
 dcvar_constant <- function(data, vars,
@@ -74,7 +86,7 @@ dcvar_constant <- function(data, vars,
   )
 
   margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
-  cli_inform("Fitting constant copula model{margins_label} (T = {stan_data$T}, D = {stan_data$D})...")
+  cli_inform("Fitting constant copula model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
 
   # Compile model
   model <- .compile_model("constant", margins = margins, stan_file = stan_file, backend = backend)

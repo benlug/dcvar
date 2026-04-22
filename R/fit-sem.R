@@ -115,17 +115,17 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
     prior_rho_sd = prior_rho_sd
   )
 
-  T_obs <- stan_data$T
+  n_time_obs <- stan_data$n_time
   vars <- attr(stan_data, "vars")
 
-  cli_inform("Fitting SEM copula VAR model [{margins}] (T = {T_obs}, J = {J})...")
+  cli_inform("Fitting SEM copula VAR model [{margins}] (n_time = {n_time_obs}, J = {J})...")
 
   # Compile model
   model <- .compile_model("sem", margins = margins, stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
-    init <- function() .init_sem_params(T_obs, margins)
+    init <- function() .init_sem_params(n_time_obs, margins)
   }
 
   cores <- .normalize_cores(cores, chains)

@@ -31,7 +31,7 @@ test_that("rho_trajectory() returns full trajectory for constant", {
 
   expect_s3_class(rho_df, "data.frame")
   # Constant model now expands rho to all T-1 time points
-  expect_equal(nrow(rho_df), fit$stan_data$T - 1)
+  expect_equal(nrow(rho_df), fit$stan_data$n_time - 1)
   expect_true(all(c("time", "mean", "sd") %in% names(rho_df)))
   # All means should be identical (constant)
   expect_equal(length(unique(rho_df$mean)), 1)
@@ -133,14 +133,14 @@ test_that("rho_trajectory() and latent_states() honor preserved time values", {
   skip_if_no_rstan()
 
   fit <- get_dcvar_fit()
-  attr(fit$stan_data, "time_values") <- 101:(100 + fit$stan_data$T)
-  expect_equal(rho_trajectory(fit)$time, 102:(100 + fit$stan_data$T))
+  attr(fit$stan_data, "time_values") <- 101:(100 + fit$stan_data$n_time)
+  expect_equal(rho_trajectory(fit)$time, 102:(100 + fit$stan_data$n_time))
 
   sem_fit <- get_sem_fit()
   attr(sem_fit$stan_data, "time_values") <- seq.Date(
     as.Date("2020-01-01"),
     by = "day",
-    length.out = sem_fit$stan_data$T
+    length.out = sem_fit$stan_data$n_time
   )
   sem_rho <- rho_trajectory(sem_fit)
   sem_states <- latent_states(sem_fit)
@@ -175,7 +175,7 @@ test_that("custom Stan output mismatches fail clearly in extractors", {
   dcvar_fit <- structure(
     list(
       fit = make_stub_draws(c("Phi[1,1]", "Phi[1,2]", "Phi[2,1]", "Phi[2,2]", "sigma_eps[1]", "sigma_eps[2]", "sigma_omega")),
-      stan_data = list(T = 5, D = 2),
+      stan_data = list(n_time = 5, D = 2),
       model = "dcvar",
       vars = c("y1", "y2"),
       standardized = TRUE,
@@ -192,7 +192,7 @@ test_that("custom Stan output mismatches fail clearly in extractors", {
   multilevel_fit <- structure(
     list(
       fit = make_stub_draws(c("phi_unit[1,2]", "phi_unit[1,3]", "phi_unit[1,4]")),
-      stan_data = structure(list(T = 4), ids = c("A")),
+      stan_data = structure(list(n_time = 4), ids = c("A")),
       model = "multilevel",
       N = 1,
       vars = c("y1", "y2"),
@@ -209,7 +209,7 @@ test_that("custom Stan output mismatches fail clearly in extractors", {
   sem_fit <- structure(
     list(
       fit = make_stub_draws("rho"),
-      stan_data = list(T = 4),
+      stan_data = list(n_time = 4),
       model = "sem",
       vars = c("latent1", "latent2"),
       backend = "rstan",

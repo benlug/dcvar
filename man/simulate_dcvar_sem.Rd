@@ -5,7 +5,7 @@
 \title{Simulate data from a SEM copula VAR(1) model}
 \usage{
 simulate_dcvar_sem(
-  T = 200,
+  n_time = 200,
   J = 3,
   lambda = rep(sqrt(0.8), 3),
   sigma_e = sqrt(0.2),
@@ -21,7 +21,7 @@ simulate_dcvar_sem(
 )
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{J}{Number of indicators per latent variable.}
 
@@ -59,12 +59,11 @@ A named list with:
 \item \code{data}: data frame with columns \code{time}, \code{y1_1}, ..., \code{y1_J},
 \code{y2_1}, ..., \code{y2_J}
 \item \code{true_params}: list of true parameter values
-\item \code{latent_states}: T x 2 matrix of true latent states
-\item \code{innovations}: T x 2 matrix of true innovations
+\item \code{latent_states}: \verb{n_time x 2} matrix of true latent states
+\item \code{innovations}: \verb{n_time x 2} matrix of true innovations
 }
 }
 \description{
 Generates indicator-level time series data from a latent VAR(1) process
-with Gaussian copula dependence and a fixed measurement model. The latent
-innovations can follow either normal or shifted-exponential margins.
+with Gaussian copula dependence and a fixed measurement model.
 }

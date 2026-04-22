@@ -76,7 +76,7 @@ library(dcvar)
 
 # Simulate data with a step-function trajectory
 sim <- simulate_dcvar(
-  T = 200,
+  n_time = 200,
   rho_trajectory = rho_step(200, rho_before = 0.7, rho_after = 0.3),
   seed = 42
 )

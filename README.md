@@ -58,7 +58,7 @@ library(dcvar)
 
 # simulate data with decreasing coupling
 sim <- simulate_dcvar(
-  T = 150,
+  n_time = 150,
   rho_trajectory = rho_decreasing(150, rho_start = 0.7, rho_end = 0.3)
 )
 

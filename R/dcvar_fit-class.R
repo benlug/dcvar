@@ -38,7 +38,7 @@ NULL
 #' @export
 print.dcvar_fit <- function(x, ...) {
   .print_fit_header(x, "DC-VAR Model Fit")
-  cat(sprintf("T = %d, D = %d\n", x$stan_data$T, x$stan_data$D))
+  cat(sprintf("n_time = %d, D = %d\n", x$stan_data$n_time, x$stan_data$D))
   .print_fit_footer(x)
 
   rho_df <- rho_trajectory(x)
@@ -61,7 +61,7 @@ summary.dcvar_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
 
   out <- list(
     model = "dcvar",
-    T = object$stan_data$T,
+    n_time = object$stan_data$n_time,
     D = object$stan_data$D,
     rho_trajectory = rho_df,
     rho_summary = data.frame(
@@ -92,7 +92,7 @@ summary.dcvar_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
 print.dcvar_summary <- function(x, ...) {
   cat("DC-VAR Model Summary\n")
   cat(strrep("=", 50), "\n")
-  cat(sprintf("T = %d, D = %d\n\n", x$T, x$D))
+  cat(sprintf("n_time = %d, D = %d\n\n", x$n_time, x$D))
 
   cat("Rho Trajectory:\n")
   print(x$rho_summary, row.names = FALSE)

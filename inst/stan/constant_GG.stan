@@ -6,9 +6,9 @@ functions {
 }
 
 data {
-  int<lower=2> T;
+  int<lower=2> n_time;
   int<lower=2> D;
-  matrix[T, D] Y;
+  matrix[n_time, D] Y;
   vector[D] skew_direction;
 
   real<lower=0> sigma_mu_prior;
@@ -17,7 +17,7 @@ data {
 }
 
 transformed data {
-  int T_eff = T - 1;
+  int n_time_eff = n_time - 1;
 }
 
 parameters {
@@ -29,7 +29,7 @@ parameters {
 }
 
 transformed parameters {
-  matrix[T_eff, D] eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
+  matrix[n_time_eff, D] eps = compute_var_residuals(Y, mu, Phi, n_time_eff, D);
   real rho = tanh(z_rho);
 }
 
@@ -49,7 +49,7 @@ model {
   // Feasibility bounds
   for (i in 1:D) {
     real m = -skew_direction[i] * eps[1, i];
-    for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+    for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
     mean_lb[i] = fmax(m, 0);
   }
 
@@ -61,7 +61,7 @@ model {
     target += lognormal_lpdf(mean_gam[i] | 0, 0.5) + eta[i];
   }
 
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     row_vector[D] res = eps[t];
     vector[2] u_vec;
     for (i in 1:D) {
@@ -75,8 +75,8 @@ model {
 }
 
 generated quantities {
-  vector[T_eff] log_lik;
-  matrix[T_eff, D] eps_rep;
+  vector[n_time_eff] log_lik;
+  matrix[n_time_eff, D] eps_rep;
   vector[D] sigma_gam;
   vector[D] b_gq;
   vector[D] rate_gam;
@@ -87,14 +87,14 @@ generated quantities {
     vector[D] mean_gam;
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
-      for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+      for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
       b_gq[i] = fmax(m, 0);
       mean_gam[i] = b_gq[i] + exp(eta[i]) + sigma_eps;
       sigma_gam[i] = mean_gam[i] / sqrt_shape;
       rate_gam[i] = shape_gam / mean_gam[i];
     }
 
-    for (t in 1:T_eff) {
+    for (t in 1:n_time_eff) {
       log_lik[t] = 0;
       vector[2] u_vec;
       for (i in 1:D) {

@@ -5,14 +5,14 @@
 \title{Plot and compare multiple rho trajectory shapes}
 \usage{
 plot_trajectories(
-  T,
+  n_time,
   scenarios = c("constant", "decreasing", "increasing", "random_walk", "single_middle",
     "large_change", "double_relapse"),
   ...
 )
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{scenarios}{Character vector of scenario names (see \code{\link[=rho_scenario]{rho_scenario()}}).
 Default: all built-in scenarios.}

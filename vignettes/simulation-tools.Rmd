@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 ## Trajectory Generators
 
 dcvar provides several trajectory generators for simulation studies. All return
-a numeric vector of length T-1 (rho values for time steps 2 through T):
+a numeric vector of length T-1 (rho values for time steps 2 through n_time):
 
 ```{r trajectories, eval = TRUE}
 library(dcvar)
@@ -36,7 +36,7 @@ rho_step(100, rho_before = 0.7, rho_after = 0.3, breakpoint = 0.5)
 rho_double_step(100, rho_levels = c(0.7, 0.3, 0.7))
 
 # Named scenarios
-rho_scenario("double_relapse", T = 150)
+rho_scenario("double_relapse", n_time = 150)
 ```
 
 ### Visualising Trajectories
@@ -58,7 +58,7 @@ and known ground-truth parameters:
 
 ```{r simulate, eval = TRUE}
 sim <- simulate_dcvar(
-  T = 150,
+  n_time = 150,
   rho_trajectory = rho_decreasing(150),
   mu = c(0, 0),
   Phi = matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2),
@@ -74,12 +74,12 @@ data with single or double breakpoints:
 
 ```{r breakpoint, eval = TRUE}
 # Single breakpoint
-sim_bp <- simulate_breakpoint_data(T = 100, type = "single", seed = 42)
+sim_bp <- simulate_breakpoint_data(n_time = 100, type = "single", seed = 42)
 head(sim_bp$Y_df)
 sim_bp$true_params$breakpoint
 
 # Double breakpoint
-sim_bp2 <- simulate_breakpoint_data(T = 100, type = "double", seed = 42)
+sim_bp2 <- simulate_breakpoint_data(n_time = 100, type = "double", seed = 42)
 ```
 
 ## Data Preparation
@@ -93,7 +93,7 @@ df <- data.frame(time = 1:100, y1 = rnorm(100), y2 = rnorm(100))
 
 # DC-VAR data (includes sigma_omega prior)
 stan_data <- prepare_dcvar_data(df, vars = c("y1", "y2"))
-str(stan_data[c("T", "D", "sigma_mu_prior", "sigma_omega_prior")])
+str(stan_data[c("n_time", "D", "sigma_mu_prior", "sigma_omega_prior")])
 
 # HMM data (includes K, kappa, alpha_off)
 hmm_data <- prepare_hmm_data(df, vars = c("y1", "y2"), K = 3)
@@ -142,7 +142,7 @@ metrics$correlation
 n_reps <- 5
 results <- lapply(1:n_reps, function(i) {
   sim <- simulate_dcvar(
-    T = 100,
+    n_time = 100,
     rho_trajectory = rho_decreasing(100),
     seed = i * 1000
   )

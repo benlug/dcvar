@@ -86,12 +86,13 @@ Fits a hierarchical copula VAR(1) model with unit-specific VAR coefficients
 parameterization for the random Phi coefficients.
 }
 \details{
-\strong{Experimental extension.} This multilevel variant supports \code{fitted()}
-and \code{predict()}, but PIT diagnostics and PSIS-LOO are not yet implemented.
+\strong{Experimental extension.} This multilevel variant supports
+\code{fitted()} and \code{predict()}, but PIT diagnostics and PSIS-LOO are not yet
+implemented.
 
-\code{adapt_delta} defaults to 0.90 and \code{max_treedepth} to 14 because
-the hierarchical structure with random effects benefits from deeper trees
-but does not require aggressive step-size adaptation.
+\code{adapt_delta} defaults to 0.90 and \code{max_treedepth} to 14 because the
+hierarchical structure with random effects benefits from deeper trees but
+does not require aggressive step-size adaptation.
 }
 \note{
 This model currently supports normal marginal distributions only.

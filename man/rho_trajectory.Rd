@@ -35,7 +35,7 @@ rho_trajectory(object, ...)
 \value{
 A data frame with columns \code{time}, \code{mean}, \code{sd}, and one column per
 quantile (e.g., \code{q2.5}, \code{q10}, \code{q50}, \code{q90}, \code{q97.5}). For
-\code{dcvar_constant_fit} objects, the constant rho is expanded to all T-1
+\code{dcvar_constant_fit} objects, the constant rho is expanded to all \code{n_time - 1}
 time points for consistency with the time-varying models.
 }
 \description{

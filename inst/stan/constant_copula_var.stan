@@ -10,9 +10,9 @@ functions {
 }
 
 data {
-  int<lower=2> T;                    // Number of time points
+  int<lower=2> n_time;                    // Number of time points
   int<lower=2> D;                    // Number of variables (typically 2)
-  matrix[T, D] Y;                    // Observed data (T x D)
+  matrix[n_time, D] Y;                    // Observed data (n_time x D)
 
   // Prior hyperparameters
   real<lower=0> sigma_mu_prior;      // Prior SD for intercepts
@@ -22,7 +22,7 @@ data {
 }
 
 transformed data {
-  int T_eff = T - 1;  // Effective time points for VAR (exclude first)
+  int n_time_eff = n_time - 1;  // Effective time points for VAR (exclude first)
 }
 
 parameters {
@@ -39,17 +39,17 @@ parameters {
 
 transformed parameters {
   // Residuals from VAR
-  matrix[T_eff, D] eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
+  matrix[n_time_eff, D] eps = compute_var_residuals(Y, mu, Phi, n_time_eff, D);
 
   // Standardized residuals (z-scores for copula)
-  matrix[T_eff, D] eps_std;
+  matrix[n_time_eff, D] eps_std;
 
   // Constant rho (on original scale) via tanh: maps (-inf, inf) to (-1, 1)
   // Mathematically equivalent to inv_fisher_z but numerically stable for large |z|
   real rho = tanh(z_rho);
 
   // Standardize residuals (z-scores used directly in copula)
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     eps_std[t, ] = eps[t, ] ./ sigma_eps';
   }
 }
@@ -66,7 +66,7 @@ model {
   z_rho ~ normal(0, z_rho_prior_sd);
 
   // Likelihood: Gaussian copula for residuals at each time point
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     // Marginal likelihoods (normal)
     for (d in 1:D) {
       target += normal_lpdf(eps[t, d] | 0, sigma_eps[d]);
@@ -79,12 +79,12 @@ model {
 
 generated quantities {
   // Log-likelihood for model comparison (LOO-CV)
-  vector[T_eff] log_lik;
+  vector[n_time_eff] log_lik;
 
   // Posterior predictive checks
-  matrix[T_eff, D] eps_rep;
+  matrix[n_time_eff, D] eps_rep;
 
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     // Log-likelihood
     log_lik[t] = 0;
     for (d in 1:D) {

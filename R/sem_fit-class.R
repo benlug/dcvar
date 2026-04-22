@@ -43,7 +43,7 @@ NULL
 #' @export
 print.dcvar_sem_fit <- function(x, ...) {
   .print_fit_header(x, "SEM Copula VAR Model Fit")
-  cat(sprintf("T = %d, J = %d indicators per latent\n", x$stan_data$T, x$J))
+  cat(sprintf("n_time = %d, J = %d indicators per latent\n", x$stan_data$n_time, x$J))
   .print_fit_footer(x)
 
   cat(sprintf("rho: %.3f\n", coef(x)$rho[[1]]))
@@ -60,7 +60,7 @@ summary.dcvar_sem_fit <- function(object, ...) {
 
   out <- list(
     model = "sem",
-    T = object$stan_data$T,
+    n_time = object$stan_data$n_time,
     J = object$J,
     lambda = object$lambda,
     sigma_e = object$sigma_e,
@@ -80,7 +80,7 @@ summary.dcvar_sem_fit <- function(object, ...) {
 print.dcvar_sem_summary <- function(x, ...) {
   cat("SEM Copula VAR Model Summary\n")
   cat(strrep("=", 50), "\n")
-  cat(sprintf("T = %d, J = %d indicators per latent\n", x$T, x$J))
+  cat(sprintf("n_time = %d, J = %d indicators per latent\n", x$n_time, x$J))
   cat(sprintf("Fixed lambda: %s\n", paste(round(x$lambda, 3), collapse = ", ")))
   cat(sprintf("Fixed sigma_e: %.3f\n\n", x$sigma_e))
 

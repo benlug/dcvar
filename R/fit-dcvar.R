@@ -51,9 +51,21 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_decreasing(100))
-#' fit <- dcvar(sim$Y_df, vars = c("y1", "y2"))
+#' \donttest{
+#' sim <- simulate_dcvar(
+#'   n_time = 12,
+#'   rho_trajectory = rho_decreasing(12),
+#'   seed = 1
+#' )
+#' fit <- dcvar(
+#'   sim$Y_df,
+#'   vars = c("y1", "y2"),
+#'   chains = 1,
+#'   iter_warmup = 10,
+#'   iter_sampling = 10,
+#'   refresh = 0,
+#'   seed = 1
+#' )
 #' print(fit)
 #' summary(fit)
 #' plot(fit)
@@ -94,7 +106,7 @@ dcvar <- function(data, vars, time_var = "time",
   )
 
   margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
-  cli_inform("Fitting DC-VAR model{margins_label} (T = {stan_data$T}, D = {stan_data$D})...")
+  cli_inform("Fitting DC-VAR model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
 
   # Compile model
   model <- .compile_model("dcvar", margins = margins, stan_file = stan_file,
@@ -103,8 +115,8 @@ dcvar <- function(data, vars, time_var = "time",
   # Default init
   if (is.null(init)) {
     D <- stan_data$D
-    T_obs <- stan_data$T
-    init <- function() .init_dcvar_params(D, T_obs, margins)
+    n_time_obs <- stan_data$n_time
+    init <- function() .init_dcvar_params(D, n_time_obs, margins)
   }
 
   cores <- .normalize_cores(cores, chains)

@@ -5,7 +5,7 @@
 \title{Generate a single-breakpoint (step function) rho trajectory}
 \usage{
 rho_step(
-  T,
+  n_time,
   rho_before = 0.7,
   rho_after = 0.3,
   breakpoint = 0.5,
@@ -13,20 +13,20 @@ rho_step(
 )
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{rho_before}{Rho before breakpoint (default: 0.7).}
 
 \item{rho_after}{Rho after breakpoint (default: 0.3).}
 
-\item{breakpoint}{Breakpoint location as a proportion of T-1 (if <= 1)
+\item{breakpoint}{Breakpoint location as a proportion of \code{n_time - 1} (if <= 1)
 or an absolute time index (default: 0.5).}
 
 \item{transition_width}{Number of time points for smooth transition.
 0 = abrupt (default: 0).}
 }
 \value{
-Numeric vector of length T-1.
+Numeric vector of length \code{n_time - 1}.
 }
 \description{
 Abrupt change from one rho level to another at a specified time.

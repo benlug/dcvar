@@ -39,8 +39,8 @@ NULL
 #' @export
 print.dcvar_hmm_fit <- function(x, ...) {
   .print_fit_header(x, "HMM Copula Model Fit")
-  cat(sprintf("T = %d, D = %d, K = %d states\n",
-              x$stan_data$T, x$stan_data$D, x$K))
+  cat(sprintf("n_time = %d, D = %d, K = %d states\n",
+              x$stan_data$n_time, x$stan_data$D, x$K))
   .print_fit_footer(x)
 
   states <- hmm_states(x)
@@ -73,7 +73,7 @@ summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
 
   out <- list(
     model = "hmm",
-    T = object$stan_data$T,
+    n_time = object$stan_data$n_time,
     D = object$stan_data$D,
     K = object$K,
     rho_trajectory = rho_df,
@@ -96,7 +96,7 @@ summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
 print.dcvar_hmm_summary <- function(x, ...) {
   cat("HMM Copula Model Summary\n")
   cat(strrep("=", 50), "\n")
-  cat(sprintf("T = %d, D = %d, K = %d states\n\n", x$T, x$D, x$K))
+  cat(sprintf("n_time = %d, D = %d, K = %d states\n\n", x$n_time, x$D, x$K))
 
   cat("State-Specific Rho:\n")
   for (k in seq_along(x$states$rho_state$mean)) {

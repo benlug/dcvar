@@ -7,14 +7,14 @@
 #' Convenience wrapper that combines [rho_step()] or [rho_double_step()] with
 #' [simulate_dcvar()] for quick breakpoint simulation studies.
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param type Character; one of `"single"` (single breakpoint) or `"double"`
 #'   (double breakpoint / relapse pattern).
 #' @param rho_before Rho before breakpoint (default: 0.7).
 #' @param rho_after Rho after breakpoint (default: 0.3).
 #' @param rho_levels Numeric vector of three rho levels for double breakpoint
 #'   (default: `c(0.7, 0.3, 0.7)`). Only used when `type = "double"`.
-#' @param breakpoint Breakpoint location as proportion of T-1 (default: 0.5).
+#' @param breakpoint Breakpoint location as proportion of `n_time - 1` (default: 0.5).
 #' @param breakpoints Numeric vector of two breakpoints for double type
 #'   (default: `c(1/3, 2/3)`).
 #' @param transition_width Number of time points for smooth transition
@@ -28,9 +28,9 @@
 #' @export
 #'
 #' @examples
-#' sim <- simulate_breakpoint_data(T = 100, type = "single", seed = 42)
+#' sim <- simulate_breakpoint_data(n_time = 100, type = "single", seed = 42)
 #' plot(sim$true_params$rho, type = "l")
-simulate_breakpoint_data <- function(T,
+simulate_breakpoint_data <- function(n_time,
                                      type = c("single", "double"),
                                      rho_before = 0.7,
                                      rho_after = 0.3,
@@ -45,14 +45,14 @@ simulate_breakpoint_data <- function(T,
   type <- match.arg(type)
 
   rho_traj <- if (type == "single") {
-    rho_step(T, rho_before = rho_before, rho_after = rho_after,
+    rho_step(n_time, rho_before = rho_before, rho_after = rho_after,
              breakpoint = breakpoint, transition_width = transition_width)
   } else {
-    rho_double_step(T, rho_levels = rho_levels,
+    rho_double_step(n_time, rho_levels = rho_levels,
                     breakpoints = breakpoints,
                     transition_width = transition_width)
   }
 
-  simulate_dcvar(T = T, rho_trajectory = rho_traj,
+  simulate_dcvar(n_time = n_time, rho_trajectory = rho_traj,
                  mu = mu, Phi = Phi, sigma_eps = sigma_eps, seed = seed)
 }

@@ -2,7 +2,7 @@ test_that("prepare_dcvar_data works with valid input", {
   df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
   result <- prepare_dcvar_data(df, vars = c("y1", "y2"))
 
-  expect_equal(result$T, 50)
+  expect_equal(result$n_time, 50)
   expect_equal(result$D, 2)
   expect_equal(nrow(result$Y), 50)
   expect_equal(ncol(result$Y), 2)
@@ -40,7 +40,7 @@ test_that("prepare_dcvar_data can drop interior missing values when allow_gaps =
     out <- prepare_dcvar_data(df, vars = c("y1", "y2"), allow_gaps = TRUE),
     "Removing 1 row"
   )
-  expect_equal(out$T, 49)
+  expect_equal(out$n_time, 49)
   expect_equal(attr(out, "time_values"), c(1:24, 26:50))
 })
 
@@ -52,7 +52,7 @@ test_that("prepare_dcvar_data warns on edge missing values", {
     out <- prepare_dcvar_data(df, vars = c("y1", "y2")),
     "edges only"
   )
-  expect_equal(out$T, 49)
+  expect_equal(out$n_time, 49)
   expect_equal(attr(out, "time_values"), 2:50)
 })
 

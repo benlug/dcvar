@@ -4,10 +4,10 @@
 \alias{rho_random_walk}
 \title{Generate a random walk rho trajectory on the Fisher-z scale}
 \usage{
-rho_random_walk(T, z_init = 0.5, sigma_omega = 0.05, seed = NULL)
+rho_random_walk(n_time, z_init = 0.5, sigma_omega = 0.05, seed = NULL)
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{z_init}{Initial value on Fisher-z scale (default: 0.5, corresponding
 to rho = 0.46).}
@@ -17,7 +17,7 @@ to rho = 0.46).}
 \item{seed}{Random seed for reproducibility.}
 }
 \value{
-Numeric vector of length T-1.
+Numeric vector of length \code{n_time - 1}.
 }
 \description{
 Stochastic trajectory matching the DC-VAR data-generating process.

@@ -5,7 +5,7 @@
 \title{Generate a logistically increasing rho trajectory}
 \usage{
 rho_increasing(
-  T,
+  n_time,
   rho_start = 0.3,
   rho_end = 0.7,
   midpoint = NULL,
@@ -13,18 +13,18 @@ rho_increasing(
 )
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{rho_start}{Starting rho value (default: 0.3).}
 
 \item{rho_end}{Ending rho value (default: 0.7).}
 
-\item{midpoint}{Time point of inflection (default: \code{T/2}).}
+\item{midpoint}{Time point of inflection (default: \code{n_time/2}).}
 
 \item{steepness}{Controls transition sharpness (default: 0.05).}
 }
 \value{
-Numeric vector of length T-1.
+Numeric vector of length \code{n_time - 1}.
 }
 \description{
 Mimics deterioration where coupling increases from low to high.

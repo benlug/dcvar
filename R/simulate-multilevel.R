@@ -10,7 +10,7 @@
 #' matrices unconstrained; nonstationary draws are possible.
 #'
 #' @param N Number of units.
-#' @param T Number of time points per unit.
+#' @param n_time Number of time points per unit.
 #' @param phi_bar Population mean for VAR coefficients (length-4 vector:
 #'   phi11, phi12, phi21, phi22).
 #' @param tau_phi Population SD for each VAR coefficient (length-4 vector).
@@ -25,7 +25,7 @@
 #'   - `true_params`: list of true parameter values
 #'   - `person_means`: N x 2 matrix of person means (before centering)
 #' @export
-simulate_dcvar_multilevel <- function(N = 40, T = 100,
+simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
                                       phi_bar = c(0.3, 0.1, 0.1, 0.3),
                                       tau_phi = c(0.1, 0.05, 0.05, 0.1),
                                       sigma = c(1, 1),
@@ -37,8 +37,8 @@ simulate_dcvar_multilevel <- function(N = 40, T = 100,
   if (!is.numeric(N) || length(N) != 1L || N != as.integer(N) || N < 1) {
     cli_abort("{.arg N} must be an integer >= 1, got {.val {N}}.")
   }
-  if (!is.numeric(T) || length(T) != 1L || T != as.integer(T) || T < 2) {
-    cli_abort("{.arg T} must be an integer >= 2, got {.val {T}}.")
+  if (!is.numeric(n_time) || length(n_time) != 1L || n_time != as.integer(n_time) || n_time < 2) {
+    cli_abort("{.arg n_time} must be an integer >= 2, got {.val {n_time}}.")
   }
   .simulate_validate_numeric_vector(phi_bar, "phi_bar")
   if (length(phi_bar) != 4L) {
@@ -69,7 +69,7 @@ simulate_dcvar_multilevel <- function(N = 40, T = 100,
     cli_abort("{.arg rho} must be a single numeric value in [-1, 1], got {.val {rho}}.")
   }
 
-  T_sim <- T + burnin
+  n_time_sim <- n_time + burnin
   Phi_mat <- matrix(NA_real_, N, 4)
   Phi_list <- vector("list", N)
 
@@ -83,16 +83,16 @@ simulate_dcvar_multilevel <- function(N = 40, T = 100,
   # Simulate data
   y_raw_list <- vector("list", N)
   for (i in seq_len(N)) {
-    Y <- matrix(0, T_sim, 2)
-    for (t in 2:T_sim) {
+    Y <- matrix(0, n_time_sim, 2)
+    for (time_index in 2:n_time_sim) {
       # Correlated innovations via Cholesky
       L <- matrix(c(1, rho, 0, sqrt(1 - rho^2)), 2, 2)
       z <- rnorm(2)
       eps <- L %*% z * sigma
 
-      Y[t, ] <- Phi_list[[i]] %*% Y[t - 1, ] + eps
+      Y[time_index, ] <- Phi_list[[i]] %*% Y[time_index - 1L, ] + eps
     }
-    y_raw_list[[i]] <- Y[(burnin + 1):T_sim, , drop = FALSE]
+    y_raw_list[[i]] <- Y[(burnin + 1L):n_time_sim, , drop = FALSE]
   }
 
   # Person-mean center
@@ -112,7 +112,7 @@ simulate_dcvar_multilevel <- function(N = 40, T = 100,
   for (i in seq_len(N)) {
     all_rows[[i]] <- data.frame(
       id = i,
-      time = seq_len(T),
+      time = seq_len(n_time),
       y1 = y_list[[i]][, 1],
       y2 = y_list[[i]][, 2]
     )

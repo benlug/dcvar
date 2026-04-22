@@ -8,9 +8,9 @@ functions {
 }
 
 data {
-  int<lower=2> T;
+  int<lower=2> n_time;
   int<lower=2> D;
-  matrix[T, D] Y;
+  matrix[n_time, D] Y;
   int<lower=2> K;
   vector[D] skew_direction;
 
@@ -23,7 +23,7 @@ data {
 }
 
 transformed data {
-  int T_eff = T - 1;
+  int n_time_eff = n_time - 1;
   array[K] vector[K] dirichlet_prior;
   for (k in 1:K) {
     for (j in 1:K) {
@@ -43,11 +43,11 @@ parameters {
 
 transformed parameters {
   vector[K] rho_state;
-  matrix[T_eff, D] eps;
-  matrix[T_eff, K] obs_ll;
+  matrix[n_time_eff, D] eps;
+  matrix[n_time_eff, K] obs_ll;
   matrix[K, K] log_A;
   vector[K] log_pi0;
-  matrix[T_eff, K] log_alpha;
+  matrix[n_time_eff, K] log_alpha;
 
   for (k in 1:K) rho_state[k] = tanh(z_rho[k]);
 
@@ -57,7 +57,7 @@ transformed parameters {
   }
 
   // VAR residuals
-  eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
+  eps = compute_var_residuals(Y, mu, Phi, n_time_eff, D);
 
   // Compute feasibility bounds and sigma_exp (shared across states)
   {
@@ -68,14 +68,14 @@ transformed parameters {
 
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
-      for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+      for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
       sigma_lb[i] = fmax(m, 0);
       sigma_exp[i] = sigma_lb[i] + exp(eta[i]) + sigma_eps;
     }
     rate_exp = 1.0 ./ sigma_exp;
 
     // Observation log-likelihoods per state
-    for (t in 1:T_eff) {
+    for (t in 1:n_time_eff) {
       // Marginal density (same across states)
       real marginal_ll = 0;
       vector[2] u_vec;
@@ -93,7 +93,7 @@ transformed parameters {
   }
 
   // Forward algorithm
-  log_alpha = hmm_forward(obs_ll, log_A, log_pi0, T_eff, K);
+  log_alpha = hmm_forward(obs_ll, log_A, log_pi0, n_time_eff, K);
 }
 
 model {
@@ -110,32 +110,32 @@ model {
     vector[D] sigma_exp;
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
-      for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+      for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
       sigma_lb[i] = fmax(m, 0);
       sigma_exp[i] = sigma_lb[i] + exp(eta[i]) + sigma_eps;
       target += lognormal_lpdf(sigma_exp[i] | 0, 0.5) + eta[i];
     }
   }
 
-  target += log_sum_exp(to_vector(log_alpha[T_eff, ]));
+  target += log_sum_exp(to_vector(log_alpha[n_time_eff, ]));
 }
 
 generated quantities {
-  matrix[T_eff, K] gamma;
-  array[T_eff] int viterbi_state;
-  vector[T_eff] rho_hmm;
-  vector[T_eff] log_lik;
-  matrix[T_eff, D] eps_rep;
+  matrix[n_time_eff, K] gamma;
+  array[n_time_eff] int viterbi_state;
+  vector[n_time_eff] rho_hmm;
+  vector[n_time_eff] log_lik;
+  matrix[n_time_eff, D] eps_rep;
 
   // Forward-backward
-  gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, T_eff, K);
+  gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, n_time_eff, K);
 
   // Viterbi
-  viterbi_state = hmm_viterbi(obs_ll, log_A, log_pi0, T_eff, K);
+  viterbi_state = hmm_viterbi(obs_ll, log_A, log_pi0, n_time_eff, K);
 
-  rho_hmm = hmm_rho_average(gamma, rho_state, T_eff, K);
+  rho_hmm = hmm_rho_average(gamma, rho_state, n_time_eff, K);
 
-  log_lik = hmm_log_lik(log_alpha, T_eff, K);
+  log_lik = hmm_log_lik(log_alpha, n_time_eff, K);
 
   // PPC: sample from bivariate normal copula, then invert through exponential margins
   {
@@ -144,12 +144,12 @@ generated quantities {
     vector[D] rate_exp_gq;
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
-      for (t in 2:T_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+      for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
       sigma_exp_gq[i] = fmax(m, 0) + exp(eta[i]) + sigma_eps;
       rate_exp_gq[i] = 1.0 / sigma_exp_gq[i];
     }
 
-    for (t in 1:T_eff) {
+    for (t in 1:n_time_eff) {
       real z1_rep = std_normal_rng();
       real z2_rep = rho_hmm[t] * z1_rep + sqrt(1 - square(rho_hmm[t])) * std_normal_rng();
       real u1 = Phi(z1_rep);

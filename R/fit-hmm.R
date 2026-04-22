@@ -29,9 +29,22 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' sim <- simulate_dcvar(T = 100, rho_trajectory = rho_step(100))
-#' fit <- dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2)
+#' \donttest{
+#' sim <- simulate_dcvar(
+#'   n_time = 12,
+#'   rho_trajectory = rho_step(12),
+#'   seed = 1
+#' )
+#' fit <- dcvar_hmm(
+#'   sim$Y_df,
+#'   vars = c("y1", "y2"),
+#'   K = 2,
+#'   chains = 1,
+#'   iter_warmup = 10,
+#'   iter_sampling = 10,
+#'   refresh = 0,
+#'   seed = 1
+#' )
 #' print(fit)
 #' hmm_states(fit)
 #' }
@@ -77,7 +90,7 @@ dcvar_hmm <- function(data, vars, K = 2,
   )
 
   margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
-  cli_inform("Fitting HMM copula model{margins_label} (T = {stan_data$T}, D = {stan_data$D}, K = {K})...")
+  cli_inform("Fitting HMM copula model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D}, K = {K})...")
 
   # Compile model
   model <- .compile_model("hmm", margins = margins, stan_file = stan_file, backend = backend)

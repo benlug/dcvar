@@ -32,7 +32,7 @@
 fitted.dcvar_model_fit <- function(object, type = c("link", "response"), ...) {
   type <- match.arg(type)
   D <- object$stan_data$D
-  T_obs <- object$stan_data$T
+  n_time_obs <- object$stan_data$n_time
   Y <- object$stan_data$Y
   mu_draws <- posterior::as_draws_matrix(.fit_draws(
     object$fit, "mu", backend = object$backend,
@@ -54,9 +54,9 @@ fitted.dcvar_model_fit <- function(object, type = c("link", "response"), ...) {
   mu_mat <- mu_draws[, mu_cols, drop = FALSE]
   phi_mat <- Phi_draws[, phi_cols, drop = FALSE]
 
-  y_hat <- matrix(NA_real_, T_obs - 1, D)
-  for (t in 2:T_obs) {
-    centered_prev <- sweep(mu_mat, 2, Y[t - 1, ], FUN = function(mu_val, y_prev) y_prev - mu_val)
+  y_hat <- matrix(NA_real_, n_time_obs - 1L, D)
+  for (time_index in 2:n_time_obs) {
+    centered_prev <- sweep(mu_mat, 2, Y[time_index - 1L, ], FUN = function(mu_val, y_prev) y_prev - mu_val)
     y_hat_draws <- matrix(NA_real_, nrow(mu_mat), D)
 
     for (d in seq_len(D)) {
@@ -67,7 +67,7 @@ fitted.dcvar_model_fit <- function(object, type = c("link", "response"), ...) {
       y_hat_draws[, d] <- eta
     }
 
-    y_hat[t - 1, ] <- colMeans(y_hat_draws)
+    y_hat[time_index - 1L, ] <- colMeans(y_hat_draws)
   }
 
   if (type == "response" && isTRUE(object$standardized)) {
@@ -353,7 +353,6 @@ predict.dcvar_model_fit <- function(object, type = c("link", "response"),
   z_crit <- stats::qnorm(1 - (1 - ci_level) / 2)
 
   D <- object$stan_data$D
-  T_obs <- object$stan_data$T
   vars <- object$vars
 
   rows <- list()

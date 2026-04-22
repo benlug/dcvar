@@ -34,7 +34,7 @@ test_that("T=2 errors (too few observations)", {
 test_that("T=3 succeeds (minimum viable)", {
   df <- data.frame(time = 1:3, y1 = c(1, 2, 3), y2 = c(4, 5, 6))
   result <- prepare_dcvar_data(df, vars = c("y1", "y2"))
-  expect_equal(result$T, 3)
+  expect_equal(result$n_time, 3)
 })
 
 # --- Data type validation ---------------------------------------------------
@@ -89,7 +89,7 @@ test_that("invalid margin type errors", {
 test_that("normal margins work without skew_direction", {
   df <- data.frame(time = 1:20, y1 = rnorm(20), y2 = rnorm(20))
   result <- prepare_dcvar_data(df, vars = c("y1", "y2"), margins = "normal")
-  expect_equal(result$T, 20)
+  expect_equal(result$n_time, 20)
 })
 
 test_that("prepare_dcvar_data validates scalar logical flags", {
@@ -112,19 +112,19 @@ test_that("prepare_dcvar_data validates scalar logical flags", {
 
 test_that("K must be integer-like", {
   skip_if_no_rstan()
-  sim <- simulate_dcvar(T = 30, rho_trajectory = rho_step(30), seed = 1)
+  sim <- simulate_dcvar(n_time = 30, rho_trajectory = rho_step(30), seed = 1)
   expect_error(dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 2.5), "integer")
 })
 
 test_that("K < 2 errors", {
   skip_if_no_rstan()
-  sim <- simulate_dcvar(T = 30, rho_trajectory = rho_step(30), seed = 1)
+  sim <- simulate_dcvar(n_time = 30, rho_trajectory = rho_step(30), seed = 1)
   expect_error(dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = 1), "integer.*>= 2")
 })
 
 test_that("non-numeric K errors", {
   skip_if_no_rstan()
-  sim <- simulate_dcvar(T = 30, rho_trajectory = rho_step(30), seed = 1)
+  sim <- simulate_dcvar(n_time = 30, rho_trajectory = rho_step(30), seed = 1)
   expect_error(dcvar_hmm(sim$Y_df, vars = c("y1", "y2"), K = "two"), "integer")
 })
 

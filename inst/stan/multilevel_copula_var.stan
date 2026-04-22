@@ -8,8 +8,8 @@ functions {
 
 data {
   int<lower=1> N;                    // Number of units
-  int<lower=2> T;                    // Time points per unit
-  array[N] matrix[T, 2] y;          // Centered data: y[i] is T x 2
+  int<lower=2> n_time;                    // Time points per unit
+  array[N] matrix[n_time, 2] y;          // Centered data: y[i] is n_time x 2
 
   // Prior hyperparameters
   real<lower=0> prior_phi_bar_sd;
@@ -63,7 +63,7 @@ model {
     real log_sigma_sum = log(sigma[1]) + log(sigma[2]);
 
     for (i in 1:N) {
-      for (t in 2:T) {
+      for (t in 2:n_time) {
         row_vector[2] pred = y[i][t - 1] * Phi_T[i];
         row_vector[2] res = y[i][t] - pred;
         row_vector[2] z = res ./ sigma';
@@ -109,7 +109,7 @@ generated quantities {
     log_lik[i] = 0;
     {
       real log_sigma_sum = log(sigma[1]) + log(sigma[2]);
-      for (t in 2:T) {
+      for (t in 2:n_time) {
         row_vector[2] pred = y[i][t - 1] * Phi_T[i];
         row_vector[2] res = y[i][t] - pred;
         row_vector[2] z = res ./ sigma';

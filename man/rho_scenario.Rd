@@ -4,7 +4,7 @@
 \alias{rho_scenario}
 \title{Get a named trajectory scenario}
 \usage{
-rho_scenario(scenario, T, ...)
+rho_scenario(scenario, n_time, ...)
 }
 \arguments{
 \item{scenario}{Character string. One of:
@@ -14,17 +14,17 @@ rho_scenario(scenario, T, ...)
 \code{"increase"}, \code{"double_relapse"}
 }}
 
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{...}{Additional arguments passed to the generator.}
 }
 \value{
-Numeric vector of length T-1.
+Numeric vector of length \code{n_time - 1}.
 }
 \description{
 Convenience function to retrieve a standard scenario by name.
 }
 \examples{
-rho_scenario("decreasing", T = 100)
-rho_scenario("double_relapse", T = 150)
+rho_scenario("decreasing", n_time = 100)
+rho_scenario("double_relapse", n_time = 150)
 }

@@ -2,7 +2,7 @@ test_that("dcvar_diagnostics scopes headline convergence to sampled parameters",
   object <- structure(
     list(
       fit = structure(list(), class = "mock_fit"),
-      stan_data = list(T = 5, D = 2),
+      stan_data = list(n_time = 5, D = 2),
       model = "dcvar",
       vars = c("y1", "y2"),
       standardized = TRUE,
@@ -63,7 +63,7 @@ test_that("dcvar_diagnostics handles SEM fits without stan_data$D", {
   object <- structure(
     list(
       fit = structure(list(), class = "mock_fit"),
-      stan_data = list(T = 3),
+      stan_data = list(n_time = 3),
       model = "sem",
       backend = "rstan",
       priors = list(),
@@ -118,7 +118,7 @@ test_that("dcvar_diagnostics handles multilevel fits without stan_data$D", {
   object <- structure(
     list(
       fit = structure(list(), class = "mock_fit"),
-      stan_data = list(T = 4),
+      stan_data = list(n_time = 4),
       model = "multilevel",
       N = 2,
       backend = "rstan",
@@ -173,7 +173,7 @@ test_that("dcvar_diagnostics errors clearly when D is missing for single-level m
   object <- structure(
     list(
       fit = structure(list(), class = "mock_fit"),
-      stan_data = list(T = 5),
+      stan_data = list(n_time = 5),
       model = "dcvar",
       margins = "normal",
       backend = "rstan",

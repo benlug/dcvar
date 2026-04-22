@@ -23,7 +23,7 @@ uniform, but they remain plug-in diagnostics rather than exact posterior
 predictive checks.
 }
 \details{
-PIT histograms visualize the approximate plug-in PIT values returned by
-\code{\link[=pit_values]{pit_values()}}. They are currently implemented for the three
+PIT histograms visualize the approximate plug-in PIT values
+returned by \code{\link[=pit_values]{pit_values()}}. They are currently implemented for the three
 core single-level fit classes only.
 }

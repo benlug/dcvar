@@ -77,19 +77,19 @@ test_that("rho_scenario works for all named scenarios", {
                  "increase", "double_relapse")
 
   for (s in scenarios) {
-    result <- rho_scenario(s, T = 50)
+    result <- rho_scenario(s, n_time = 50)
     expect_equal(length(result), 49, info = paste("scenario:", s))
     expect_true(all(result >= -1 & result <= 1), info = paste("scenario:", s))
   }
 })
 
 test_that("rho_scenario forwards overrides to scenario generators", {
-  early <- rho_scenario("single_middle", T = 10, breakpoint = 0.1)
-  late <- rho_scenario("single_middle", T = 10, breakpoint = 0.9)
+  early <- rho_scenario("single_middle", n_time = 10, breakpoint = 0.1)
+  late <- rho_scenario("single_middle", n_time = 10, breakpoint = 0.9)
 
   expect_false(identical(early, late))
 })
 
 test_that("rho_scenario errors for unknown scenario", {
-  expect_error(rho_scenario("nonexistent", T = 50), "Unknown scenario")
+  expect_error(rho_scenario("nonexistent", n_time = 50), "Unknown scenario")
 })

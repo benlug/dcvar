@@ -5,16 +5,15 @@
 \alias{dcvar-package}
 \title{dcvar: Gaussian-copula VAR models for bivariate time series}
 \description{
-\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
-
 \code{dcvar} focuses on Gaussian-copula VAR(1) workflows for bivariate time
 series. The core single-level models \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
 \code{\link[=dcvar_constant]{dcvar_constant()}} support normal, exponential, skew-normal, and gamma
 margins.
-
-Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and \code{\link[=dcvar_sem]{dcvar_sem()}}
-provide a narrower diagnostic interface than the core models. The multilevel
-model currently supports normal margins only, while the SEM model supports normal
+}
+\details{
+Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and \code{\link[=dcvar_sem]{dcvar_sem()}} provide a
+narrower diagnostic interface than the core models. The multilevel model
+currently supports normal margins only, while the SEM model supports normal
 and exponential latent innovation margins.
 
 The package implements Gaussian-copula models only. Clayton copulas are not

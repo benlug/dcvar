@@ -128,7 +128,7 @@
 #' @param allow_gaps Logical scalar; if `FALSE` (default), interior missing values
 #'   cause an error. If `TRUE`, they produce a warning and are removed.
 #'
-#' @return A list with elements `Y`, `T`, `D`, and standardization metadata.
+#' @return A list with elements `Y`, `n_time`, `D`, and standardization metadata.
 #' @noRd
 .prepare_var_data <- function(data, vars, time_var = "time",
                               standardize = TRUE, allow_gaps = FALSE) {
@@ -282,7 +282,7 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
   prep <- .prepare_var_data(data, vars, time_var, standardize, allow_gaps)
 
   stan_data <- list(
-    T = prep$T_obs,
+    n_time = prep$T_obs,
     D = prep$D,
     Y = prep$Y,
     sigma_mu_prior = prior_mu_sd,
@@ -358,7 +358,7 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
   prep <- .prepare_var_data(data, vars, time_var, standardize, allow_gaps)
 
   stan_data <- list(
-    T = prep$T_obs,
+    n_time = prep$T_obs,
     D = prep$D,
     Y = prep$Y,
     K = as.integer(K),
@@ -501,7 +501,7 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
 
   stan_data <- list(
     N = N,
-    T = T_obs,
+    n_time = T_obs,
     y = y_list,
     prior_phi_bar_sd = prior_phi_bar_sd,
     prior_tau_phi_scale = prior_tau_phi_scale,
@@ -611,7 +611,7 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
   }
 
   stan_data <- list(
-    T = T_obs,
+    n_time = T_obs,
     J = as.integer(J),
     y = y,
     lambda = lambda,
@@ -671,7 +671,7 @@ prepare_constant_data <- function(data, vars, time_var = "time",
   prep <- .prepare_var_data(data, vars, time_var, standardize, allow_gaps)
 
   stan_data <- list(
-    T = prep$T_obs,
+    n_time = prep$T_obs,
     D = prep$D,
     Y = prep$Y,
     sigma_mu_prior = prior_mu_sd,

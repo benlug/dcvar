@@ -12,9 +12,9 @@ functions {
 }
 
 data {
-  int<lower=2> T;                    // Number of time points
+  int<lower=2> n_time;                    // Number of time points
   int<lower=2> D;                    // Number of variables (typically 2)
-  matrix[T, D] Y;                    // Observed data (T x D)
+  matrix[n_time, D] Y;                    // Observed data (n_time x D)
   int<lower=2> K;                    // Number of hidden states
 
   // Prior hyperparameters (VAR)
@@ -29,7 +29,7 @@ data {
 }
 
 transformed data {
-  int T_eff = T - 1;
+  int n_time_eff = n_time - 1;
 
   // Build Dirichlet hyperparameter vectors for each row of transition matrix
   array[K] vector[K] dirichlet_prior;
@@ -66,20 +66,20 @@ transformed parameters {
   vector[K] rho_state;
 
   // VAR residuals
-  matrix[T_eff, D] eps;
+  matrix[n_time_eff, D] eps;
 
   // Standardized residuals as z-scores (used directly in copula density)
-  matrix[T_eff, D] z_scores;
+  matrix[n_time_eff, D] z_scores;
 
   // Observation log-likelihoods per state
-  matrix[T_eff, K] obs_ll;
+  matrix[n_time_eff, K] obs_ll;
 
   // Log transition matrix and initial probs (precomputed once per iteration)
   matrix[K, K] log_A;
   vector[K] log_pi0;
 
   // Forward algorithm: log_alpha[t, k] = log p(y_{1:t}, s_t = k | theta)
-  matrix[T_eff, K] log_alpha;
+  matrix[n_time_eff, K] log_alpha;
 
   // Precomputed state-specific quantities (for efficiency)
   vector[K] rho_sq_state;
@@ -106,18 +106,18 @@ transformed parameters {
   }
 
   // Compute VAR residuals (same as DC-VAR)
-  eps = compute_var_residuals(Y, mu, Phi, T_eff, D);
+  eps = compute_var_residuals(Y, mu, Phi, n_time_eff, D);
 
   // Compute z-scores directly from standardized residuals
   // (avoids the Phi -> clamp -> inv_Phi roundtrip that truncates tail information)
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     for (d in 1:D) {
       z_scores[t, d] = eps[t, d] / sigma_eps[d];
     }
   }
 
   // Compute observation log-likelihoods with inlined copula
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     // Marginal density (same for all states)
     real marginal_ll = 0;
     for (d in 1:D) {
@@ -149,7 +149,7 @@ transformed parameters {
   }
 
   // Forward algorithm using precomputed log_A and log_pi0
-  log_alpha = hmm_forward(obs_ll, log_A, log_pi0, T_eff, K);
+  log_alpha = hmm_forward(obs_ll, log_A, log_pi0, n_time_eff, K);
 }
 
 model {
@@ -166,42 +166,42 @@ model {
   }
 
   // Marginal log-likelihood via forward algorithm
-  target += log_sum_exp(to_vector(log_alpha[T_eff, ]));
+  target += log_sum_exp(to_vector(log_alpha[n_time_eff, ]));
 }
 
 generated quantities {
-  // State posterior probabilities: gamma[t, k] = p(s_t = k | y_{1:T}, theta)
-  matrix[T_eff, K] gamma;
+  // State posterior probabilities: gamma[t, k] = p(s_t = k | y_{1:n_time}, theta)
+  matrix[n_time_eff, K] gamma;
 
   // Viterbi MAP state sequence
-  array[T_eff] int viterbi_state;
+  array[n_time_eff] int viterbi_state;
 
   // Posterior-averaged time-varying rho
-  vector[T_eff] rho_hmm;
+  vector[n_time_eff] rho_hmm;
 
   // Pointwise log-likelihood (for LOO-CV)
-  vector[T_eff] log_lik;
+  vector[n_time_eff] log_lik;
 
   // Posterior predictive replicated residuals (for PPC)
-  matrix[T_eff, D] eps_rep;
+  matrix[n_time_eff, D] eps_rep;
 
   // Forward-backward algorithm for state posteriors
-  gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, T_eff, K);
+  gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, n_time_eff, K);
 
   // Viterbi algorithm
-  viterbi_state = hmm_viterbi(obs_ll, log_A, log_pi0, T_eff, K);
+  viterbi_state = hmm_viterbi(obs_ll, log_A, log_pi0, n_time_eff, K);
 
   // Posterior-averaged rho
-  rho_hmm = hmm_rho_average(gamma, rho_state, T_eff, K);
+  rho_hmm = hmm_rho_average(gamma, rho_state, n_time_eff, K);
 
   // Pointwise log-likelihood via forward filter predictive density:
   // log p(y_t | y_{1:t-1}) = log p(y_{1:t}) - log p(y_{1:t-1})
   //                        = log_sum_exp(log_alpha[t,:]) - log_sum_exp(log_alpha[t-1,:])
   // This avoids the double-counting bug of using smoothed gamma (which conditions on y_t).
-  log_lik = hmm_log_lik(log_alpha, T_eff, K);
+  log_lik = hmm_log_lik(log_alpha, n_time_eff, K);
 
   // Generate replicated residuals using posterior-averaged rho
-  for (t in 1:T_eff) {
+  for (t in 1:n_time_eff) {
     real z1_rep = std_normal_rng();
     real z2_rep = rho_hmm[t] * z1_rep + sqrt(1 - square(rho_hmm[t])) * std_normal_rng();
     eps_rep[t, 1] = z1_rep * sigma_eps[1];

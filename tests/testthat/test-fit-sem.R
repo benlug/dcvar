@@ -78,7 +78,7 @@ test_that("SEM latent_states() returns expected structure", {
   expect_true(all(c("time", "variable", "mean", "sd") %in% names(ls)))
   expect_true(all(fit$vars %in% ls$variable))
   # Should have T rows per variable (2 variables)
-  expect_equal(nrow(ls), fit$stan_data$T * 2)
+  expect_equal(nrow(ls), fit$stan_data$n_time * 2)
 })
 
 test_that("SEM var_params() returns expected structure", {
@@ -137,11 +137,11 @@ test_that("SEM fitted() returns latent and indicator trajectories", {
 
   expect_s3_class(fit_link, "data.frame")
   expect_named(fit_link, c("time", fit$vars))
-  expect_equal(nrow(fit_link), fit$stan_data$T)
+  expect_equal(nrow(fit_link), fit$stan_data$n_time)
 
   expect_s3_class(fit_resp, "data.frame")
   expect_named(fit_resp, c("time", indicator_names))
-  expect_equal(nrow(fit_resp), fit$stan_data$T)
+  expect_equal(nrow(fit_resp), fit$stan_data$n_time)
 })
 
 test_that("SEM predict() returns latent and indicator intervals", {
@@ -154,12 +154,12 @@ test_that("SEM predict() returns latent and indicator intervals", {
 
   expect_s3_class(pred_link, "data.frame")
   expect_named(pred_link, c("time", "variable", "mean", "lower", "upper"))
-  expect_equal(nrow(pred_link), fit$stan_data$T * length(fit$vars))
+  expect_equal(nrow(pred_link), fit$stan_data$n_time * length(fit$vars))
   expect_equal(sort(unique(pred_link$variable)), sort(fit$vars))
 
   expect_s3_class(pred_resp, "data.frame")
   expect_named(pred_resp, c("time", "variable", "mean", "lower", "upper"))
-  expect_equal(nrow(pred_resp), fit$stan_data$T * length(indicator_names))
+  expect_equal(nrow(pred_resp), fit$stan_data$n_time * length(indicator_names))
   expect_equal(sort(unique(pred_resp$variable)), sort(indicator_names))
   expect_true(all(pred_resp$lower <= pred_resp$mean))
   expect_true(all(pred_resp$upper >= pred_resp$mean))

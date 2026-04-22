@@ -5,7 +5,7 @@
 \title{Simulate data with a breakpoint rho trajectory}
 \usage{
 simulate_breakpoint_data(
-  T,
+  n_time,
   type = c("single", "double"),
   rho_before = 0.7,
   rho_after = 0.3,
@@ -20,7 +20,7 @@ simulate_breakpoint_data(
 )
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{type}{Character; one of \code{"single"} (single breakpoint) or \code{"double"}
 (double breakpoint / relapse pattern).}
@@ -32,7 +32,7 @@ simulate_breakpoint_data(
 \item{rho_levels}{Numeric vector of three rho levels for double breakpoint
 (default: \code{c(0.7, 0.3, 0.7)}). Only used when \code{type = "double"}.}
 
-\item{breakpoint}{Breakpoint location as proportion of T-1 (default: 0.5).}
+\item{breakpoint}{Breakpoint location as proportion of \code{n_time - 1} (default: 0.5).}
 
 \item{breakpoints}{Numeric vector of two breakpoints for double type
 (default: \code{c(1/3, 2/3)}).}
@@ -56,6 +56,6 @@ Convenience wrapper that combines \code{\link[=rho_step]{rho_step()}} or \code{\
 \code{\link[=simulate_dcvar]{simulate_dcvar()}} for quick breakpoint simulation studies.
 }
 \examples{
-sim <- simulate_breakpoint_data(T = 100, type = "single", seed = 42)
+sim <- simulate_breakpoint_data(n_time = 100, type = "single", seed = 42)
 plot(sim$true_params$rho, type = "l")
 }

@@ -268,14 +268,14 @@ test_that("hmm viterbi states are valid integers", {
   states <- hmm_states(fit)
 
   expect_true(all(states$viterbi %in% 1:fit$K))
-  expect_equal(length(states$viterbi), fit$stan_data$T - 1)
+  expect_equal(length(states$viterbi), fit$stan_data$n_time - 1)
 })
 
 # --- simulate_dcvar input validation ----------------------------------------
 
 test_that("simulate_dcvar rejects D != 2", {
   expect_error(
-    simulate_dcvar(T = 50, rho_trajectory = rho_constant(50, 0.5),
+    simulate_dcvar(n_time = 50, rho_trajectory = rho_constant(50, 0.5),
                    mu = c(0, 0, 0)),
     "bivariate"
   )
@@ -283,7 +283,7 @@ test_that("simulate_dcvar rejects D != 2", {
 
 test_that("simulate_dcvar rejects mismatched Phi dimensions", {
   expect_error(
-    simulate_dcvar(T = 50, rho_trajectory = rho_constant(50, 0.5),
+    simulate_dcvar(n_time = 50, rho_trajectory = rho_constant(50, 0.5),
                    Phi = matrix(0, 3, 3)),
     "matrix"
   )
@@ -291,7 +291,7 @@ test_that("simulate_dcvar rejects mismatched Phi dimensions", {
 
 test_that("simulate_dcvar rejects mismatched sigma_eps length", {
   expect_error(
-    simulate_dcvar(T = 50, rho_trajectory = rho_constant(50, 0.5),
+    simulate_dcvar(n_time = 50, rho_trajectory = rho_constant(50, 0.5),
                    sigma_eps = c(1, 1, 1)),
     "length"
   )

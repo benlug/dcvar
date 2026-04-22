@@ -134,7 +134,7 @@ test_that("multilevel fitted() returns unit-specific trajectories", {
 
   expect_s3_class(fit_link, "data.frame")
   expect_named(fit_link, c("unit", "time", "y1", "y2"))
-  expect_equal(nrow(fit_link), fit$N * (fit$stan_data$T - 1))
+  expect_equal(nrow(fit_link), fit$N * (fit$stan_data$n_time - 1))
   expect_equal(length(unique(fit_link$unit)), fit$N)
   expect_false(identical(fit_link[, fit$vars], fit_resp[, fit$vars]))
 })
@@ -147,7 +147,7 @@ test_that("multilevel predict() returns unit-specific intervals", {
 
   expect_s3_class(pred, "data.frame")
   expect_named(pred, c("unit", "time", "variable", "mean", "lower", "upper"))
-  expect_equal(nrow(pred), fit$N * (fit$stan_data$T - 1) * length(fit$vars))
+  expect_equal(nrow(pred), fit$N * (fit$stan_data$n_time - 1) * length(fit$vars))
   expect_equal(sort(unique(pred$variable)), sort(fit$vars))
   expect_true(all(pred$lower <= pred$mean))
   expect_true(all(pred$upper >= pred$mean))

@@ -42,7 +42,7 @@ NULL
 #' @export
 print.dcvar_multilevel_fit <- function(x, ...) {
   .print_fit_header(x, "Multilevel Copula VAR Model Fit")
-  cat(sprintf("N = %d units, T = %d per unit\n", x$N, x$stan_data$T))
+  cat(sprintf("N = %d units, n_time = %d per unit\n", x$N, x$stan_data$n_time))
   .print_fit_footer(x)
 
   cat(sprintf("rho (global): %.3f\n", coef(x)$rho[[1]]))
@@ -61,7 +61,7 @@ summary.dcvar_multilevel_fit <- function(object, ...) {
   out <- list(
     model = "multilevel",
     N = object$N,
-    T = object$stan_data$T,
+    n_time = object$stan_data$n_time,
     var_params = vp,
     random_effects = re,
     diagnostics = diag
@@ -79,7 +79,7 @@ summary.dcvar_multilevel_fit <- function(object, ...) {
 print.dcvar_multilevel_summary <- function(x, ...) {
   cat("Multilevel Copula VAR Model Summary\n")
   cat(strrep("=", 50), "\n")
-  cat(sprintf("N = %d units, T = %d per unit\n\n", x$N, x$T))
+  cat(sprintf("N = %d units, n_time = %d per unit\n\n", x$N, x$n_time))
 
   cat("Population-Level Parameters:\n")
   if (!is.null(x$var_params$phi_bar)) {

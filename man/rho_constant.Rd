@@ -4,15 +4,15 @@
 \alias{rho_constant}
 \title{Generate a constant rho trajectory}
 \usage{
-rho_constant(T, rho = 0.5)
+rho_constant(n_time, rho = 0.5)
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
 \item{rho}{Constant correlation value (default: 0.5). Must be in [-1, 1].}
 }
 \value{
-Numeric vector of length T-1.
+Numeric vector of length \code{n_time - 1}.
 }
 \description{
 Generate a constant rho trajectory

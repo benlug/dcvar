@@ -17,8 +17,31 @@ Convenience wrapper around \code{\link[loo:loo_compare]{loo::loo_compare()}} tha
 dcvar model fits.
 }
 \examples{
-\dontrun{
-dcvar_compare(dcvar = fit1, hmm = fit2, constant = fit3)
+\donttest{
+sim <- simulate_dcvar(
+  n_time = 12,
+  rho_trajectory = rho_decreasing(12),
+  seed = 1
+)
+fit_dcvar <- dcvar(
+  sim$Y_df,
+  vars = c("y1", "y2"),
+  chains = 1,
+  iter_warmup = 10,
+  iter_sampling = 10,
+  refresh = 0,
+  seed = 1
+)
+fit_constant <- dcvar_constant(
+  sim$Y_df,
+  vars = c("y1", "y2"),
+  chains = 1,
+  iter_warmup = 10,
+  iter_sampling = 10,
+  refresh = 0,
+  seed = 1
+)
+dcvar_compare(dcvar = fit_dcvar, constant = fit_constant)
 }
 }
 \seealso{

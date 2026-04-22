@@ -6,7 +6,7 @@
 #'
 #' Visualises several named trajectory scenarios side by side for comparison.
 #'
-#' @param T Number of time points.
+#' @param n_time Number of time points.
 #' @param scenarios Character vector of scenario names (see [rho_scenario()]).
 #'   Default: all built-in scenarios.
 #' @param ... Additional arguments passed to [rho_scenario()].
@@ -17,13 +17,13 @@
 #' @examples
 #' plot_trajectories(100)
 #' plot_trajectories(100, scenarios = c("decreasing", "single_middle"))
-plot_trajectories <- function(T,
+plot_trajectories <- function(n_time,
                               scenarios = c("constant", "decreasing", "increasing",
                                             "random_walk", "single_middle",
                                             "large_change", "double_relapse"),
                               ...) {
   rows <- lapply(scenarios, function(s) {
-    rho <- rho_scenario(s, T = T, ...)
+    rho <- rho_scenario(s, n_time = n_time, ...)
     data.frame(
       time = 2:(length(rho) + 1),
       rho = rho,

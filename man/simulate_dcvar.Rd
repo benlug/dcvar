@@ -5,7 +5,7 @@
 \title{Simulate data from a copula VAR(1) model}
 \usage{
 simulate_dcvar(
-  T,
+  n_time,
   rho_trajectory,
   mu = c(0, 0),
   Phi = matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2),
@@ -17,9 +17,9 @@ simulate_dcvar(
 )
 }
 \arguments{
-\item{T}{Number of time points.}
+\item{n_time}{Number of time points.}
 
-\item{rho_trajectory}{Numeric vector of length T-1 specifying the
+\item{rho_trajectory}{Numeric vector of length \code{n_time - 1} specifying the
 correlation at each time step. Use \code{\link[=rho_constant]{rho_constant()}}, \code{\link[=rho_decreasing]{rho_decreasing()}},
 etc.}
 
@@ -46,7 +46,7 @@ For \code{"gamma"}: \code{shape} (scalar gamma shape parameter).}
 \value{
 A named list with:
 \itemize{
-\item \code{Y}: T x 2 observation matrix
+\item \code{Y}: \verb{n_time x 2} observation matrix
 \item \code{Y_df}: data frame with columns \code{time}, \code{y1}, \code{y2} (ready for
 \code{\link[=dcvar]{dcvar()}})
 \item \code{true_params}: list of true parameter values
@@ -57,7 +57,7 @@ Generates bivariate time series data with correlated innovations
 driven by a specified rho trajectory.
 }
 \examples{
-sim <- simulate_dcvar(T = 100, rho_trajectory = rho_decreasing(100))
+sim <- simulate_dcvar(n_time = 100, rho_trajectory = rho_decreasing(100))
 head(sim$Y_df)
 plot(sim$true_params$rho, type = "l")
 }

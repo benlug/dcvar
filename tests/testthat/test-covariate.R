@@ -73,6 +73,13 @@ test_that("prepare_dcvar_covariate_data allows binary phase indicators by defaul
   expect_equal(out$P, 1)
 })
 
+test_that("covariate init preserves Stan vector dimensions when length is one", {
+  init <- .init_dcvar_covariate_params(D = 2, T_obs = 3, P = 1, drift = TRUE)
+
+  expect_equal(dim(init$beta), 1L)
+  expect_equal(dim(init$omega_raw), 1L)
+})
+
 test_that("dcvar_stan_path exposes covariate Stan models", {
   drift_path <- dcvar_stan_path("dcvar_covariate")
   nodrift_path <- dcvar_stan_path("dcvar_covariate_nodrift")

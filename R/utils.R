@@ -176,7 +176,7 @@
     .init_var_params(D, "normal"),
     list(
       beta_0 = rnorm(1, 0, 0.1),
-      beta = rnorm(P, 0, 0.05)
+      beta = array(rnorm(P, 0, 0.05), dim = P)
     )
   )
 
@@ -189,7 +189,7 @@
     base,
     list(
       sigma_omega = runif(1, 0.05, 0.15),
-      omega_raw = rnorm(n_omega, 0, 0.1)
+      omega_raw = array(rnorm(n_omega, 0, 0.1), dim = n_omega)
     )
   )
 }

@@ -1,3 +1,23 @@
+# dcvar 0.2.0
+
+## Simulation model parity
+
+- Added a constant Clayton-copula DC-VAR for normal margins via
+  `dcvar_constant(copula = "clayton")`.
+- Added exponential-margin support for `dcvar_multilevel()`.
+- Added naive SEM score models via `dcvar_sem(method = "naive")` for normal
+  and exponential margins.
+- Added `dependence_summary()` for Kendall's tau summaries across Gaussian and
+  Clayton copula fits.
+
+## Infrastructure
+
+- Added copula-family dispatch alongside the existing margin dispatch.
+- Added bundled Stan models for the new Clayton, multilevel exponential, and
+  naive SEM variants.
+- Updated extractors, summaries, diagnostics, LOO support, and tests for the
+  new model variants.
+
 # dcvar 0.1.0
 
 ## Scope and documentation

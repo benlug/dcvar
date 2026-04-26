@@ -1,6 +1,6 @@
 Package: dcvar
 Title: Dynamic Copula VAR Models for Time-Varying Dependence
-Version: 0.1.0
+Version: 0.2.0
 Authors@R:
     person("Benedikt", "Lugauer", , "benedikt.lugauer@uni-leipzig.de",
            role = c("aut", "cre"))

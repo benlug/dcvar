@@ -8,21 +8,26 @@
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 <!-- badges: end -->
 
-`dcvar` is an R package for fitting Bayesian Gaussian-copula VAR(1) models to
-bivariate time series. Its core scope is the single-level Gaussian-copula
-family: continuous random-walk, regime-switching, and constant-copula
-specifications, all estimated through [Stan](https://mc-stan.org/). The
-package also ships experimental multilevel and SEM extensions.
+`dcvar` is an R package for fitting Bayesian copula VAR(1) models to bivariate
+time series. Most bundled models use Gaussian copulas; the constant-copula
+baseline also supports a Clayton copula with normal margins. The core scope is
+single-level dynamic, regime-switching, and constant-copula specifications, all
+estimated through [Stan](https://mc-stan.org/). The package also ships
+experimental multilevel and SEM extensions.
 
 ## Installation
 
 `dcvar` uses [`rstan`](https://mc-stan.org/rstan/) as its default backend.
 
-Install `rstan` and `dcvar`:
+Install `dcvar` from CRAN:
 
 ```r
-install.packages("rstan")
+install.packages("dcvar")
+```
 
+For the development version:
+
+```r
 install.packages("remotes")
 remotes::install_github("benlug/dcvar")
 ```
@@ -81,27 +86,30 @@ dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 | --- | --- | --- | --- |
 | **DC-VAR** | `dcvar()` | Continuous random-walk on Fisher-z scale | Core |
 | **HMM Copula** | `dcvar_hmm()` | Discrete regime-switching with K states | Core |
-| **Constant Copula** | `dcvar_constant()` | Time-invariant baseline | Core |
+| **Constant Copula** | `dcvar_constant()` | Time-invariant Gaussian or Clayton baseline | Core |
 | **Multilevel** | `dcvar_multilevel()` | Random VAR coefficients for panel data | Experimental |
 | **SEM** | `dcvar_sem()` | Fixed measurement model for latent processes | Experimental |
 
-All models use Gaussian copulas. The core three time-series models
-(`dcvar()`, `dcvar_hmm()`, and `dcvar_constant()`) support four marginal
-distributions: **normal**, **exponential**, **skew-normal**, and **gamma**.
-The multilevel variant currently supports normal margins only. The SEM variant
-supports normal and exponential latent innovation margins.
+Most models use Gaussian copulas. The core three time-series models
+(`dcvar()`, `dcvar_hmm()`, and `dcvar_constant(copula = "gaussian")`) support
+four marginal distributions: **normal**, **exponential**, **skew-normal**, and
+**gamma**. `dcvar_constant(copula = "clayton")` supports a Clayton-copula
+baseline with normal margins. The multilevel and SEM variants support normal
+and exponential margins.
 
-If you are reading the accompanying manuscript, note that `dcvar` currently
-implements Gaussian-copula workflows only. Clayton-copula models are not part
-of the package.
+If you are reading the accompanying manuscript, note that `dcvar` now includes
+the constant Clayton-copula baseline, the exponential-margin multilevel model,
+and naive SEM score models used in the simulation studies.
 
-`fitted()` and `predict()` are implemented for all five fit classes. The
+`fitted()` and `predict()` are implemented for the public fit classes. The
 multilevel methods return unit-specific trajectories and intervals; the SEM
 methods support both latent-state (`type = "link"`) and indicator-scale
-(`type = "response"`) summaries. `pit_values()`, `pit_test()`, and `loo()`
-currently support the three core single-level models only. `plot_ppc()` is
-available for normal and exponential margins; gamma and skew-normal fits do
-not yet have replicated residuals on the observed margin scale.
+(`type = "response"`) summaries. `pit_values()` and `pit_test()` currently
+support the single-level models only. `loo()` supports single-level fits,
+covariate fits, exponential-margin multilevel fits, and naive SEM score fits.
+`plot_ppc()` is available for normal and exponential margins; gamma and
+skew-normal fits do not yet have replicated residuals on the observed margin
+scale.
 
 `pit_values()` and `pit_test()` are approximate residual diagnostics based on
 posterior means. They are useful as heuristic checks, not exact posterior

@@ -51,7 +51,8 @@
 #'
 #' @details
 #' **Experimental extension.** This SEM variant supports `fitted()` and
-#' `predict()`, but PIT diagnostics and PSIS-LOO are not yet implemented.
+#' `predict()`. PSIS-LOO is available for naive score fits. PIT diagnostics are
+#' not yet implemented.
 #'
 #' **Boundary constraints.** The SEM model constrains each VAR coefficient
 #' (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcvar models

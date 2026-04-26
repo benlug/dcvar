@@ -34,8 +34,9 @@ A \code{loo} object from the loo package.
 Compute LOO-CV for a fitted model
 }
 \details{
-PSIS-LOO is available for the three core single-level fit classes.
-It is not supported for \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} or \code{\link[=dcvar_sem]{dcvar_sem()}} because
-their stored \code{log_lik} quantities are not comparable pointwise predictive
-densities.
+PSIS-LOO is available for Gaussian and Clayton single-level fits,
+covariate fits, exponential-margin multilevel fits, and naive SEM score
+fits. Indicator SEM fits and normal-margin multilevel fits are not
+supported because their stored \code{log_lik} quantities are not comparable
+pointwise predictive densities.
 }

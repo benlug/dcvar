@@ -35,8 +35,8 @@ computed per-variable using a normal approximation and do not account for
 the copula dependence structure between variables.
 }
 \details{
-\code{predict()} is implemented for the three core single-level models plus the
-multilevel and SEM variants. For multilevel fits, the methods return
-unit-specific trajectories. For SEM fits, \code{type = "link"} returns latent
-states and \code{type = "response"} returns observed indicator predictions.
+\code{predict()} is implemented for the public fit classes. For multilevel fits,
+the methods return unit-specific trajectories. For SEM fits, \code{type = "link"}
+returns latent states and \code{type = "response"} returns observed indicator
+predictions.
 }

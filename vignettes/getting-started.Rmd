@@ -23,10 +23,13 @@ The dcvar package uses [rstan](https://mc-stan.org/rstan/) as its default
 backend for Bayesian model fitting.
 
 ```{r install, eval = FALSE}
-# Install rstan (available on CRAN)
-install.packages("rstan")
+# Install dcvar from CRAN
+install.packages("dcvar")
+```
 
-# Install dcvar from GitHub
+For the development version:
+
+```{r install-dev, eval = FALSE}
 install.packages("remotes")
 remotes::install_github("benlug/dcvar")
 ```

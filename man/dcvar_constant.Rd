@@ -110,7 +110,7 @@ adaptation without significant computational cost, reducing occasional
 divergences near the rho boundary.
 }
 \examples{
-\donttest{
+\dontrun{
 sim <- simulate_dcvar(
   n_time = 12,
   rho_trajectory = rho_constant(12, rho = 0.5),

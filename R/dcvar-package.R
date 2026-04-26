@@ -1,10 +1,10 @@
-#' dcvar: Gaussian-copula VAR models for bivariate time series
+#' dcvar: Copula VAR models for bivariate time series
 #'
-#' `dcvar` focuses on copula VAR(1) workflows for bivariate time
-#' series. The core single-level models [dcvar()], [dcvar_hmm()], and
-#' [dcvar_constant()] support normal, exponential, skew-normal, and gamma
-#' margins. [dcvar_constant()] additionally supports a Clayton copula baseline
-#' with normal margins.
+#' `dcvar` focuses on copula VAR(1) workflows for bivariate time series. Most
+#' bundled models use Gaussian copulas. The core single-level Gaussian-copula
+#' models [dcvar()], [dcvar_hmm()], and [dcvar_constant()] support normal,
+#' exponential, skew-normal, and gamma margins. [dcvar_constant()] additionally
+#' supports a Clayton copula baseline with normal margins.
 #'
 #' Experimental extensions via [dcvar_multilevel()] and [dcvar_sem()] provide a
 #' narrower diagnostic interface than the core models. The multilevel model

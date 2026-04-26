@@ -9,10 +9,11 @@
 #'
 #' @return A `loo` object from the loo package.
 #'
-#' @details PSIS-LOO is available for the three core single-level fit classes.
-#'   It is not supported for [dcvar_multilevel()] or [dcvar_sem()] because
-#'   their stored `log_lik` quantities are not comparable pointwise predictive
-#'   densities.
+#' @details PSIS-LOO is available for Gaussian and Clayton single-level fits,
+#'   covariate fits, exponential-margin multilevel fits, and naive SEM score
+#'   fits. Indicator SEM fits and normal-margin multilevel fits are not
+#'   supported because their stored `log_lik` quantities are not comparable
+#'   pointwise predictive densities.
 #' @importFrom loo loo
 #' @name loo.dcvar
 NULL
@@ -121,7 +122,7 @@ loo.dcvar_sem_fit <- function(x, ...) {
 #' @export
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' sim <- simulate_dcvar(
 #'   n_time = 12,
 #'   rho_trajectory = rho_decreasing(12),
@@ -167,10 +168,10 @@ dcvar_compare <- function(...) {
   unsupported <- names(fits)[!vapply(fits, .is_supported_loo_fit, logical(1))]
   if (length(unsupported) > 0) {
     cli_abort(c(
-      "{.fun dcvar_compare} does not support SEM or multilevel fits.",
+      "{.fun dcvar_compare} does not support one or more supplied fits.",
       "i" = "Unsupported argument{?s}: {.val {unsupported}}.",
       "i" = paste(
-        "These models store {.code log_lik} targets that are not valid, comparable",
+        "Unsupported models store {.code log_lik} targets that are not valid, comparable",
         "pointwise predictive densities for PSIS-LOO."
       )
     ))

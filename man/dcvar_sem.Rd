@@ -110,7 +110,8 @@ for large T.
 }
 \details{
 \strong{Experimental extension.} This SEM variant supports \code{fitted()} and
-\code{predict()}, but PIT diagnostics and PSIS-LOO are not yet implemented.
+\code{predict()}. PSIS-LOO is available for naive score fits. PIT diagnostics are
+not yet implemented.
 
 \strong{Boundary constraints.} The SEM model constrains each VAR coefficient
 (Phi) to the interval \eqn{[-0.99, 0.99]}, unlike other dcvar models

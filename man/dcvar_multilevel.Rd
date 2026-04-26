@@ -95,16 +95,15 @@ parameterization for the random Phi coefficients.
 }
 \details{
 \strong{Experimental extension.} This multilevel variant supports
-\code{fitted()} and \code{predict()}, but PIT diagnostics and PSIS-LOO are not yet
-implemented.
+\code{fitted()} and \code{predict()}. PSIS-LOO is available for exponential-margin
+multilevel fits. PIT diagnostics are not yet implemented.
 
 \code{adapt_delta} defaults to 0.90 and \code{max_treedepth} to 14 because the
 hierarchical structure with random effects benefits from deeper trees but
 does not require aggressive step-size adaptation.
 }
 \note{
-This model currently supports normal marginal distributions only.
-Exponential margins are available as an experimental extension.
+This model currently supports normal and exponential margins.
 
 The bundled multilevel Stan program is defined for person-mean
 centered data and omits intercept terms. With the bundled model,

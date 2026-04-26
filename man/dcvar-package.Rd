@@ -3,13 +3,13 @@
 \docType{package}
 \name{dcvar-package}
 \alias{dcvar-package}
-\title{dcvar: Gaussian-copula VAR models for bivariate time series}
+\title{dcvar: Copula VAR models for bivariate time series}
 \description{
-\code{dcvar} focuses on copula VAR(1) workflows for bivariate time
-series. The core single-level models \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
-\code{\link[=dcvar_constant]{dcvar_constant()}} support normal, exponential, skew-normal, and gamma
-margins. \code{\link[=dcvar_constant]{dcvar_constant()}} additionally supports a Clayton copula baseline
-with normal margins.
+\code{dcvar} focuses on copula VAR(1) workflows for bivariate time series. Most
+bundled models use Gaussian copulas. The core single-level Gaussian-copula
+models \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and \code{\link[=dcvar_constant]{dcvar_constant()}} support normal,
+exponential, skew-normal, and gamma margins. \code{\link[=dcvar_constant]{dcvar_constant()}} additionally
+supports a Clayton copula baseline with normal margins.
 }
 \details{
 Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and \code{\link[=dcvar_sem]{dcvar_sem()}} provide a

@@ -11,11 +11,10 @@
 #' are on the standardized (z-scored) scale by default. Use `type = "response"`
 #' to back-transform to the original data scale.
 #'
-#' `fitted()` and `predict()` are implemented for the three core single-level
-#' models plus the multilevel and SEM variants. For multilevel fits, the
-#' methods return unit-specific trajectories. For SEM fits, `type = "link"`
-#' returns latent-state summaries and `type = "response"` returns observed
-#' indicator-scale summaries.
+#' `fitted()` and `predict()` are implemented for the public fit classes. For
+#' multilevel fits, the methods return unit-specific trajectories. For SEM fits,
+#' `type = "link"` returns latent-state summaries and `type = "response"`
+#' returns observed indicator-scale summaries.
 #'
 #' @param object A fitted model object.
 #' @param type Character; `"link"` (default) returns values on the model's
@@ -362,10 +361,10 @@ fitted.dcvar_sem_fit <- function(object, type = c("link", "response"), ...) {
 #' computed per-variable using a normal approximation and do not account for
 #' the copula dependence structure between variables.
 #'
-#' `predict()` is implemented for the three core single-level models plus the
-#' multilevel and SEM variants. For multilevel fits, the methods return
-#' unit-specific trajectories. For SEM fits, `type = "link"` returns latent
-#' states and `type = "response"` returns observed indicator predictions.
+#' `predict()` is implemented for the public fit classes. For multilevel fits,
+#' the methods return unit-specific trajectories. For SEM fits, `type = "link"`
+#' returns latent states and `type = "response"` returns observed indicator
+#' predictions.
 #'
 #' @param object A fitted model object.
 #' @param type Character; `"link"` (default) returns values on the model's

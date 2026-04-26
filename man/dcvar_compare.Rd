@@ -17,7 +17,7 @@ Convenience wrapper around \code{\link[loo:loo_compare]{loo::loo_compare()}} tha
 dcvar model fits.
 }
 \examples{
-\donttest{
+\dontrun{
 sim <- simulate_dcvar(
   n_time = 12,
   rho_trajectory = rho_decreasing(12),

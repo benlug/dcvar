@@ -37,9 +37,8 @@ If the model was fit with \code{standardize = TRUE} (the default), fitted values
 are on the standardized (z-scored) scale by default. Use \code{type = "response"}
 to back-transform to the original data scale.
 
-\code{fitted()} and \code{predict()} are implemented for the three core single-level
-models plus the multilevel and SEM variants. For multilevel fits, the
-methods return unit-specific trajectories. For SEM fits, \code{type = "link"}
-returns latent-state summaries and \code{type = "response"} returns observed
-indicator-scale summaries.
+\code{fitted()} and \code{predict()} are implemented for the public fit classes. For
+multilevel fits, the methods return unit-specific trajectories. For SEM fits,
+\code{type = "link"} returns latent-state summaries and \code{type = "response"}
+returns observed indicator-scale summaries.
 }

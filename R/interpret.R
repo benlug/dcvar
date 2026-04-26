@@ -34,7 +34,7 @@
 #' @export
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' sim <- simulate_dcvar(
 #'   n_time = 12,
 #'   rho_trajectory = rho_decreasing(12),

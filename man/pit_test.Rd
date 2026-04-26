@@ -29,5 +29,5 @@ values returned by \code{\link[=pit_values]{pit_values()}}, not an exact posteri
 This applies a Kolmogorov-Smirnov test to the approximate PIT values
 returned by \code{\link[=pit_values]{pit_values()}}. The result is a heuristic check and does not
 account for serial dependence or full posterior uncertainty. PIT tests are
-currently implemented for the three core single-level fit classes only.
+currently implemented for single-level fits only.
 }

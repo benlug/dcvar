@@ -39,15 +39,14 @@
 #' @return A `dcvar_multilevel_fit` object.
 #'
 #' @details **Experimental extension.** This multilevel variant supports
-#'   `fitted()` and `predict()`, but PIT diagnostics and PSIS-LOO are not yet
-#'   implemented.
+#'   `fitted()` and `predict()`. PSIS-LOO is available for exponential-margin
+#'   multilevel fits. PIT diagnostics are not yet implemented.
 #'
 #'   `adapt_delta` defaults to 0.90 and `max_treedepth` to 14 because the
 #'   hierarchical structure with random effects benefits from deeper trees but
 #'   does not require aggressive step-size adaptation.
 #'
-#' @note This model currently supports normal marginal distributions only.
-#'   Exponential margins are available as an experimental extension.
+#' @note This model currently supports normal and exponential margins.
 #'
 #' @note The bundled multilevel Stan program is defined for person-mean
 #'   centered data and omits intercept terms. With the bundled model,

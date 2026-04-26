@@ -134,7 +134,7 @@ prepare_dcvar_covariate_data <- function(data, vars, covariates,
 #' @export
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' sim <- simulate_dcvar(
 #'   n_time = 12,
 #'   rho_trajectory = rho_step(12),

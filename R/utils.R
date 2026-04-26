@@ -160,6 +160,41 @@
 }
 
 
+#' Generate default covariate DC-VAR initialization values
+#'
+#' @param D Number of variables.
+#' @param T_obs Number of time points.
+#' @param P Number of covariates.
+#' @param drift Logical; include residual random-walk drift.
+#' @param zero_init_eta Logical; whether `eta[1]` is fixed at zero.
+#' @return A named list with VAR params, covariate effects, and optionally
+#'   residual drift parameters.
+#' @noRd
+.init_dcvar_covariate_params <- function(D, T_obs, P, drift = TRUE,
+                                         zero_init_eta = TRUE) {
+  base <- c(
+    .init_var_params(D, "normal"),
+    list(
+      beta_0 = rnorm(1, 0, 0.1),
+      beta = rnorm(P, 0, 0.05)
+    )
+  )
+
+  if (!isTRUE(drift)) {
+    return(base)
+  }
+
+  n_omega <- (T_obs - 1L) - as.integer(isTRUE(zero_init_eta))
+  c(
+    base,
+    list(
+      sigma_omega = runif(1, 0.05, 0.15),
+      omega_raw = rnorm(n_omega, 0, 0.1)
+    )
+  )
+}
+
+
 #' Generate default HMM initialization values
 #'
 #' @param D Number of variables.

@@ -54,6 +54,11 @@ NULL
 loo.dcvar_fit <- function(x, ...) .loo_dcvar(x, ...)
 
 #' @rdname loo.dcvar
+#' @method loo dcvar_covariate_fit
+#' @export
+loo.dcvar_covariate_fit <- function(x, ...) .loo_dcvar(x, ...)
+
+#' @rdname loo.dcvar
 #' @method loo dcvar_hmm_fit
 #' @export
 loo.dcvar_hmm_fit <- function(x, ...) .loo_dcvar(x, ...)

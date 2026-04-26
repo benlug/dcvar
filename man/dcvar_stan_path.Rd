@@ -5,13 +5,15 @@
 \title{Get path to bundled Stan model file}
 \usage{
 dcvar_stan_path(
-  model = c("dcvar", "hmm", "constant", "multilevel", "sem"),
+  model = c("dcvar", "dcvar_covariate", "dcvar_covariate_nodrift", "hmm", "constant",
+    "multilevel", "sem"),
   margins = "normal"
 )
 }
 \arguments{
-\item{model}{Character string: \code{"dcvar"}, \code{"hmm"}, \code{"constant"},
-\code{"multilevel"}, or \code{"sem"}.}
+\item{model}{Character string: \code{"dcvar"}, \code{"dcvar_covariate"},
+\code{"dcvar_covariate_nodrift"}, \code{"hmm"}, \code{"constant"}, \code{"multilevel"},
+or \code{"sem"}.}
 
 \item{margins}{Character string: margin type (\code{"normal"}, \code{"exponential"},
 \code{"skew_normal"}, \code{"gamma"}). Default: \code{"normal"}.}

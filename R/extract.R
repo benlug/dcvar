@@ -7,8 +7,8 @@
 #' Returns a data frame with the posterior mean, SD, and quantiles of the
 #' time-varying correlation at each time point.
 #'
-#' @param object A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
-#'   `dcvar_constant_fit`).
+#' @param object A fitted model object (`dcvar_fit`, `dcvar_covariate_fit`,
+#'   `dcvar_hmm_fit`, or `dcvar_constant_fit`).
 #' @param probs Numeric vector of quantile probabilities (default: `c(0.025, 0.1, 0.5, 0.9, 0.975)`).
 #' @param ... Additional arguments (unused).
 #'
@@ -86,6 +86,19 @@ rho_trajectory.dcvar_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.9
     required = .stan_output_group_pattern("rho"),
     required_type = "pattern",
     context = "rho_trajectory.dcvar_fit()",
+    output_type = "transformed parameter group"
+  ))
+  .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = .stan_output_group_pattern("rho"),
+    required_type = "pattern",
+    context = "rho_trajectory.dcvar_covariate_fit()",
     output_type = "transformed parameter group"
   ))
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
@@ -189,7 +202,9 @@ var_params.dcvar_model_fit <- function(object, ...) {
       required_patterns <- c(required_patterns, "^sigma_eps\\[")
     }
   )
-  if (identical(object$model, "dcvar")) {
+  has_sigma_omega <- identical(object$model, "dcvar") ||
+    identical(object$model, "dcvar_covariate")
+  if (has_sigma_omega) {
     required_patterns <- c(required_patterns, "^sigma_omega$")
   }
 
@@ -239,11 +254,76 @@ var_params.dcvar_model_fit <- function(object, ...) {
     }
   )
 
-  # sigma_omega is DC-VAR specific
-  so <- if (identical(object$model, "dcvar")) extract_param("^sigma_omega$") else NULL
+  # sigma_omega is present in random-walk DC-VAR variants only.
+  so <- if (has_sigma_omega) extract_param("^sigma_omega$") else NULL
   if (!is.null(so)) result$sigma_omega <- so
 
   result
+}
+
+
+#' Extract covariate effect summaries
+#'
+#' Returns posterior summaries for the Fisher-z intercept, covariate effects,
+#' and, when present, the residual random-walk innovation scale.
+#'
+#' @param object A `dcvar_covariate_fit` object.
+#' @param probs Numeric vector of quantile probabilities (default:
+#'   `c(0.025, 0.5, 0.975)`).
+#' @param ... Additional arguments (unused).
+#'
+#' @return A data frame with one row per effect and columns `term`, `variable`,
+#'   `mean`, `sd`, and one column per requested quantile.
+#' @export
+covariate_effects <- function(object, ...) {
+  UseMethod("covariate_effects")
+}
+
+#' @rdname covariate_effects
+#' @export
+covariate_effects.default <- function(object, ...) {
+  cli_abort("{.fun covariate_effects} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' @rdname covariate_effects
+#' @export
+covariate_effects.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
+    cli_abort("{.arg probs} must be numeric values in [0, 1].")
+  }
+
+  required_patterns <- c("^beta_0$", "^beta\\[")
+  if (isTRUE(object$drift)) {
+    required_patterns <- c(required_patterns, "^sigma_omega$")
+  }
+
+  summ <- .fit_summary(
+    object$fit,
+    variables = NULL,
+    backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "covariate_effects.dcvar_covariate_fit()",
+    output_type = "parameter group",
+    mean,
+    sd,
+    ~posterior::quantile2(.x, probs = probs)
+  )
+
+  rows <- c(
+    grep("^beta_0$", summ$variable),
+    grep("^beta\\[", summ$variable),
+    grep("^sigma_omega$", summ$variable)
+  )
+  out <- data.frame(summ[rows, , drop = FALSE], row.names = NULL)
+  out$term <- out$variable
+  beta_rows <- grep("^beta\\[", out$variable)
+  if (length(beta_rows) > 0L) {
+    out$term[beta_rows] <- object$covariates
+  }
+  out$term[out$variable == "beta_0"] <- "(Intercept)"
+
+  out[, c("term", setdiff(names(out), "term")), drop = FALSE]
 }
 
 

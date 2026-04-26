@@ -4,6 +4,7 @@
 \alias{rho_trajectory}
 \alias{rho_trajectory.default}
 \alias{rho_trajectory.dcvar_fit}
+\alias{rho_trajectory.dcvar_covariate_fit}
 \alias{rho_trajectory.dcvar_hmm_fit}
 \alias{rho_trajectory.dcvar_constant_fit}
 \alias{rho_trajectory.dcvar_multilevel_fit}
@@ -16,6 +17,8 @@ rho_trajectory(object, ...)
 
 \method{rho_trajectory}{dcvar_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 
+\method{rho_trajectory}{dcvar_covariate_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
 \method{rho_trajectory}{dcvar_hmm_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 
 \method{rho_trajectory}{dcvar_constant_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
@@ -25,8 +28,8 @@ rho_trajectory(object, ...)
 \method{rho_trajectory}{dcvar_sem_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 }
 \arguments{
-\item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_hmm_fit}, or
-\code{dcvar_constant_fit}).}
+\item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_covariate_fit},
+\code{dcvar_hmm_fit}, or \code{dcvar_constant_fit}).}
 
 \item{...}{Additional arguments (unused).}
 

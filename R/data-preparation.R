@@ -193,6 +193,7 @@
       cli_warn("Removing {n_missing} row{?s} with missing values (edges only).")
     }
     Y <- Y[cc, ]
+    data <- data[cc, , drop = FALSE]
     time_values <- time_values[cc]
   }
 
@@ -221,7 +222,8 @@
     time_values = time_values,
     Y_means = Y_means,
     Y_sds = Y_sds,
-    vars = vars
+    vars = vars,
+    data = data
   )
 }
 

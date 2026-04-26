@@ -3,6 +3,7 @@
 \name{loo.dcvar}
 \alias{loo.dcvar}
 \alias{loo.dcvar_fit}
+\alias{loo.dcvar_covariate_fit}
 \alias{loo.dcvar_hmm_fit}
 \alias{loo.dcvar_constant_fit}
 \alias{loo.dcvar_multilevel_fit}
@@ -10,6 +11,8 @@
 \title{Compute LOO-CV for a fitted model}
 \usage{
 \method{loo}{dcvar_fit}(x, ...)
+
+\method{loo}{dcvar_covariate_fit}(x, ...)
 
 \method{loo}{dcvar_hmm_fit}(x, ...)
 

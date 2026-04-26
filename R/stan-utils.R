@@ -2,8 +2,9 @@
 #'
 #' Returns the file path to a Stan model file included with the package.
 #'
-#' @param model Character string: `"dcvar"`, `"hmm"`, `"constant"`,
-#'   `"multilevel"`, or `"sem"`.
+#' @param model Character string: `"dcvar"`, `"dcvar_covariate"`,
+#'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
+#'   or `"sem"`.
 #' @param margins Character string: margin type (`"normal"`, `"exponential"`,
 #'   `"skew_normal"`, `"gamma"`). Default: `"normal"`.
 #'
@@ -13,11 +14,22 @@
 #' @examples
 #' dcvar_stan_path("dcvar")
 #' dcvar_stan_path("constant", margins = "exponential")
-dcvar_stan_path <- function(model = c("dcvar", "hmm", "constant", "multilevel", "sem"),
+dcvar_stan_path <- function(model = c("dcvar", "dcvar_covariate",
+                                      "dcvar_covariate_nodrift", "hmm",
+                                      "constant", "multilevel", "sem"),
                             margins = "normal") {
   model <- match.arg(model)
 
-  if (model == "multilevel") {
+  if (model %in% c("dcvar_covariate", "dcvar_covariate_nodrift")) {
+    if (!identical(margins, "normal")) {
+      cli_abort("Covariate DC-VAR Stan models currently support only {.val normal} margins.")
+    }
+    file <- if (identical(model, "dcvar_covariate")) {
+      "dcvar_covariate_ncp.stan"
+    } else {
+      "dcvar_covariate_nodrift.stan"
+    }
+  } else if (model == "multilevel") {
     file <- "multilevel_copula_var.stan"
   } else {
     file <- .margin_stan_file(model, margins)
@@ -94,8 +106,9 @@ dcvar_stan_path <- function(model = c("dcvar", "hmm", "constant", "multilevel", 
 
 #' Compile a Stan model with caching
 #'
-#' @param model_type Character string: `"dcvar"`, `"hmm"`, `"constant"`,
-#'   `"multilevel"`, or `"sem"`.
+#' @param model_type Character string: `"dcvar"`, `"dcvar_covariate"`,
+#'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
+#'   or `"sem"`.
 #' @param margins Character: margin type (default: `"normal"`).
 #' @param stan_file Optional path to a custom Stan file. If `NULL`, uses the
 #'   bundled model.
@@ -105,7 +118,9 @@ dcvar_stan_path <- function(model = c("dcvar", "hmm", "constant", "multilevel", 
 #'
 #' @return A compiled model object (backend-dependent class).
 #' @noRd
-.compile_model <- function(model_type = c("dcvar", "hmm", "constant", "multilevel", "sem"),
+.compile_model <- function(model_type = c("dcvar", "dcvar_covariate",
+                                          "dcvar_covariate_nodrift", "hmm",
+                                          "constant", "multilevel", "sem"),
                            margins = "normal",
                            stan_file = NULL,
                            backend = "rstan",

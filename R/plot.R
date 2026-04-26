@@ -231,6 +231,10 @@ plot_diagnostics <- function(object, ...) {
     c("mu[1]", "mu[2]")
   }
   if (object$model == "dcvar") trace_pars <- c(trace_pars, "sigma_omega")
+  if (object$model %in% c("dcvar_covariate", "dcvar_covariate_nodrift")) {
+    trace_pars <- c(trace_pars, "beta_0", paste0("beta[", seq_len(object$stan_data$P), "]"))
+    if (object$model == "dcvar_covariate") trace_pars <- c(trace_pars, "sigma_omega")
+  }
   if (object$model == "hmm") {
     K <- object$K
     trace_pars <- c(trace_pars, paste0("rho_state[", 1:K, "]"))

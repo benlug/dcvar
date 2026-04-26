@@ -59,11 +59,11 @@ test_that("dcvar_compare() rejects unsupported LOO targets", {
 
   expect_error(
     dcvar_compare(dcvar = get_dcvar_fit(), multilevel = get_multilevel_fit()),
-    "does not support SEM or multilevel"
+    "does not support one or more supplied fits"
   )
   expect_error(
     dcvar_compare(dcvar = get_dcvar_fit(), sem = get_sem_fit()),
-    "does not support SEM or multilevel"
+    "does not support one or more supplied fits"
   )
 })
 

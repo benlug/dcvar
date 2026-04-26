@@ -113,7 +113,7 @@ covariates. With \code{drift = TRUE}, the model adds residual random-walk drift:
 dependence trajectory is explained entirely by the covariates.
 }
 \examples{
-\dontrun{
+\donttest{
 sim <- simulate_dcvar(
   n_time = 12,
   rho_trajectory = rho_step(12),

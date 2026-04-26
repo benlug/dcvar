@@ -40,7 +40,7 @@ Generates a human-readable interpretation of the estimated rho trajectory,
 describing the overall trend, magnitude of change, and key features.
 }
 \examples{
-\dontrun{
+\donttest{
 sim <- simulate_dcvar(
   n_time = 12,
   rho_trajectory = rho_decreasing(12),

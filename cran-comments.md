@@ -26,6 +26,10 @@ These are local environment limitations rather than package issues.
 
 ## Notes for the reviewer
 
+This resubmission addresses prior CRAN feedback by using `n_time` for public
+trajectory helper arguments and generated Rd usage, and by using `donttest`
+wrappers for executable but slow Stan-fitting examples.
+
 1. `cmdstanr` is in `Suggests`, not `Imports`
 
 `dcvar` uses `rstan` as the default and fully supported backend in `Imports`.

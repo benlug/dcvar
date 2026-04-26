@@ -107,7 +107,7 @@ state-specific correlations. Uses ordered z_rho constraint to prevent
 label switching and a sticky Dirichlet prior to encourage state persistence.
 }
 \examples{
-\dontrun{
+\donttest{
 sim <- simulate_dcvar(
   n_time = 12,
   rho_trajectory = rho_step(12),

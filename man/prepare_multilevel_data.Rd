@@ -13,7 +13,9 @@ prepare_multilevel_data(
   prior_phi_bar_sd = 0.5,
   prior_tau_phi_scale = 0.2,
   prior_sigma_sd = 1,
-  prior_rho_sd = 0.5
+  prior_rho_sd = 0.5,
+  margins = "normal",
+  skew_direction = NULL
 )
 }
 \arguments{
@@ -34,6 +36,12 @@ prepare_multilevel_data(
 \item{prior_sigma_sd}{Prior SD for sigma.}
 
 \item{prior_rho_sd}{Prior SD for rho.}
+
+\item{margins}{Character string specifying the marginal distribution.
+One of \code{"normal"} (default) or \code{"exponential"}.}
+
+\item{skew_direction}{Length-2 integer vector of +1/-1 for exponential
+margins.}
 }
 \value{
 A named list suitable as Stan data input.

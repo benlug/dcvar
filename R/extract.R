@@ -31,6 +31,30 @@ rho_trajectory.default <- function(object, ...) {
   cli_abort("{.fun rho_trajectory} is not defined for objects of class {.cls {class(object)[[1]]}}.")
 }
 
+#' Extract a unified dependence summary
+#'
+#' Returns posterior summaries for Kendall's tau, using the fitted copula
+#' family to transform the model-specific dependence parameter. For Gaussian
+#' copulas, `tau = 2 / pi * asin(rho)`. For Clayton copulas,
+#' `tau = theta / (theta + 2)`.
+#'
+#' @param object A fitted model object.
+#' @param probs Numeric vector of quantile probabilities.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A data frame with columns `time`, `mean`, `sd`, and one column per
+#'   requested quantile.
+#' @export
+dependence_summary <- function(object, ...) {
+  UseMethod("dependence_summary")
+}
+
+#' @rdname dependence_summary
+#' @export
+dependence_summary.default <- function(object, ...) {
+  cli_abort("{.fun dependence_summary} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
 #' Internal helper: recover observed time values from Stan data
 #' @noRd
 .observed_time_values <- function(stan_data, drop_first = FALSE) {
@@ -91,6 +115,20 @@ rho_trajectory.dcvar_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.9
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
 
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = .stan_output_group_pattern("rho"),
+    required_type = "pattern",
+    context = "dependence_summary.dcvar_fit()",
+    output_type = "transformed parameter group"
+  ))
+  tau_draws <- 2 / pi * asin(rho_draws)
+  .summarise_rho_draws(tau_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
 #' @rdname rho_trajectory
 #' @export
 rho_trajectory.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
@@ -104,6 +142,20 @@ rho_trajectory.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.1, 0.5
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
 
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = .stan_output_group_pattern("rho"),
+    required_type = "pattern",
+    context = "dependence_summary.dcvar_covariate_fit()",
+    output_type = "transformed parameter group"
+  ))
+  tau_draws <- 2 / pi * asin(rho_draws)
+  .summarise_rho_draws(tau_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
 #' @rdname rho_trajectory
 #' @export
 rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
@@ -115,6 +167,20 @@ rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
     output_type = "generated quantity"
   ))
   .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho_hmm", backend = object$backend,
+    required = .stan_output_group_pattern("rho_hmm"),
+    required_type = "pattern",
+    context = "dependence_summary.dcvar_hmm_fit()",
+    output_type = "generated quantity"
+  ))
+  tau_draws <- 2 / pi * asin(rho_draws)
+  .summarise_rho_draws(tau_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
 
 #' Internal helper: constant rho trajectory (shared by constant and multilevel)
@@ -152,10 +218,63 @@ rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
   rho_summary
 }
 
+#' Internal helper: constant Kendall's tau summary.
+#' @noRd
+.dependence_summary_constant_impl <- function(object, probs) {
+  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
+    cli_abort("{.arg probs} must be numeric values in [0, 1].")
+  }
+
+  copula <- object$copula %||% "gaussian"
+  if (identical(copula, "clayton")) {
+    theta_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "theta", backend = object$backend,
+      required = "theta",
+      context = ".dependence_summary_constant_impl()",
+      output_type = "parameter"
+    ))
+    dep_draws <- theta_draws[, 1] / (theta_draws[, 1] + 2)
+  } else {
+    rho_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "rho", backend = object$backend,
+      required = "rho",
+      context = ".dependence_summary_constant_impl()",
+      output_type = "transformed parameter"
+    ))
+    dep_draws <- 2 / pi * asin(rho_draws[, 1])
+  }
+
+  n_time_obs <- object$stan_data$n_time
+  n_time_eff <- n_time_obs - 1L
+  quants <- quantile(dep_draws, probs = probs)
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+
+  dep_summary <- data.frame(
+    time = time_values,
+    mean = rep(mean(dep_draws), n_time_eff),
+    sd = rep(sd(dep_draws), n_time_eff)
+  )
+
+  for (i in seq_along(probs)) {
+    dep_summary[[paste0("q", probs[i] * 100)]] <- rep(quants[i], n_time_eff)
+  }
+
+  dep_summary
+}
+
 #' @rdname rho_trajectory
 #' @export
 rho_trajectory.dcvar_constant_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  if (identical(object$copula %||% "gaussian", "clayton")) {
+    cli_abort("Clayton fits do not have a Gaussian copula rho. Use {.fun dependence_summary} for Kendall's tau.")
+  }
   .rho_trajectory_constant_impl(object, probs)
+}
+
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_constant_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .dependence_summary_constant_impl(object, probs)
 }
 
 
@@ -184,6 +303,7 @@ var_params.default <- function(object, ...) {
 #' @export
 var_params.dcvar_model_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
+  copula <- object$copula %||% "gaussian"
   required_patterns <- c("^mu\\[", "^Phi\\[")
   switch(margins,
     normal = {
@@ -206,6 +326,9 @@ var_params.dcvar_model_fit <- function(object, ...) {
     identical(object$model, "dcvar_covariate")
   if (has_sigma_omega) {
     required_patterns <- c(required_patterns, "^sigma_omega$")
+  }
+  if (identical(copula, "clayton")) {
+    required_patterns <- c(required_patterns, "^theta$")
   }
 
   summ <- .fit_summary(
@@ -257,6 +380,9 @@ var_params.dcvar_model_fit <- function(object, ...) {
   # sigma_omega is present in random-walk DC-VAR variants only.
   so <- if (has_sigma_omega) extract_param("^sigma_omega$") else NULL
   if (!is.null(so)) result$sigma_omega <- so
+  if (identical(copula, "clayton")) {
+    result$theta <- extract_param("^theta$")
+  }
 
   result
 }
@@ -264,8 +390,9 @@ var_params.dcvar_model_fit <- function(object, ...) {
 
 #' Extract covariate effect summaries
 #'
-#' Returns posterior summaries for the Fisher-z intercept, covariate effects,
-#' and, when present, the residual random-walk innovation scale.
+#' Returns posterior summaries for the Fisher-z intercept and covariate
+#' effects. The residual random-walk innovation scale `sigma_omega` is
+#' reported separately by [var_params()] for `drift = TRUE` fits.
 #'
 #' @param object A `dcvar_covariate_fit` object.
 #' @param probs Numeric vector of quantile probabilities (default:
@@ -292,16 +419,11 @@ covariate_effects.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.5, 
     cli_abort("{.arg probs} must be numeric values in [0, 1].")
   }
 
-  required_patterns <- c("^beta_0$", "^beta\\[")
-  if (isTRUE(object$drift)) {
-    required_patterns <- c(required_patterns, "^sigma_omega$")
-  }
-
   summ <- .fit_summary(
     object$fit,
     variables = NULL,
     backend = object$backend,
-    required = required_patterns,
+    required = c("^beta_0$", "^beta\\["),
     required_type = "pattern",
     context = "covariate_effects.dcvar_covariate_fit()",
     output_type = "parameter group",
@@ -312,8 +434,7 @@ covariate_effects.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.5, 
 
   rows <- c(
     grep("^beta_0$", summ$variable),
-    grep("^beta\\[", summ$variable),
-    grep("^sigma_omega$", summ$variable)
+    grep("^beta\\[", summ$variable)
   )
   out <- data.frame(summ[rows, , drop = FALSE], row.names = NULL)
   out$term <- out$variable
@@ -520,9 +641,11 @@ random_effects.dcvar_multilevel_fit <- function(object, ...) {
 #' `Phi`, `sigma_eps`, and `rho` in single-level models.
 #' @export
 var_params.dcvar_multilevel_fit <- function(object, ...) {
+  margins <- object$margins %||% "normal"
+  scale_pattern <- if (identical(margins, "exponential")) "^sigma_exp\\[" else "^sigma\\["
   summ <- .fit_summary(
     object$fit, variables = NULL, backend = object$backend,
-    required = c("^phi_bar\\[", "^tau_phi\\[", "^sigma\\[", "^rho$"),
+    required = c("^phi_bar\\[", "^tau_phi\\[", scale_pattern, "^rho$"),
     required_type = "pattern",
     context = "var_params.dcvar_multilevel_fit()",
     output_type = "parameter group",
@@ -540,12 +663,18 @@ var_params.dcvar_multilevel_fit <- function(object, ...) {
     )
   }
 
-  list(
+  scale_param <- if (identical(margins, "exponential")) {
+    list(sigma_exp = extract_param("^sigma_exp\\["))
+  } else {
+    list(sigma = extract_param("^sigma\\["))
+  }
+
+  c(list(
     phi_bar = extract_param("^phi_bar\\["),
-    tau_phi = extract_param("^tau_phi\\["),
-    sigma = extract_param("^sigma\\["),
+    tau_phi = extract_param("^tau_phi\\[")
+  ), scale_param, list(
     rho = extract_param("^rho$")
-  )
+  ))
 }
 
 
@@ -553,6 +682,12 @@ var_params.dcvar_multilevel_fit <- function(object, ...) {
 #' @export
 rho_trajectory.dcvar_multilevel_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
   .rho_trajectory_constant_impl(object, probs)
+}
+
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_multilevel_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .dependence_summary_constant_impl(object, probs)
 }
 
 
@@ -581,6 +716,9 @@ latent_states.default <- function(object, ...) {
 #' @rdname latent_states
 #' @export
 latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+  if (identical(object$method %||% "indicator", "naive")) {
+    cli_abort("{.fun latent_states} is not defined for naive SEM fits because no latent measurement model is estimated.")
+  }
   if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
     cli_abort("{.arg probs} must be numeric values in [0, 1].")
   }
@@ -700,6 +838,12 @@ rho_trajectory.dcvar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
   }
 
   rho_summary
+}
+
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_sem_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .dependence_summary_constant_impl(object, probs)
 }
 
 

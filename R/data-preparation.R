@@ -410,6 +410,10 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
 #' @param prior_tau_phi_scale Prior scale for tau_phi.
 #' @param prior_sigma_sd Prior SD for sigma.
 #' @param prior_rho_sd Prior SD for rho.
+#' @param margins Character string specifying the marginal distribution.
+#'   One of `"normal"` (default) or `"exponential"`.
+#' @param skew_direction Length-2 integer vector of +1/-1 for exponential
+#'   margins.
 #'
 #' @return A named list suitable as Stan data input.
 #' @export
@@ -418,9 +422,17 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
                                     prior_phi_bar_sd = 0.5,
                                     prior_tau_phi_scale = 0.2,
                                     prior_sigma_sd = 1,
-                                    prior_rho_sd = 0.5) {
+                                    prior_rho_sd = 0.5,
+                                    margins = "normal",
+                                    skew_direction = NULL) {
   if (!is.data.frame(data)) cli_abort("{.arg data} must be a data frame.")
   .prep_validate_scalar_logical(center, "center")
+  .validate_margins(margins, skew_direction)
+  if (!margins %in% c("normal", "exponential")) {
+    cli_abort(
+      "{.arg margins} for {.fun prepare_multilevel_data} must be one of {.val {c('normal', 'exponential')}}, got {.val {margins}}."
+    )
+  }
   if (length(vars) != 2) {
     cli_abort("Exactly 2 variables required for multilevel models. Got {.val {length(vars)}}.")
   }
@@ -510,11 +522,18 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
     prior_sigma_sd = prior_sigma_sd,
     prior_rho_sd = prior_rho_sd
   )
+  if (identical(margins, "exponential")) {
+    stan_data$skew_direction <- as.numeric(skew_direction)
+  }
 
   attr(stan_data, "vars") <- vars
   attr(stan_data, "person_means") <- person_means
   attr(stan_data, "ids") <- ids
   attr(stan_data, "time_values") <- time_grid
+  attr(stan_data, "margins") <- margins
+  if (!is.null(skew_direction)) {
+    attr(stan_data, "skew_direction") <- as.numeric(skew_direction)
+  }
 
   stan_data
 }
@@ -542,17 +561,21 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
 #' @param prior_sigma_sd Prior SD for the lognormal prior on the latent
 #'   innovation scale parameter.
 #' @param prior_rho_sd Prior SD for rho_raw.
+#' @param method Character string: `"indicator"` for the fixed measurement
+#'   model or `"naive"` for row-mean factor scores.
 #'
 #' @return A named list suitable as Stan data input.
 #' @export
-prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
+prepare_sem_data <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
                              margins = "normal",
                              skew_direction = NULL,
                              time_var = "time",
                              prior_mu_sd = 0.25,
                              prior_phi_sd = 0.5,
                              prior_sigma_sd = 0.5,
-                             prior_rho_sd = 0.75) {
+                             prior_rho_sd = 0.75,
+                             method = c("indicator", "naive")) {
+  method <- match.arg(method)
   if (!is.data.frame(data)) {
     cli_abort("{.arg data} must be a data frame.")
   }
@@ -560,17 +583,22 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
   if (!is.list(indicators) || length(indicators) != 2) {
     cli_abort("{.arg indicators} must be a list of two character vectors.")
   }
+  if (is.null(J) && identical(method, "naive")) {
+    J <- length(indicators[[1]])
+  }
   if (!is.numeric(J) || length(J) != 1L || !is.finite(J) || J < 1 || J != as.integer(J)) {
     cli_abort("{.arg J} must be a positive integer.")
   }
   if (length(indicators[[1]]) != J || length(indicators[[2]]) != J) {
     cli_abort("Each element of {.arg indicators} must have {.val {J}} indicator names.")
   }
-  .prep_validate_numeric_vector(lambda, "lambda")
-  if (length(lambda) != J) {
-    cli_abort("{.arg lambda} must have length {.val {J}}.")
+  if (identical(method, "indicator")) {
+    .prep_validate_numeric_vector(lambda, "lambda")
+    if (length(lambda) != J) {
+      cli_abort("{.arg lambda} must have length {.val {J}}.")
+    }
+    .prep_validate_positive_scalar(sigma_e, "sigma_e")
   }
-  .prep_validate_positive_scalar(sigma_e, "sigma_e")
   .prep_validate_positive_scalar(prior_mu_sd, "prior_mu_sd")
   .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
   .prep_validate_positive_scalar(prior_sigma_sd, "prior_sigma_sd")
@@ -599,12 +627,12 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
   .validate_time_values(time_values, allow_gaps = FALSE, context = "SEM data")
 
   # Build T x 2J matrix (latent 1 indicators first, then latent 2)
-  y <- as.matrix(data[, all_ind])
-  T_obs <- nrow(y)
-  if (any(is.nan(y) | is.infinite(y))) {
+  y_ind <- as.matrix(data[, all_ind])
+  T_obs <- nrow(y_ind)
+  if (any(is.nan(y_ind) | is.infinite(y_ind))) {
     cli_abort("{.arg data} contains NaN or Inf values in the indicator columns.")
   }
-  if (any(is.na(y))) {
+  if (any(is.na(y_ind))) {
     cli_abort("{.arg data} contains missing values in the indicator columns.")
   }
 
@@ -612,17 +640,34 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
     cli_abort("At least 3 observations required, got {.val {T_obs}}.")
   }
 
-  stan_data <- list(
-    n_time = T_obs,
-    J = as.integer(J),
-    y = y,
-    lambda = lambda,
-    sigma_e = sigma_e,
-    prior_mu_sd = prior_mu_sd,
-    prior_phi_sd = prior_phi_sd,
-    prior_sigma_sd = prior_sigma_sd,
-    prior_rho_sd = prior_rho_sd
-  )
+  if (identical(method, "naive")) {
+    y <- cbind(
+      rowMeans(data[, indicators[[1]], drop = FALSE]),
+      rowMeans(data[, indicators[[2]], drop = FALSE])
+    )
+    colnames(y) <- NULL
+    rownames(y) <- NULL
+    stan_data <- list(
+      n_time = T_obs,
+      y = y,
+      prior_mu_sd = prior_mu_sd,
+      prior_phi_sd = prior_phi_sd,
+      prior_sigma_sd = prior_sigma_sd,
+      prior_rho_sd = prior_rho_sd
+    )
+  } else {
+    stan_data <- list(
+      n_time = T_obs,
+      J = as.integer(J),
+      y = y_ind,
+      lambda = lambda,
+      sigma_e = sigma_e,
+      prior_mu_sd = prior_mu_sd,
+      prior_phi_sd = prior_phi_sd,
+      prior_sigma_sd = prior_sigma_sd,
+      prior_rho_sd = prior_rho_sd
+    )
+  }
 
   if (identical(margins, "exponential")) {
     stan_data$skew_direction <- as.numeric(skew_direction)
@@ -638,6 +683,8 @@ prepare_sem_data <- function(data, indicators, J, lambda, sigma_e,
   attr(stan_data, "indicators") <- indicators
   attr(stan_data, "time_values") <- time_values
   attr(stan_data, "margins") <- margins
+  attr(stan_data, "method") <- method
+  attr(stan_data, "J") <- as.integer(J)
   if (!is.null(skew_direction)) {
     attr(stan_data, "skew_direction") <- as.numeric(skew_direction)
   }

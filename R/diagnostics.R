@@ -51,6 +51,11 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "multilevel")) {
     N <- .diagnostic_positive_int(object$N, "N", "object")
+    margin_vars <- if (identical(margins, "exponential")) {
+      paste0("eta[", seq_len(2), "]")
+    } else {
+      paste0("sigma[", seq_len(2), "]")
+    }
     return(c(
       paste0("phi_bar[", seq_len(4), "]"),
       paste0("tau_phi[", seq_len(4), "]"),
@@ -61,23 +66,30 @@ dcvar_diagnostics.default <- function(object, ...) {
         rep(seq_len(4), times = N),
         "]"
       ),
-      paste0("sigma[", seq_len(2), "]"),
+      margin_vars,
       "rho"
     ))
   }
 
   if (identical(model, "sem")) {
     n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
+    method <- object$method %||% "indicator"
     margin_vars <- if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {
       paste0("sigma[", seq_len(2), "]")
     }
-    return(c(
+    vars <- c(
       "mu[1]", "mu[2]",
       "phi11", "phi12", "phi21", "phi22",
       margin_vars,
-      "rho_raw",
+      "rho_raw"
+    )
+    if (identical(method, "naive")) {
+      return(vars)
+    }
+    return(c(
+      vars,
       paste0(
         "zeta[",
         rep(seq_len(n_time_obs), each = 2),
@@ -112,7 +124,9 @@ dcvar_diagnostics.default <- function(object, ...) {
   )
 
   if (identical(model, "constant")) {
-    return(c(mu_vars, phi_vars, margin_vars, "z_rho"))
+    copula <- object$copula %||% "gaussian"
+    dependence_var <- if (identical(copula, "clayton")) "theta" else "z_rho"
+    return(c(mu_vars, phi_vars, margin_vars, dependence_var))
   }
 
   if (identical(model, "dcvar")) {
@@ -125,6 +139,27 @@ dcvar_diagnostics.default <- function(object, ...) {
       "sigma_omega",
       paste0("omega_raw[", seq_len(n_time_obs - 1L), "]")
     ))
+  }
+
+  if (identical(model, "dcvar_covariate") || identical(model, "dcvar_covariate_nodrift")) {
+    P <- .diagnostic_positive_int(object$stan_data$P, "P", "stan_data")
+    vars <- c(
+      mu_vars,
+      phi_vars,
+      margin_vars,
+      "beta_0",
+      paste0("beta[", seq_len(P), "]")
+    )
+    if (identical(model, "dcvar_covariate")) {
+      n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
+      n_omega <- (n_time_obs - 1L) - as.integer(isTRUE(object$zero_init_eta))
+      if (n_omega > 0L) {
+        vars <- c(vars, "sigma_omega", paste0("omega_raw[", seq_len(n_omega), "]"))
+      } else {
+        vars <- c(vars, "sigma_omega")
+      }
+    }
+    return(vars)
   }
 
   if (identical(model, "hmm")) {
@@ -155,7 +190,12 @@ dcvar_diagnostics.default <- function(object, ...) {
   diag_summ <- .fit_diagnostic_summary(fit, backend)
   summ <- suppressWarnings(.fit_summary(fit, variables = vars, backend = backend))
   sampler_diags <- .fit_sampler_diagnostics(fit, backend)
-  accept_stat <- as.numeric(sampler_diags[, , "accept_stat__", drop = TRUE])
+  diag_names <- dimnames(sampler_diags)[[3L]]
+  accept_stat <- if ("accept_stat__" %in% diag_names) {
+    as.numeric(sampler_diags[, , "accept_stat__", drop = TRUE])
+  } else {
+    numeric()
+  }
   accept_stat <- accept_stat[is.finite(accept_stat)]
 
   rhat <- summ$rhat[is.finite(summ$rhat)]

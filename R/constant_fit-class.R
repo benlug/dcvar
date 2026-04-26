@@ -5,7 +5,8 @@
 #' Construct a dcvar_constant_fit object
 #' @noRd
 new_dcvar_constant_fit <- function(fit, stan_data, vars, standardized,
-                                   margins = "normal", skew_direction = NULL,
+                                   margins = "normal", copula = "gaussian",
+                                   skew_direction = NULL,
                                    backend = "rstan", priors, meta) {
   structure(
     list(
@@ -15,6 +16,7 @@ new_dcvar_constant_fit <- function(fit, stan_data, vars, standardized,
       vars = vars,
       standardized = standardized,
       margins = margins,
+      copula = copula,
       skew_direction = skew_direction,
       backend = backend,
       priors = priors,
@@ -42,9 +44,15 @@ print.dcvar_constant_fit <- function(x, ...) {
   cat(sprintf("n_time = %d, D = %d\n", x$stan_data$n_time, x$stan_data$D))
   .print_fit_footer(x)
 
-  rho_df <- rho_trajectory(x)
-  cat(sprintf("rho: %.3f [%.3f, %.3f]\n",
-              rho_df$mean[1], rho_df$q2.5[1], rho_df$q97.5[1]))
+  if (identical(x$copula %||% "gaussian", "clayton")) {
+    dep_df <- dependence_summary(x)
+    cat(sprintf("Kendall's tau: %.3f [%.3f, %.3f]\n",
+                dep_df$mean[1], dep_df$q2.5[1], dep_df$q97.5[1]))
+  } else {
+    rho_df <- rho_trajectory(x)
+    cat(sprintf("rho: %.3f [%.3f, %.3f]\n",
+                rho_df$mean[1], rho_df$q2.5[1], rho_df$q97.5[1]))
+  }
   invisible(x)
 }
 
@@ -56,15 +64,19 @@ print.dcvar_constant_fit <- function(x, ...) {
 #' @return A `dcvar_constant_summary` object (a list).
 #' @export
 summary.dcvar_constant_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
-  rho_df <- rho_trajectory(object, probs = probs)
+  copula <- object$copula %||% "gaussian"
+  rho_df <- if (identical(copula, "gaussian")) rho_trajectory(object, probs = probs) else NULL
+  dep_df <- dependence_summary(object, probs = probs)
   vp <- var_params(object)
   diag <- dcvar_diagnostics(object)
 
   out <- list(
     model = "constant",
+    copula = copula,
     n_time = object$stan_data$n_time,
     D = object$stan_data$D,
     rho = rho_df,
+    dependence = dep_df,
     var_params = vp,
     diagnostics = diag
   )
@@ -81,7 +93,8 @@ summary.dcvar_constant_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...
 #' @return Invisibly returns `x`.
 #' @export
 print.dcvar_constant_summary <- function(x, ...) {
-  quantile_cols <- grep("^q", names(x$rho), value = TRUE)
+  dep <- if (identical(x$copula %||% "gaussian", "gaussian")) x$rho else x$dependence
+  quantile_cols <- grep("^q", names(dep), value = TRUE)
   lower_col <- quantile_cols[1]
   upper_col <- quantile_cols[length(quantile_cols)]
 
@@ -89,9 +102,14 @@ print.dcvar_constant_summary <- function(x, ...) {
   cat(strrep("=", 50), "\n")
   cat(sprintf("n_time = %d, D = %d\n\n", x$n_time, x$D))
 
-  cat(sprintf("Rho (constant): %.3f", x$rho$mean[1]))
+  dep_label <- if (identical(x$copula %||% "gaussian", "clayton")) {
+    "Kendall's tau (constant)"
+  } else {
+    "Rho (constant)"
+  }
+  cat(sprintf("%s: %.3f", dep_label, dep$mean[1]))
   if (length(quantile_cols) >= 2) {
-    cat(sprintf(" [%.3f, %.3f]", x$rho[[lower_col]][1], x$rho[[upper_col]][1]))
+    cat(sprintf(" [%.3f, %.3f]", dep[[lower_col]][1], dep[[upper_col]][1]))
   }
   cat("\n\n")
 
@@ -124,7 +142,11 @@ coef.dcvar_constant_fit <- function(object, ...) {
   # Margin-specific scale params before rho
   margins <- object$margins %||% "normal"
   result <- c(result, .extract_margin_coefs(summ, margins))
-  result$rho <- .extract_required_coef(summ, "^rho$", "rho", "coef.dcvar_constant_fit()")
+  if (identical(object$copula %||% "gaussian", "clayton")) {
+    result$theta <- .extract_required_coef(summ, "^theta$", "theta", "coef.dcvar_constant_fit()")
+  } else {
+    result$rho <- .extract_required_coef(summ, "^rho$", "rho", "coef.dcvar_constant_fit()")
+  }
   result
 }
 
@@ -137,6 +159,9 @@ coef.dcvar_constant_fit <- function(object, ...) {
 #' @export
 plot.dcvar_constant_fit <- function(x, type = c("rho", "phi", "diagnostics", "ppc", "pit"), ...) {
   type <- match.arg(type)
+  if (identical(type, "rho") && identical(x$copula %||% "gaussian", "clayton")) {
+    cli_abort("Clayton fits do not have a Gaussian copula rho. Use {.fun dependence_summary} for Kendall's tau.")
+  }
   switch(type,
     rho = plot_rho(x, ...),
     phi = plot_phi(x, ...),

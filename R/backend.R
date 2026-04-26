@@ -520,6 +520,14 @@ NULL
     return(fit$sampler_diagnostics())
   }
 
+  if (inherits(fit, "draws")) {
+    return(array(
+      numeric(0),
+      dim = c(0L, 0L, 0L),
+      dimnames = list(NULL, NULL, character())
+    ))
+  }
+
   # rstan: get_sampler_params returns a list of data frames (one per chain)
   sampler_params <- rstan::get_sampler_params(fit, inc_warmup = FALSE)
   n_chains <- length(sampler_params)

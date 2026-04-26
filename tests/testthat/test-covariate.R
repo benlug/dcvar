@@ -147,7 +147,8 @@ test_that("covariate fit extractors work for drift and no-drift objects", {
   expect_true(all(rho_df$mean >= -1 & rho_df$mean <= 1))
 
   effects <- covariate_effects(fit)
-  expect_true(all(c("(Intercept)", "phase", "load", "sigma_omega") %in% effects$term))
+  expect_true(all(c("(Intercept)", "phase", "load") %in% effects$term))
+  expect_false("sigma_omega" %in% effects$term)
 
   effects_no_drift <- covariate_effects(no_drift_fit)
   expect_false("sigma_omega" %in% effects_no_drift$term)

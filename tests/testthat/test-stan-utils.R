@@ -8,6 +8,18 @@ test_that("dcvar_stan_path returns valid file paths", {
   sem_exp <- dcvar_stan_path("sem", margins = "exponential")
   expect_true(file.exists(sem_exp))
   expect_match(basename(sem_exp), "^sem_EG\\.stan$")
+
+  clayton_constant <- dcvar_stan_path("constant", copula = "clayton")
+  expect_true(file.exists(clayton_constant))
+  expect_match(basename(clayton_constant), "^constant_NCl\\.stan$")
+
+  ml_exp <- dcvar_stan_path("multilevel", margins = "exponential")
+  expect_true(file.exists(ml_exp))
+  expect_match(basename(ml_exp), "^multilevel_EG\\.stan$")
+
+  sem_naive <- dcvar_stan_path("sem_naive")
+  expect_true(file.exists(sem_naive))
+  expect_match(basename(sem_naive), "^sem_naive_NG\\.stan$")
 })
 
 test_that("dcvar_stan_path rejects invalid model names", {

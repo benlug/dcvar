@@ -288,11 +288,59 @@ fitted.dcvar_multilevel_fit <- function(object, type = c("link", "response"), ..
   do.call(rbind, rows)
 }
 
+#' Internal: fitted values for naive SEM score models.
+#' @noRd
+.sem_naive_fitted_values <- function(object) {
+  y <- object$stan_data$y
+  n_time_obs <- object$stan_data$n_time
+
+  summ <- .fit_summary(
+    object$fit,
+    variables = NULL,
+    backend = object$backend,
+    required = c("^mu\\[", "^Phi\\["),
+    required_type = "pattern",
+    context = ".sem_naive_fitted_values()",
+    output_type = "parameter group",
+    mean
+  )
+  get_mean <- function(name) {
+    row <- which(summ$variable == name)
+    if (length(row) != 1L) {
+      cli_abort("Naive SEM fitted values require Stan output {.val {name}}.")
+    }
+    summ$mean[row]
+  }
+
+  mu <- c(get_mean("mu[1]"), get_mean("mu[2]"))
+  Phi <- matrix(
+    c(
+      get_mean("Phi[1,1]"), get_mean("Phi[2,1]"),
+      get_mean("Phi[1,2]"), get_mean("Phi[2,2]")
+    ),
+    nrow = 2
+  )
+  fitted_mat <- matrix(NA_real_, nrow = n_time_obs - 1L, ncol = 2)
+  for (t in 2:n_time_obs) {
+    fitted_mat[t - 1L, ] <- as.numeric(mu + y[t - 1L, , drop = FALSE] %*% t(Phi))
+  }
+
+  out <- data.frame(
+    time = .observed_time_values(object$stan_data, drop_first = TRUE),
+    fitted_mat
+  )
+  names(out) <- c("time", object$vars)
+  out
+}
+
 
 #' @rdname fitted.dcvar_model_fit
 #' @export
 fitted.dcvar_sem_fit <- function(object, type = c("link", "response"), ...) {
   type <- match.arg(type)
+  if (identical(object$method %||% "indicator", "naive")) {
+    return(.sem_naive_fitted_values(object))
+  }
   state_summaries <- .sem_state_summaries(object)
 
   if (identical(type, "link")) {
@@ -391,6 +439,10 @@ predict.dcvar_multilevel_fit <- function(object, type = c("link", "response"),
                                          ci_level = 0.95, ...) {
   type <- match.arg(type)
   .validate_interval_level(ci_level, arg_name = "ci_level")
+  margins <- object$margins %||% "normal"
+  if (!identical(margins, "normal")) {
+    cli_abort("Prediction intervals are currently only supported for normal multilevel margins, not {.val {margins}}.")
+  }
 
   fit_df <- .multilevel_fitted_values(object, response = identical(type, "response"))
   sigma <- coef(object)$sigma
@@ -420,6 +472,27 @@ predict.dcvar_sem_fit <- function(object, type = c("link", "response"),
                                   ci_level = 0.95, ...) {
   type <- match.arg(type)
   .validate_interval_level(ci_level, arg_name = "ci_level")
+  if (identical(object$method %||% "indicator", "naive")) {
+    margins <- object$margins %||% "normal"
+    if (!identical(margins, "normal")) {
+      cli_abort("Prediction intervals are currently only supported for normal naive SEM margins, not {.val {margins}}.")
+    }
+    fit_df <- .sem_naive_fitted_values(object)
+    sigma <- as.numeric(coef(object)$sigma)
+    z_crit <- stats::qnorm(1 - (1 - ci_level) / 2)
+    rows <- vector("list", length(object$vars))
+    for (d in seq_along(object$vars)) {
+      mean <- fit_df[[object$vars[d]]]
+      rows[[d]] <- data.frame(
+        time = fit_df$time,
+        variable = object$vars[d],
+        mean = mean,
+        lower = mean - z_crit * sigma[d],
+        upper = mean + z_crit * sigma[d]
+      )
+    }
+    return(do.call(rbind, rows))
+  }
 
   state_summaries <- .sem_state_summaries(object)
   if (identical(type, "link")) {

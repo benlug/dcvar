@@ -6,6 +6,7 @@
 #' @noRd
 new_dcvar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
                                indicators, margins = "normal",
+                               method = "indicator",
                                skew_direction = NULL, backend = "rstan",
                                priors, meta) {
   structure(
@@ -16,6 +17,7 @@ new_dcvar_sem_fit <- function(fit, stan_data, vars, J, lambda, sigma_e,
       vars = vars,
       standardized = FALSE,
       margins = margins,
+      method = method,
       J = J,
       lambda = lambda,
       sigma_e = sigma_e,
@@ -42,7 +44,12 @@ NULL
 #' @return Invisibly returns `x`.
 #' @export
 print.dcvar_sem_fit <- function(x, ...) {
-  .print_fit_header(x, "SEM Copula VAR Model Fit")
+  title <- if (identical(x$method %||% "indicator", "naive")) {
+    "Naive SEM Copula VAR Model Fit"
+  } else {
+    "SEM Copula VAR Model Fit"
+  }
+  .print_fit_header(x, title)
   cat(sprintf("n_time = %d, J = %d indicators per latent\n", x$stan_data$n_time, x$J))
   .print_fit_footer(x)
 
@@ -60,6 +67,7 @@ summary.dcvar_sem_fit <- function(object, ...) {
 
   out <- list(
     model = "sem",
+    method = object$method %||% "indicator",
     n_time = object$stan_data$n_time,
     J = object$J,
     lambda = object$lambda,
@@ -78,11 +86,18 @@ summary.dcvar_sem_fit <- function(object, ...) {
 #' @return Invisibly returns `x`.
 #' @export
 print.dcvar_sem_summary <- function(x, ...) {
-  cat("SEM Copula VAR Model Summary\n")
+  if (identical(x$method %||% "indicator", "naive")) {
+    cat("Naive SEM Copula VAR Model Summary\n")
+  } else {
+    cat("SEM Copula VAR Model Summary\n")
+  }
   cat(strrep("=", 50), "\n")
   cat(sprintf("n_time = %d, J = %d indicators per latent\n", x$n_time, x$J))
-  cat(sprintf("Fixed lambda: %s\n", paste(round(x$lambda, 3), collapse = ", ")))
-  cat(sprintf("Fixed sigma_e: %.3f\n\n", x$sigma_e))
+  if (!identical(x$method %||% "indicator", "naive")) {
+    cat(sprintf("Fixed lambda: %s\n", paste(round(x$lambda, 3), collapse = ", ")))
+    cat(sprintf("Fixed sigma_e: %.3f\n", x$sigma_e))
+  }
+  cat("\n")
 
   cat("Latent VAR Parameters:\n")
   if (!is.null(x$var_params$mu)) {
@@ -142,6 +157,9 @@ plot.dcvar_sem_fit <- function(x,
                                 type = c("latent_states", "rho", "diagnostics"),
                                 ...) {
   type <- match.arg(type)
+  if (identical(type, "latent_states") && identical(x$method %||% "indicator", "naive")) {
+    cli_abort("Latent-state plots are not available for naive SEM fits because no latent measurement model is estimated.")
+  }
   switch(type,
     latent_states = plot_latent_states(x, ...),
     rho = plot_rho(x, ...),

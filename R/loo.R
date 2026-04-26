@@ -45,7 +45,13 @@ NULL
 }
 
 .is_supported_loo_fit <- function(x) {
-  !inherits(x, c("dcvar_multilevel_fit", "dcvar_sem_fit"))
+  if (inherits(x, "dcvar_multilevel_fit")) {
+    return(identical(x$margins %||% "normal", "exponential"))
+  }
+  if (inherits(x, "dcvar_sem_fit")) {
+    return(identical(x$method %||% "indicator", "naive"))
+  }
+  TRUE
 }
 
 #' @rdname loo.dcvar
@@ -72,6 +78,9 @@ loo.dcvar_constant_fit <- function(x, ...) .loo_dcvar(x, ...)
 #' @method loo dcvar_multilevel_fit
 #' @export
 loo.dcvar_multilevel_fit <- function(x, ...) {
+  if (.is_supported_loo_fit(x)) {
+    return(.loo_dcvar(x, ...))
+  }
   .abort_unsupported_loo(
     x,
     paste(
@@ -85,6 +94,9 @@ loo.dcvar_multilevel_fit <- function(x, ...) {
 #' @method loo dcvar_sem_fit
 #' @export
 loo.dcvar_sem_fit <- function(x, ...) {
+  if (.is_supported_loo_fit(x)) {
+    return(.loo_dcvar(x, ...))
+  }
   .abort_unsupported_loo(
     x,
     paste(

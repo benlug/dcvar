@@ -13,6 +13,10 @@
 #'   (default: `TRUE`). The bundled multilevel Stan model requires
 #'   `center = TRUE`; set `center = FALSE` only with a custom
 #'   `stan_file` that includes intercept terms.
+#' @param margins Character string specifying the marginal distribution.
+#'   One of `"normal"` (default) or `"exponential"`.
+#' @param skew_direction Integer vector of length 2 indicating skew direction
+#'   for exponential margins. Required when `margins = "exponential"`.
 #' @param prior_phi_bar_sd Prior SD for population-mean VAR coefficients.
 #' @param prior_tau_phi_scale Prior scale for half-t(3) on tau_phi.
 #' @param prior_sigma_sd Prior SD for half-normal on innovation SDs.
@@ -43,7 +47,7 @@
 #'   does not require aggressive step-size adaptation.
 #'
 #' @note This model currently supports normal marginal distributions only.
-#'   For non-normal margins, use [dcvar()], [dcvar_constant()], or [dcvar_hmm()].
+#'   Exponential margins are available as an experimental extension.
 #'
 #' @note The bundled multilevel Stan program is defined for person-mean
 #'   centered data and omits intercept terms. With the bundled model,
@@ -56,6 +60,8 @@ dcvar_multilevel <- function(data, vars,
                              id_var = "id",
                              time_var = "time",
                              center = TRUE,
+                             margins = "normal",
+                             skew_direction = NULL,
                              prior_phi_bar_sd = 0.5,
                              prior_tau_phi_scale = 0.2,
                              prior_sigma_sd = 1,
@@ -72,7 +78,14 @@ dcvar_multilevel <- function(data, vars,
                              stan_file = NULL,
                              backend = getOption("dcvar.backend", "auto"),
                              ...) {
-  bundled_stan <- dcvar_stan_path("multilevel")
+  .validate_margins(margins, skew_direction)
+  if (!margins %in% c("normal", "exponential")) {
+    cli_abort(
+      "{.arg margins} for {.fun dcvar_multilevel} must be one of {.val {c('normal', 'exponential')}}, got {.val {margins}}."
+    )
+  }
+
+  bundled_stan <- dcvar_stan_path("multilevel", margins = margins)
   uses_bundled_stan <- is.null(stan_file) || identical(
     normalizePath(stan_file, winslash = "/", mustWork = TRUE),
     normalizePath(bundled_stan, winslash = "/", mustWork = TRUE)
@@ -92,21 +105,31 @@ dcvar_multilevel <- function(data, vars,
 
   # Prepare panel data
   stan_data <- prepare_multilevel_data(
-    data, vars, id_var, time_var, center,
-    prior_phi_bar_sd, prior_tau_phi_scale, prior_sigma_sd, prior_rho_sd
+    data = data,
+    vars = vars,
+    id_var = id_var,
+    time_var = time_var,
+    center = center,
+    prior_phi_bar_sd = prior_phi_bar_sd,
+    prior_tau_phi_scale = prior_tau_phi_scale,
+    prior_sigma_sd = prior_sigma_sd,
+    prior_rho_sd = prior_rho_sd,
+    margins = margins,
+    skew_direction = skew_direction
   )
 
   N <- stan_data$N
   n_time_obs <- stan_data$n_time
 
-  cli_inform("Fitting multilevel copula VAR model (N = {N}, n_time = {n_time_obs})...")
+  margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
+  cli_inform("Fitting multilevel copula VAR model{margins_label} (N = {N}, n_time = {n_time_obs})...")
 
   # Compile model
-  model <- .compile_model("multilevel", stan_file = stan_file, backend = backend)
+  model <- .compile_model("multilevel", margins = margins, stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
-    init <- function() .init_multilevel_params(2, N)
+    init <- function() .init_multilevel_params(2, N, margins = margins)
   }
 
   cores <- .normalize_cores(cores, chains)
@@ -136,6 +159,8 @@ dcvar_multilevel <- function(data, vars,
     vars = vars,
     centered = center,
     person_means = attr(stan_data, "person_means"),
+    margins = margins,
+    skew_direction = attr(stan_data, "skew_direction"),
     backend = backend,
     priors = list(
       phi_bar_sd = prior_phi_bar_sd,

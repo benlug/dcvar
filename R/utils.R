@@ -228,13 +228,17 @@
 #'
 #' @param D Number of variables.
 #' @param margins Margin type.
-#' @return A named list with VAR params plus `z_rho`.
+#' @param copula Copula family.
+#' @return A named list with VAR params plus `z_rho` or `theta`.
 #' @noRd
-.init_constant_params <- function(D, margins = "normal") {
-  c(
-    .init_var_params(D, margins),
+.init_constant_params <- function(D, margins = "normal", copula = "gaussian") {
+  dep_init <- if (identical(copula, "clayton")) {
+    list(theta = runif(1, 0.2, 2.5))
+  } else {
     list(z_rho = rnorm(1, 0, 0.3))
-  )
+  }
+
+  c(.init_var_params(D, margins), dep_init)
 }
 
 
@@ -246,16 +250,21 @@
 #'
 #' @param D Number of variables.
 #' @param N Number of units.
+#' @param margins Margin type.
 #' @return A named list with multilevel params.
 #' @noRd
-.init_multilevel_params <- function(D, N) {
-  list(
+.init_multilevel_params <- function(D, N, margins = "normal") {
+  base <- list(
     phi_bar = rnorm(4, 0, 0.1),
     tau_phi = runif(4, 0.05, 0.15),
     z_phi = matrix(rnorm(N * 4, 0, 0.5), N, 4),
-    sigma = runif(D, 0.8, 1.2),
     rho = runif(1, -0.3, 0.3)
   )
+  if (identical(margins, "exponential")) {
+    c(base, list(eta = rep(log(0.2), D)))
+  } else {
+    c(base, list(sigma = runif(D, 0.8, 1.2)))
+  }
 }
 
 
@@ -280,6 +289,46 @@
     init$eta <- rnorm(2, 0, 0.2)
   } else {
     init$sigma <- runif(2, 0.5, 1.5)
+  }
+
+  init
+}
+
+#' Generate default naive SEM initialization values
+#'
+#' @param y T x 2 matrix of row-mean factor scores.
+#' @param margins Character string: `"normal"` or `"exponential"`.
+#' @return A named list with observed-score VAR params.
+#' @noRd
+.init_sem_naive_params <- function(y, margins = "normal") {
+  y <- as.matrix(y)
+  ylag <- rbind(c(0, 0), y[-nrow(y), , drop = FALSE])
+
+  fit1 <- try(stats::lm(y[, 1] ~ ylag[, 1] + ylag[, 2]), silent = TRUE)
+  fit2 <- try(stats::lm(y[, 2] ~ ylag[, 1] + ylag[, 2]), silent = TRUE)
+
+  coef_or <- function(fit, idx, fallback) {
+    if (inherits(fit, "try-error")) {
+      return(fallback)
+    }
+    val <- stats::coef(fit)[idx]
+    if (!is.finite(val)) fallback else val
+  }
+  clip_phi <- function(x) max(min(x, 0.9), -0.9)
+
+  init <- list(
+    mu = c(0, 0),
+    phi11 = clip_phi(coef_or(fit1, 2, 0.55)),
+    phi12 = clip_phi(coef_or(fit1, 3, 0.10)),
+    phi21 = clip_phi(coef_or(fit2, 2, 0.10)),
+    phi22 = clip_phi(coef_or(fit2, 3, 0.25)),
+    rho_raw = rnorm(1, 0, 0.5)
+  )
+
+  if (identical(margins, "exponential")) {
+    init$eta <- rep(log(0.2), 2)
+  } else {
+    init$sigma <- runif(2, 0.8, 1.2)
   }
 
   init

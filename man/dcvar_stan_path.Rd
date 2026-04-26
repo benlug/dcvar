@@ -6,17 +6,21 @@
 \usage{
 dcvar_stan_path(
   model = c("dcvar", "dcvar_covariate", "dcvar_covariate_nodrift", "hmm", "constant",
-    "multilevel", "sem"),
-  margins = "normal"
+    "multilevel", "sem", "sem_naive"),
+  margins = "normal",
+  copula = "gaussian"
 )
 }
 \arguments{
 \item{model}{Character string: \code{"dcvar"}, \code{"dcvar_covariate"},
 \code{"dcvar_covariate_nodrift"}, \code{"hmm"}, \code{"constant"}, \code{"multilevel"},
-or \code{"sem"}.}
+\code{"sem"}, or \code{"sem_naive"}.}
 
 \item{margins}{Character string: margin type (\code{"normal"}, \code{"exponential"},
 \code{"skew_normal"}, \code{"gamma"}). Default: \code{"normal"}.}
+
+\item{copula}{Character string: copula family (\code{"gaussian"} or
+\code{"clayton"}). Default: \code{"gaussian"}.}
 }
 \value{
 File path to the Stan model file.

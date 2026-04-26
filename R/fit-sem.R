@@ -9,9 +9,15 @@
 #' @param indicators A list of two character vectors, each naming J indicator
 #'   columns per latent variable. For example:
 #'   `list(PA = c("y1_1", "y1_2", "y1_3"), NA_ = c("y2_1", "y2_2", "y2_3"))`.
-#' @param J Number of indicators per latent variable.
+#' @param J Number of indicators per latent variable. If `method = "naive"`
+#'   and `J` is `NULL`, it is inferred from `indicators`.
 #' @param lambda Numeric vector of length J with fixed factor loadings.
-#' @param sigma_e Fixed measurement error SD (scalar).
+#'   Required when `method = "indicator"`.
+#' @param sigma_e Fixed measurement error SD (scalar). Required when
+#'   `method = "indicator"`.
+#' @param method Character string: `"indicator"` (default) fits the fixed
+#'   measurement model; `"naive"` averages indicators within each latent block
+#'   and fits the observed score VAR.
 #' @param margins Character string specifying the latent innovation margin.
 #'   One of `"normal"` (default) or `"exponential"`.
 #' @param skew_direction Integer vector of length 2 indicating skew direction
@@ -74,10 +80,11 @@
 #' @seealso [latent_states()] for extracting estimated latent states,
 #'   [simulate_dcvar_sem()] for data generation.
 #' @export
-dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
+dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
                       margins = "normal",
                       skew_direction = NULL,
                       time_var = "time",
+                      method = c("indicator", "naive"),
                       prior_mu_sd = 0.25,
                       prior_phi_sd = 0.5,
                       prior_sigma_sd = 0.5,
@@ -98,8 +105,10 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
   .validate_sem_margins(margins, skew_direction)
+  method <- match.arg(method)
 
-  if (!is.numeric(J) || length(J) != 1 || J < 1 || J != as.integer(J)) {
+  if (identical(method, "indicator") &&
+      (!is.numeric(J) || length(J) != 1 || J < 1 || J != as.integer(J))) {
     cli_abort("{.arg J} must be a positive integer, got {.val {J}}.")
   }
 
@@ -112,20 +121,29 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
     prior_mu_sd = prior_mu_sd,
     prior_phi_sd = prior_phi_sd,
     prior_sigma_sd = prior_sigma_sd,
-    prior_rho_sd = prior_rho_sd
+    prior_rho_sd = prior_rho_sd,
+    method = method
   )
 
   n_time_obs <- stan_data$n_time
   vars <- attr(stan_data, "vars")
+  J_fit <- attr(stan_data, "J") %||% J
 
-  cli_inform("Fitting SEM copula VAR model [{margins}] (n_time = {n_time_obs}, J = {J})...")
+  method_label <- if (identical(method, "naive")) "naive SEM" else "SEM"
+  cli_inform("Fitting {method_label} copula VAR model [{margins}] (n_time = {n_time_obs}, J = {J_fit})...")
 
   # Compile model
-  model <- .compile_model("sem", margins = margins, stan_file = stan_file, backend = backend)
+  model_type <- if (identical(method, "naive")) "sem_naive" else "sem"
+  model <- .compile_model(model_type, margins = margins, stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
-    init <- function() .init_sem_params(n_time_obs, margins)
+    if (identical(method, "naive")) {
+      y_scores <- stan_data$y
+      init <- function() .init_sem_naive_params(y_scores, margins)
+    } else {
+      init <- function() .init_sem_params(n_time_obs, margins)
+    }
   }
 
   cores <- .normalize_cores(cores, chains)
@@ -146,17 +164,19 @@ dcvar_sem <- function(data, indicators, J, lambda, sigma_e,
     ...
   )
 
-  .report_sampling_outcome(fit, "SEM copula VAR", chains = chains, backend = backend)
+  .report_sampling_outcome(fit, if (identical(method, "naive")) "Naive SEM copula VAR" else "SEM copula VAR",
+                           chains = chains, backend = backend)
 
   new_dcvar_sem_fit(
     fit = fit,
     stan_data = stan_data,
     vars = vars,
-    J = J,
+    J = J_fit,
     lambda = lambda,
     sigma_e = sigma_e,
     indicators = attr(stan_data, "indicators"),
     margins = margins,
+    method = method,
     skew_direction = attr(stan_data, "skew_direction"),
     backend = backend,
     priors = list(

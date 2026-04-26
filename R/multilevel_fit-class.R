@@ -8,6 +8,7 @@ new_dcvar_multilevel_fit <- function(fit, stan_data, N, vars, centered,
                                      person_means, priors, meta,
                                      standardized = FALSE,
                                      margins = "normal",
+                                     skew_direction = NULL,
                                      backend = "rstan") {
   structure(
     list(
@@ -18,6 +19,7 @@ new_dcvar_multilevel_fit <- function(fit, stan_data, N, vars, centered,
       vars = vars,
       standardized = standardized,
       margins = margins,
+      skew_direction = skew_direction,
       centered = centered,
       person_means = person_means,
       backend = backend,
@@ -94,6 +96,10 @@ print.dcvar_multilevel_summary <- function(x, ...) {
     cat("\n  sigma:\n")
     print(x$var_params$sigma[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
   }
+  if (!is.null(x$var_params$sigma_exp)) {
+    cat("\n  sigma_exp:\n")
+    print(x$var_params$sigma_exp[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+  }
   if (!is.null(x$var_params$rho)) {
     cat("\n  rho:\n")
     print(x$var_params$rho[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
@@ -125,12 +131,19 @@ print.dcvar_multilevel_summary <- function(x, ...) {
 #' @export
 coef.dcvar_multilevel_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)
-  list(
+  margins <- object$margins %||% "normal"
+  scale_coef <- if (identical(margins, "exponential")) {
+    list(sigma_exp = .extract_required_coef(summ, "^sigma_exp\\[", "sigma_exp", "coef.dcvar_multilevel_fit()"))
+  } else {
+    list(sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_multilevel_fit()"))
+  }
+
+  c(list(
     phi_bar = .extract_required_coef(summ, "^phi_bar\\[", "phi_bar", "coef.dcvar_multilevel_fit()"),
-    tau_phi = .extract_required_coef(summ, "^tau_phi\\[", "tau_phi", "coef.dcvar_multilevel_fit()"),
-    sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_multilevel_fit()"),
+    tau_phi = .extract_required_coef(summ, "^tau_phi\\[", "tau_phi", "coef.dcvar_multilevel_fit()")
+  ), scale_coef, list(
     rho = .extract_required_coef(summ, "^rho$", "rho", "coef.dcvar_multilevel_fit()")
-  )
+  ))
 }
 
 

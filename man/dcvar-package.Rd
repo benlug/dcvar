@@ -5,19 +5,17 @@
 \alias{dcvar-package}
 \title{dcvar: Gaussian-copula VAR models for bivariate time series}
 \description{
-\code{dcvar} focuses on Gaussian-copula VAR(1) workflows for bivariate time
+\code{dcvar} focuses on copula VAR(1) workflows for bivariate time
 series. The core single-level models \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_hmm]{dcvar_hmm()}}, and
 \code{\link[=dcvar_constant]{dcvar_constant()}} support normal, exponential, skew-normal, and gamma
-margins.
+margins. \code{\link[=dcvar_constant]{dcvar_constant()}} additionally supports a Clayton copula baseline
+with normal margins.
 }
 \details{
 Experimental extensions via \code{\link[=dcvar_multilevel]{dcvar_multilevel()}} and \code{\link[=dcvar_sem]{dcvar_sem()}} provide a
 narrower diagnostic interface than the core models. The multilevel model
-currently supports normal margins only, while the SEM model supports normal
-and exponential latent innovation margins.
-
-The package implements Gaussian-copula models only. Clayton copulas are not
-part of the public API.
+supports normal and exponential margins, while the SEM model supports normal
+and exponential latent innovation margins plus a naive row-mean score method.
 
 Estimation uses Stan through \code{rstan} by default, with optional \code{cmdstanr}
 backend support. PIT diagnostics are approximate posterior-mean plug-in

@@ -10,6 +10,8 @@ dcvar_multilevel(
   id_var = "id",
   time_var = "time",
   center = TRUE,
+  margins = "normal",
+  skew_direction = NULL,
   prior_phi_bar_sd = 0.5,
   prior_tau_phi_scale = 0.2,
   prior_sigma_sd = 1,
@@ -42,6 +44,12 @@ time, and two outcome variables.}
 (default: \code{TRUE}). The bundled multilevel Stan model requires
 \code{center = TRUE}; set \code{center = FALSE} only with a custom
 \code{stan_file} that includes intercept terms.}
+
+\item{margins}{Character string specifying the marginal distribution.
+One of \code{"normal"} (default) or \code{"exponential"}.}
+
+\item{skew_direction}{Integer vector of length 2 indicating skew direction
+for exponential margins. Required when \code{margins = "exponential"}.}
 
 \item{prior_phi_bar_sd}{Prior SD for population-mean VAR coefficients.}
 
@@ -96,7 +104,7 @@ does not require aggressive step-size adaptation.
 }
 \note{
 This model currently supports normal marginal distributions only.
-For non-normal margins, use \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_constant]{dcvar_constant()}}, or \code{\link[=dcvar_hmm]{dcvar_hmm()}}.
+Exponential margins are available as an experimental extension.
 
 The bundled multilevel Stan program is defined for person-mean
 centered data and omits intercept terms. With the bundled model,

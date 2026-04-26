@@ -4,9 +4,11 @@
 #'
 #' @param model Character string: `"dcvar"`, `"dcvar_covariate"`,
 #'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
-#'   or `"sem"`.
+#'   `"sem"`, or `"sem_naive"`.
 #' @param margins Character string: margin type (`"normal"`, `"exponential"`,
 #'   `"skew_normal"`, `"gamma"`). Default: `"normal"`.
+#' @param copula Character string: copula family (`"gaussian"` or
+#'   `"clayton"`). Default: `"gaussian"`.
 #'
 #' @return File path to the Stan model file.
 #' @export
@@ -16,23 +18,27 @@
 #' dcvar_stan_path("constant", margins = "exponential")
 dcvar_stan_path <- function(model = c("dcvar", "dcvar_covariate",
                                       "dcvar_covariate_nodrift", "hmm",
-                                      "constant", "multilevel", "sem"),
-                            margins = "normal") {
+                                      "constant", "multilevel", "sem",
+                                      "sem_naive"),
+                            margins = "normal",
+                            copula = "gaussian") {
   model <- match.arg(model)
+  .validate_copula(copula)
 
   if (model %in% c("dcvar_covariate", "dcvar_covariate_nodrift")) {
     if (!identical(margins, "normal")) {
       cli_abort("Covariate DC-VAR Stan models currently support only {.val normal} margins.")
+    }
+    if (!identical(copula, "gaussian")) {
+      cli_abort("Covariate DC-VAR Stan models currently support only the {.val gaussian} copula.")
     }
     file <- if (identical(model, "dcvar_covariate")) {
       "dcvar_covariate_ncp.stan"
     } else {
       "dcvar_covariate_nodrift.stan"
     }
-  } else if (model == "multilevel") {
-    file <- "multilevel_copula_var.stan"
   } else {
-    file <- .margin_stan_file(model, margins)
+    file <- .margin_stan_file(model, margins, copula = copula)
   }
 
   system.file("stan", file, package = "dcvar", mustWork = TRUE)
@@ -108,8 +114,9 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_covariate",
 #'
 #' @param model_type Character string: `"dcvar"`, `"dcvar_covariate"`,
 #'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
-#'   or `"sem"`.
+#'   `"sem"`, or `"sem_naive"`.
 #' @param margins Character: margin type (default: `"normal"`).
+#' @param copula Character: copula family (default: `"gaussian"`).
 #' @param stan_file Optional path to a custom Stan file. If `NULL`, uses the
 #'   bundled model.
 #' @param backend Character: `"rstan"` or `"cmdstanr"`.
@@ -120,8 +127,10 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_covariate",
 #' @noRd
 .compile_model <- function(model_type = c("dcvar", "dcvar_covariate",
                                           "dcvar_covariate_nodrift", "hmm",
-                                          "constant", "multilevel", "sem"),
+                                          "constant", "multilevel", "sem",
+                                          "sem_naive"),
                            margins = "normal",
+                           copula = "gaussian",
                            stan_file = NULL,
                            backend = "rstan",
                            force_recompile = FALSE,
@@ -129,7 +138,7 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_covariate",
   model_type <- match.arg(model_type)
 
   if (is.null(stan_file)) {
-    stan_file <- dcvar_stan_path(model_type, margins = margins)
+    stan_file <- dcvar_stan_path(model_type, margins = margins, copula = copula)
   }
 
   .compile_model_backend(

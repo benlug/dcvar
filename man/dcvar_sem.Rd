@@ -7,12 +7,13 @@
 dcvar_sem(
   data,
   indicators,
-  J,
-  lambda,
-  sigma_e,
+  J = NULL,
+  lambda = NULL,
+  sigma_e = NULL,
   margins = "normal",
   skew_direction = NULL,
   time_var = "time",
+  method = c("indicator", "naive"),
   prior_mu_sd = 0.25,
   prior_phi_sd = 0.5,
   prior_sigma_sd = 0.5,
@@ -38,11 +39,14 @@ dcvar_sem(
 columns per latent variable. For example:
 \code{list(PA = c("y1_1", "y1_2", "y1_3"), NA_ = c("y2_1", "y2_2", "y2_3"))}.}
 
-\item{J}{Number of indicators per latent variable.}
+\item{J}{Number of indicators per latent variable. If \code{method = "naive"}
+and \code{J} is \code{NULL}, it is inferred from \code{indicators}.}
 
-\item{lambda}{Numeric vector of length J with fixed factor loadings.}
+\item{lambda}{Numeric vector of length J with fixed factor loadings.
+Required when \code{method = "indicator"}.}
 
-\item{sigma_e}{Fixed measurement error SD (scalar).}
+\item{sigma_e}{Fixed measurement error SD (scalar). Required when
+\code{method = "indicator"}.}
 
 \item{margins}{Character string specifying the latent innovation margin.
 One of \code{"normal"} (default) or \code{"exponential"}.}
@@ -52,6 +56,10 @@ for exponential margins. Each element must be \code{1} (right-skewed) or \code{-
 (left-skewed). Required when \code{margins = "exponential"}.}
 
 \item{time_var}{Name of the time column (default: \code{"time"}).}
+
+\item{method}{Character string: \code{"indicator"} (default) fits the fixed
+measurement model; \code{"naive"} averages indicators within each latent block
+and fits the observed score VAR.}
 
 \item{prior_mu_sd}{Prior SD for intercepts: \code{mu ~ normal(0, prior_mu_sd)}.}
 

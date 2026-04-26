@@ -25,6 +25,7 @@ A data frame with one row per effect and columns \code{term}, \code{variable},
 \code{mean}, \code{sd}, and one column per requested quantile.
 }
 \description{
-Returns posterior summaries for the Fisher-z intercept, covariate effects,
-and, when present, the residual random-walk innovation scale.
+Returns posterior summaries for the Fisher-z intercept and covariate
+effects. The residual random-walk innovation scale \code{sigma_omega} is
+reported separately by \code{\link[=var_params]{var_params()}} for \code{drift = TRUE} fits.
 }

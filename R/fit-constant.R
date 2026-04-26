@@ -7,6 +7,9 @@
 #' @inheritParams dcvar
 #' @param margins Character string specifying the marginal distribution.
 #'   One of `"normal"` (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
+#' @param copula Character string specifying the copula family. One of
+#'   `"gaussian"` (default) or `"clayton"`. Clayton is currently available
+#'   only with normal margins.
 #' @param skew_direction Integer vector of length D indicating skew direction
 #'   for asymmetric margins. Each element must be `1` (right-skewed) or `-1`
 #'   (left-skewed). Required for `"exponential"` and `"gamma"` margins.
@@ -54,6 +57,7 @@ dcvar_constant <- function(data, vars,
                            time_var = "time",
                            standardize = TRUE,
                            margins = "normal",
+                           copula = "gaussian",
                            skew_direction = NULL,
                            allow_gaps = FALSE,
                            prior_mu_sd = 2,
@@ -76,6 +80,10 @@ dcvar_constant <- function(data, vars,
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
   .validate_margins(margins, skew_direction)
+  .validate_copula(copula)
+  if (identical(copula, "clayton") && !identical(margins, "normal")) {
+    cli_abort("Clayton copula support in {.fun dcvar_constant} currently requires {.arg margins = 'normal'}.")
+  }
 
   # Prepare data
   stan_data <- prepare_constant_data(
@@ -84,17 +92,23 @@ dcvar_constant <- function(data, vars,
     prior_z_rho_sd,
     allow_gaps = allow_gaps
   )
+  if (identical(copula, "clayton")) {
+    stan_data$z_rho_prior_sd <- NULL
+  }
+  attr(stan_data, "copula") <- copula
 
   margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
-  cli_inform("Fitting constant copula model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
+  copula_label <- if (identical(copula, "gaussian")) "" else paste0(" [", copula, " copula]")
+  cli_inform("Fitting constant copula model{margins_label}{copula_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
 
   # Compile model
-  model <- .compile_model("constant", margins = margins, stan_file = stan_file, backend = backend)
+  model <- .compile_model("constant", margins = margins, copula = copula,
+                          stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
     D <- stan_data$D
-    init <- function() .init_constant_params(D, margins)
+    init <- function() .init_constant_params(D, margins, copula = copula)
   }
 
   cores <- .normalize_cores(cores, chains)
@@ -125,13 +139,15 @@ dcvar_constant <- function(data, vars,
     vars = vars,
     standardized = standardize,
     margins = margins,
+    copula = copula,
     skew_direction = skew_direction,
     backend = backend,
     priors = list(
       mu_sd = prior_mu_sd,
       phi_sd = prior_phi_sd,
       sigma_eps_rate = prior_sigma_eps_rate,
-      z_rho_sd = prior_z_rho_sd
+      z_rho_sd = prior_z_rho_sd,
+      copula = copula
     ),
     meta = list(
       chains = chains,

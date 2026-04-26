@@ -5,6 +5,12 @@ test_that(".validate_margins accepts valid margin types", {
   expect_invisible(.validate_margins("gamma", c(1, 1)))
 })
 
+test_that(".validate_copula accepts and rejects copula families", {
+  expect_invisible(.validate_copula("gaussian"))
+  expect_invisible(.validate_copula("clayton"))
+  expect_error(.validate_copula("frank"), "must be one of")
+})
+
 test_that(".validate_margins rejects invalid margin types", {
   expect_error(.validate_margins("invalid"), "must be one of")
   expect_error(.validate_margins("student_t"), "must be one of")
@@ -57,6 +63,10 @@ test_that(".margin_stan_file returns correct filename for normal margins", {
                "dcvar_model_ncp.stan")
   expect_equal(.margin_stan_file("hmm", "normal"),
                "hmm_copula_model.stan")
+  expect_equal(.margin_stan_file("multilevel", "normal"),
+               "multilevel_copula_var.stan")
+  expect_equal(.margin_stan_file("sem_naive", "normal"),
+               "sem_naive_NG.stan")
 })
 
 test_that(".margin_stan_file returns correct filename for non-normal margins", {
@@ -66,11 +76,17 @@ test_that(".margin_stan_file returns correct filename for non-normal margins", {
                "dcvar_EG_ncp.stan")
   expect_equal(.margin_stan_file("hmm", "exponential"),
                "hmm_EG.stan")
+  expect_equal(.margin_stan_file("multilevel", "exponential"),
+               "multilevel_EG.stan")
+  expect_equal(.margin_stan_file("sem_naive", "exponential"),
+               "sem_naive_EG.stan")
 
   expect_equal(.margin_stan_file("dcvar", "skew_normal"),
                "dcvar_SNG_ncp.stan")
   expect_equal(.margin_stan_file("hmm", "gamma"),
                "hmm_GG.stan")
+  expect_equal(.margin_stan_file("constant", "normal", copula = "clayton"),
+               "constant_NCl.stan")
 })
 
 test_that(".margin_cache_key returns expected cache key", {
@@ -84,4 +100,6 @@ test_that(".margin_cache_key returns expected cache key", {
                "dcvar_SNG_model")
   expect_equal(.margin_cache_key("constant", "gamma"),
                "constant_GG_model")
+  expect_equal(.margin_cache_key("constant", "normal", copula = "clayton"),
+               "constant_clayton_model")
 })

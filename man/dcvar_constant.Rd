@@ -10,6 +10,7 @@ dcvar_constant(
   time_var = "time",
   standardize = TRUE,
   margins = "normal",
+  copula = "gaussian",
   skew_direction = NULL,
   allow_gaps = FALSE,
   prior_mu_sd = 2,
@@ -41,6 +42,10 @@ dcvar_constant(
 
 \item{margins}{Character string specifying the marginal distribution.
 One of \code{"normal"} (default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
+
+\item{copula}{Character string specifying the copula family. One of
+\code{"gaussian"} (default) or \code{"clayton"}. Clayton is currently available
+only with normal margins.}
 
 \item{skew_direction}{Integer vector of length D indicating skew direction
 for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1}

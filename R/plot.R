@@ -212,7 +212,12 @@ plot_diagnostics <- function(object, ...) {
   margins <- object$margins %||% "normal"
 
   trace_pars <- if (object$model == "multilevel") {
-    c("phi_bar[1]", "phi_bar[2]", "phi_bar[3]", "phi_bar[4]", "rho")
+    if (identical(margins, "exponential")) {
+      c("phi_bar[1]", "phi_bar[2]", "phi_bar[3]", "phi_bar[4]",
+        "sigma_exp[1]", "sigma_exp[2]", "rho")
+    } else {
+      c("phi_bar[1]", "phi_bar[2]", "phi_bar[3]", "phi_bar[4]", "rho")
+    }
   } else if (object$model == "sem") {
     if (margins == "exponential") {
       c("mu[1]", "mu[2]", "phi11", "phi22", "sigma_exp[1]", "sigma_exp[2]", "rho")
@@ -239,7 +244,12 @@ plot_diagnostics <- function(object, ...) {
     K <- object$K
     trace_pars <- c(trace_pars, paste0("rho_state[", 1:K, "]"))
   }
-  if (object$model == "constant") trace_pars <- c(trace_pars, "rho")
+  if (object$model == "constant") {
+    trace_pars <- c(
+      trace_pars,
+      if (identical(object$copula %||% "gaussian", "clayton")) "theta" else "rho"
+    )
+  }
 
   required_patterns <- unique(vapply(
     trace_pars,

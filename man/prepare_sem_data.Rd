@@ -7,16 +7,17 @@
 prepare_sem_data(
   data,
   indicators,
-  J,
-  lambda,
-  sigma_e,
+  J = NULL,
+  lambda = NULL,
+  sigma_e = NULL,
   margins = "normal",
   skew_direction = NULL,
   time_var = "time",
   prior_mu_sd = 0.25,
   prior_phi_sd = 0.5,
   prior_sigma_sd = 0.5,
-  prior_rho_sd = 0.75
+  prior_rho_sd = 0.75,
+  method = c("indicator", "naive")
 )
 }
 \arguments{
@@ -47,6 +48,9 @@ for exponential margins. Required when \code{margins = "exponential"}.}
 innovation scale parameter.}
 
 \item{prior_rho_sd}{Prior SD for rho_raw.}
+
+\item{method}{Character string: \code{"indicator"} for the fixed measurement
+model or \code{"naive"} for row-mean factor scores.}
 }
 \value{
 A named list suitable as Stan data input.

@@ -31,15 +31,19 @@ etc.}
 \item{sigma_eps}{Innovation standard deviations, length 2 (default:
 \code{c(1, 1)}). Used for normal margins.}
 
-\item{margins}{Character: \code{"normal"} (default), \code{"exponential"},
-\code{"skew_normal"}, or \code{"gamma"}.}
+\item{margins}{Marginal family. Either a single string applied to both
+variables, or a length-2 character vector for per-variable (mixed) margins,
+e.g. \code{c("normal", "exponential")}. Each entry is one of \code{"normal"}
+(default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
 
-\item{skew_direction}{Length-2 integer vector of +1/-1. Required for
-\code{"exponential"} and \code{"gamma"} margins.}
+\item{skew_direction}{Length-2 integer vector of +1/-1. Required whenever any
+dimension uses an \code{"exponential"} or \code{"gamma"} margin; only those
+dimensions consult it.}
 
-\item{skew_params}{Named list of margin-specific parameters. For
-\code{"skew_normal"}: \code{alpha} (length-2 vector of skew-normal shape params).
-For \code{"gamma"}: \code{shape} (scalar gamma shape parameter).}
+\item{skew_params}{Named list of margin-specific parameters. \code{alpha}
+(length-2 vector of skew-normal shape params) is used by skew-normal
+dimensions; \code{shape} (scalar gamma shape parameter) is used by gamma
+dimensions. Both may be supplied together for mixed margins.}
 
 \item{seed}{Random seed for reproducibility.}
 }

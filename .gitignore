@@ -12,3 +12,11 @@ src/*.o
 src/*.so
 src/*.dll
 *-test-local.log
+
+# CmdStan in-place compilation artifacts left beside bundled .stan sources
+# (a standalone cmdstan_model() compile drops an extensionless executable and
+# a .hpp next to the model). Keep only the .stan sources.
+inst/stan/*
+!inst/stan/*.stan
+!inst/stan/functions
+inst/stan/*.hpp

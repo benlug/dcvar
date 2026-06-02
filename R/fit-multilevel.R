@@ -77,6 +77,7 @@ dcvar_multilevel <- function(data, vars,
                              stan_file = NULL,
                              backend = getOption("dcvar.backend", "auto"),
                              ...) {
+  .require_scalar_margins(margins, "dcvar_multilevel")
   .validate_margins(margins, skew_direction)
   if (!margins %in% c("normal", "exponential")) {
     cli_abort(

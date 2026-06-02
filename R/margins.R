@@ -6,6 +6,79 @@
 #' @noRd
 .valid_margins <- c("normal", "exponential", "skew_normal", "gamma")
 
+#' Per-dimension margin family codes passed to the generic mixed Stan model
+#'
+#' These integer codes label each dimension's marginal family for
+#' `constant_mixed.stan` (and future generic models). The order must match the
+#' `family[i] == k` dispatch in the Stan code.
+#' @noRd
+.family_codes <- c(normal = 1L, exponential = 2L, skew_normal = 3L, gamma = 4L)
+
+#' Collapse an all-identical margins vector to a single string
+#'
+#' Per-dimension margins are accepted as a length-1 (recycled) or length-D
+#' character vector. When every entry is identical the specification is
+#' equivalent to the scalar form, so it is collapsed back to a single string.
+#' This keeps the homogeneous code paths (specialised Stan models, scalar
+#' `margins` attribute, all existing extractors) completely unchanged. The
+#' result is therefore always either length-1 (homogeneous) or a length-D vector
+#' with at least two distinct families (genuinely mixed).
+#' @noRd
+.normalize_margins_spec <- function(margins) {
+  if (length(margins) > 1L && length(unique(margins)) == 1L) {
+    margins[[1L]]
+  } else {
+    margins
+  }
+}
+
+#' Require a scalar (single-family) margin specification
+#'
+#' Phase 1 of the per-variable margins feature implements mixed margins for the
+#' constant model only. The other model families still require a single margin
+#' family applied to both variables; this guard fails fast with a clear message
+#' if a length-2 vector reaches them.
+#' @noRd
+.require_scalar_margins <- function(margins, fn) {
+  if (length(margins) > 1L) {
+    cli_abort(c(
+      "Per-variable (mixed) margins are not supported by {.fun {fn}}.",
+      "i" = "Mixed margins are currently available only via {.fun dcvar_constant}."
+    ))
+  }
+  invisible(TRUE)
+}
+
+#' Is this a genuinely mixed (per-variable) margin specification?
+#'
+#' Returns `TRUE` only when the margins vector contains more than one distinct
+#' family, i.e. the fit must route to the generic mixed Stan model.
+#' @noRd
+.is_mixed_margins <- function(margins) {
+  length(margins) > 1L && length(unique(margins)) > 1L
+}
+
+#' Per-dimension scale/shape variables to report for a mixed fit
+#'
+#' Maps a mixed margins vector to the indexed Stan variable names that should be
+#' reported for each dimension, restricted to the dimensions of each family.
+#' For example `c("normal", "exponential")` yields
+#' `list(sigma_eps = "sigma_eps[1]", sigma_exp = "sigma_exp[2]")`.
+#' @noRd
+.mixed_margin_report_vars <- function(margins) {
+  out <- list()
+  add <- function(name, dims) {
+    if (length(dims) > 0L) out[[name]] <<- paste0(name, "[", dims, "]")
+  }
+  add("sigma_eps", which(margins == "normal"))
+  add("sigma_exp", which(margins == "exponential"))
+  add("omega", which(margins == "skew_normal"))
+  add("delta", which(margins == "skew_normal"))
+  add("sigma_gam", which(margins == "gamma"))
+  add("shape_gam", which(margins == "gamma"))
+  out
+}
+
 #' Valid copula families
 #' @noRd
 .valid_copulas <- c("gaussian", "clayton")
@@ -28,28 +101,47 @@
   invisible(TRUE)
 }
 
+#' Validate margin family names (length and membership only)
+#'
+#' Checks that `margins` is a length-1 or length-2 character vector of known
+#' families, without requiring `skew_direction`. Used by routing/path helpers
+#' (such as [dcvar_stan_path()]) where the marginal scale parameters are
+#' irrelevant to file lookup.
+#' @noRd
+.validate_margin_families <- function(margins) {
+  if (!is.character(margins) || length(margins) < 1L || length(margins) > 2L) {
+    cli_abort("{.arg margins} must be a character vector of length 1 or 2.")
+  }
+  invalid <- setdiff(margins, .valid_margins)
+  if (length(invalid) > 0L) {
+    cli_abort(
+      "{.arg margins} must be one of {.val {(.valid_margins)}}, got {.val {invalid}}."
+    )
+  }
+  invisible(TRUE)
+}
+
 #' Validate margin specification
 #'
-#' @param margins Character string: one of "normal", "exponential",
-#'   "skew_normal", "gamma".
-#' @param skew_direction Length-2 integer vector of +1/-1. Required for
-#'   exponential and gamma margins.
+#' Accepts either a single margin string (applied to both variables) or a
+#' length-2 vector specifying a per-variable (mixed) margin for the bivariate
+#' model. `skew_direction` is required whenever *any* dimension uses an
+#' exponential or gamma margin.
+#'
+#' @param margins Character vector of length 1 or 2; each entry one of
+#'   "normal", "exponential", "skew_normal", "gamma".
+#' @param skew_direction Length-2 integer vector of +1/-1. Required when any
+#'   dimension uses an exponential or gamma margin.
 #' @return Invisible TRUE if valid.
 #' @noRd
 .validate_margins <- function(margins, skew_direction = NULL) {
-  if (!is.character(margins) || length(margins) != 1) {
-    cli_abort("{.arg margins} must be a single character string.")
-  }
-  if (!margins %in% .valid_margins) {
-    cli_abort(
-      "{.arg margins} must be one of {.val {(.valid_margins)}}, got {.val {margins}}."
-    )
-  }
+  .validate_margin_families(margins)
 
-  if (margins %in% c("exponential", "gamma")) {
+  needs_skew <- intersect(margins, c("exponential", "gamma"))
+  if (length(needs_skew) > 0L) {
     if (is.null(skew_direction)) {
       cli_abort(
-        "{.arg skew_direction} is required for {.val {margins}} margins."
+        "{.arg skew_direction} is required for {.val {needs_skew}} margins."
       )
     }
     if (length(skew_direction) != 2 || !all(skew_direction %in% c(-1, 1))) {
@@ -74,6 +166,7 @@
 #' @return Invisible TRUE if valid.
 #' @noRd
 .validate_sem_margins <- function(margins, skew_direction = NULL) {
+  .require_scalar_margins(margins, "dcvar_sem")
   .validate_margins(margins, skew_direction)
 
   if (!margins %in% c("normal", "exponential")) {
@@ -114,6 +207,21 @@
 #' @noRd
 .margin_stan_file <- function(model_type, margins, copula = "gaussian") {
   .validate_copula(copula)
+  .validate_margin_families(margins)
+
+  if (.is_mixed_margins(margins)) {
+    if (!identical(copula, "gaussian")) {
+      cli_abort("Mixed per-variable margins currently require the {.val gaussian} copula.")
+    }
+    if (!identical(model_type, "constant")) {
+      cli_abort(c(
+        "Mixed per-variable margins are currently implemented only for the constant model.",
+        "i" = "Use {.fun dcvar_constant} with a length-2 {.arg margins} vector."
+      ))
+    }
+    return("constant_mixed.stan")
+  }
+  margins <- margins[[1L]]
 
   if (identical(copula, "clayton")) {
     if (identical(model_type, "constant") && identical(margins, "normal")) {
@@ -192,6 +300,15 @@
 #' @noRd
 .margin_cache_key <- function(model_type, margins, copula = "gaussian") {
   .validate_copula(copula)
+  .validate_margin_families(margins)
+  if (.is_mixed_margins(margins)) {
+    suffix <- paste0("_mixed", paste(.family_codes[margins], collapse = ""))
+    if (!identical(copula, "gaussian")) {
+      suffix <- paste0(suffix, "_", copula)
+    }
+    return(paste0(model_type, suffix, "_model"))
+  }
+  margins <- margins[[1L]]
   suffix <- .margin_stan_suffix(margins)
   if (!identical(copula, "gaussian")) {
     suffix <- paste0(suffix, "_", copula)

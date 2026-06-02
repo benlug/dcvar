@@ -70,7 +70,11 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   T_eff <- nrow(eps_mean)
   D <- ncol(eps_mean)
 
-  switch(margins,
+  if (.is_mixed_margins(margins)) {
+    return(.pit_mixed(object, eps_mean, margins))
+  }
+
+  switch(margins[[1L]],
     normal = {
       summ <- .fit_summary(object$fit, backend = object$backend)
       sigma_rows <- grep("^sigma_eps\\[", summ$variable)
@@ -169,6 +173,62 @@ pit_values.dcvar_model_fit <- function(object, ...) {
     u <- stats::pgamma(x_shifted, shape = shape_gam_mean, rate = rate_gam[d])
     if (skew_dir[d] < 0) u <- 1.0 - u
     pit_mat[, d] <- u
+  }
+  pit_mat
+}
+
+
+#' Internal: PIT for mixed (per-variable) margins
+#'
+#' Dispatches each dimension to its own family's plug-in PIT using posterior
+#' mean residuals and posterior mean margin parameters.
+#' @noRd
+.pit_mixed <- function(object, eps_mean, margins) {
+  T_eff <- nrow(eps_mean)
+  D <- ncol(eps_mean)
+  summ <- .fit_summary(object$fit, backend = object$backend)
+  skew_dir <- object$skew_direction
+  gm <- function(name) {
+    row <- match(name, summ$variable)
+    if (is.na(row)) {
+      cli_abort("PIT for mixed margins requires Stan output {.val {name}}.")
+    }
+    summ$mean[row]
+  }
+
+  needs_sn <- any(margins == "skew_normal")
+  if (needs_sn && !requireNamespace("sn", quietly = TRUE)) {
+    cli_abort("Package {.pkg sn} is required for skew-normal PIT values.")
+  }
+
+  pit_mat <- matrix(NA_real_, T_eff, D)
+  for (d in seq_len(D)) {
+    fam <- margins[[d]]
+    if (identical(fam, "normal")) {
+      sigma_d <- gm(paste0("sigma_eps[", d, "]"))
+      pit_mat[, d] <- stats::pnorm(eps_mean[, d] / sigma_d)
+    } else if (identical(fam, "exponential")) {
+      sigma_exp_d <- gm(paste0("sigma_exp[", d, "]"))
+      x_shifted <- sigma_exp_d + skew_dir[d] * eps_mean[, d]
+      u <- stats::pexp(x_shifted, rate = 1.0 / sigma_exp_d)
+      if (skew_dir[d] < 0) u <- 1.0 - u
+      pit_mat[, d] <- u
+    } else if (identical(fam, "skew_normal")) {
+      omega_d <- gm(paste0("omega[", d, "]"))
+      delta_d <- gm(paste0("delta[", d, "]"))
+      alpha_d <- delta_d / sqrt(1 - delta_d^2)
+      xi_d <- -omega_d * delta_d * sqrt(2 / pi)
+      pit_mat[, d] <- sn::psn(eps_mean[, d], xi = xi_d, omega = omega_d, alpha = alpha_d)
+    } else {
+      sigma_gam_d <- gm(paste0("sigma_gam[", d, "]"))
+      shape_gam_d <- gm(paste0("shape_gam[", d, "]"))
+      sqrt_shape <- sqrt(shape_gam_d)
+      mean_x <- sqrt_shape * sigma_gam_d
+      x_shifted <- mean_x + skew_dir[d] * eps_mean[, d]
+      u <- stats::pgamma(x_shifted, shape = shape_gam_d, rate = sqrt_shape / sigma_gam_d)
+      if (skew_dir[d] < 0) u <- 1.0 - u
+      pit_mat[, d] <- u
+    }
   }
   pit_mat
 }

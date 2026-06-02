@@ -5,14 +5,21 @@
 #' and HMM copula models.
 #'
 #' @inheritParams dcvar
-#' @param margins Character string specifying the marginal distribution.
-#'   One of `"normal"` (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
+#' @param margins Marginal distribution specification. Either a single string
+#'   applied to both variables, or a length-2 character vector giving a
+#'   per-variable (mixed) margin (for example
+#'   `c("normal", "exponential")`). Each entry is one of `"normal"` (default),
+#'   `"exponential"`, `"skew_normal"`, or `"gamma"`. When the two entries
+#'   differ the fit uses a generic mixed-margins Stan model; identical entries
+#'   are equivalent to the scalar form and reuse the specialised single-family
+#'   model. Mixed margins currently require the Gaussian copula.
 #' @param copula Character string specifying the copula family. One of
 #'   `"gaussian"` (default) or `"clayton"`. Clayton is currently available
 #'   only with normal margins.
-#' @param skew_direction Integer vector of length D indicating skew direction
+#' @param skew_direction Integer vector of length 2 indicating skew direction
 #'   for asymmetric margins. Each element must be `1` (right-skewed) or `-1`
-#'   (left-skewed). Required for `"exponential"` and `"gamma"` margins.
+#'   (left-skewed). Required whenever any dimension uses an `"exponential"` or
+#'   `"gamma"` margin; only those dimensions consult it.
 #' @param prior_z_rho_sd Prior SD for rho on Fisher-z scale (default: 1.0).
 #' @param adapt_delta Target acceptance rate (default: 0.999). The constant
 #'   model uses a higher default than DC-VAR (0.99) because its simpler
@@ -79,9 +86,10 @@ dcvar_constant <- function(data, vars,
   backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
   .validate_copula(copula)
-  if (identical(copula, "clayton") && !identical(margins, "normal")) {
+  if (identical(copula, "clayton") && !all(margins == "normal")) {
     cli_abort("Clayton copula support in {.fun dcvar_constant} currently requires {.arg margins = 'normal'}.")
   }
 
@@ -97,7 +105,11 @@ dcvar_constant <- function(data, vars,
   }
   attr(stan_data, "copula") <- copula
 
-  margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
+  margins_label <- if (all(margins == "normal")) {
+    ""
+  } else {
+    paste0(" [", paste(margins, collapse = ", "), "]")
+  }
   copula_label <- if (identical(copula, "gaussian")) "" else paste0(" [", copula, " copula]")
   cli_inform("Fitting constant copula model{margins_label}{copula_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
 

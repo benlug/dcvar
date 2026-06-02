@@ -75,6 +75,7 @@ dcvar_hmm <- function(data, vars, K = 2,
   backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
+  .require_scalar_margins(margins, "dcvar_hmm")
   .validate_margins(margins, skew_direction)
 
   if (!is.numeric(K) || length(K) != 1 || K < 2 || K != as.integer(K)) {

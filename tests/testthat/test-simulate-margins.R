@@ -87,3 +87,52 @@ test_that("simulate_dcvar normal margins stores sigma_eps in true_params", {
   expect_equal(sim$true_params$margins, "normal")
   expect_equal(sim$true_params$sigma_eps, c(1, 1))
 })
+
+test_that("simulate_dcvar supports mixed (per-variable) margins", {
+  traj <- rho_constant(40, 0.5)
+  sim <- simulate_dcvar(n_time = 40, rho_trajectory = traj,
+                        margins = c("normal", "exponential"),
+                        skew_direction = c(1, 1), seed = 7)
+
+  expect_equal(ncol(sim$Y), 2)
+  expect_equal(sim$true_params$margins, c("normal", "exponential"))
+  expect_equal(sim$true_params$sigma_eps, c(1, 1))
+  expect_equal(sim$true_params$skew_direction, c(1, 1))
+})
+
+test_that("simulate_dcvar mixed margins are reproducible with a seed", {
+  traj <- rho_constant(40, 0.4)
+  s1 <- simulate_dcvar(n_time = 40, rho_trajectory = traj,
+                       margins = c("normal", "exponential"),
+                       skew_direction = c(1, -1), seed = 99)
+  s2 <- simulate_dcvar(n_time = 40, rho_trajectory = traj,
+                       margins = c("normal", "exponential"),
+                       skew_direction = c(1, -1), seed = 99)
+  expect_identical(s1$Y, s2$Y)
+})
+
+test_that("simulate_dcvar collapses identical margin vectors to scalar", {
+  traj <- rho_constant(30, 0.5)
+  sim <- simulate_dcvar(n_time = 30, rho_trajectory = traj,
+                        margins = c("normal", "normal"), seed = 8)
+  expect_identical(sim$true_params$margins, "normal")
+
+  # An all-identical vector must reproduce the scalar simulation exactly.
+  sim_scalar <- simulate_dcvar(n_time = 30, rho_trajectory = traj,
+                               margins = "normal", seed = 8)
+  expect_identical(sim$Y, sim_scalar$Y)
+})
+
+test_that("simulate_dcvar mixed margins reject non-constant model fits downstream", {
+  # A mixed simulation feeds dcvar_constant; the dynamic model rejects it.
+  traj <- rho_constant(20, 0.5)
+  sim <- simulate_dcvar(n_time = 20, rho_trajectory = traj,
+                        margins = c("normal", "exponential"),
+                        skew_direction = c(1, 1), seed = 9)
+  expect_error(
+    prepare_dcvar_data(sim$Y_df, vars = c("y1", "y2"),
+                       margins = c("normal", "exponential"),
+                       skew_direction = c(1, 1)),
+    "mixed"
+  )
+})

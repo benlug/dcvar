@@ -382,7 +382,7 @@ predict.dcvar_model_fit <- function(object, type = c("link", "response"),
   type <- match.arg(type)
   .validate_interval_level(ci_level, arg_name = "ci_level")
   margins <- object$margins %||% "normal"
-  if (margins != "normal") {
+  if (!all(margins == "normal")) {
     cli_abort("Prediction intervals are currently only supported for normal margins, not {.val {margins}}.")
   }
 

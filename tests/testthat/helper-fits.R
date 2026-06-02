@@ -767,6 +767,57 @@ get_constant_skew_normal_fit_warnings <- function() {
   })$warnings
 }
 
+get_constant_mixed_fit <- function() {
+  .cache_fit_result("constant_fit_mixed", function() {
+    # Mixed normal + exponential margins under a constant Gaussian copula.
+    sim <- simulate_dcvar(
+      n_time = 150,
+      rho_trajectory = rho_constant(150, 0.6),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_constant(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      chains = 2,
+      iter_warmup = 500,
+      iter_sampling = 500,
+      adapt_delta = 0.999,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  })$fit
+}
+
+get_constant_mixed_fit_warnings <- function() {
+  .cache_fit_result("constant_fit_mixed", function() {
+    sim <- simulate_dcvar(
+      n_time = 150,
+      rho_trajectory = rho_constant(150, 0.6),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_constant(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      chains = 2,
+      iter_warmup = 500,
+      iter_sampling = 500,
+      adapt_delta = 0.999,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  })$warnings
+}
+
 get_dcvar_cmdstanr_fit <- function() {
   .cache_fit_result("dcvar_cmdstanr_fit", function() {
     skip_if_no_cmdstanr_backend()

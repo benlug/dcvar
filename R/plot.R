@@ -224,13 +224,23 @@ plot_diagnostics <- function(object, ...) {
     } else {
       c("mu[1]", "mu[2]", "phi11", "phi22", "sigma[1]", "sigma[2]", "rho")
     }
-  } else if (margins == "normal") {
+  } else if (.is_mixed_margins(margins)) {
+    margin_pars <- unlist(lapply(seq_along(margins), function(d) {
+      switch(margins[[d]],
+        normal = paste0("sigma_eps[", d, "]"),
+        exponential = paste0("sigma_exp[", d, "]"),
+        skew_normal = c(paste0("omega[", d, "]"), paste0("delta[", d, "]")),
+        gamma = c(paste0("sigma_gam[", d, "]"), paste0("shape_gam[", d, "]"))
+      )
+    }))
+    c("mu[1]", "mu[2]", margin_pars)
+  } else if (margins[[1L]] == "normal") {
     c("mu[1]", "mu[2]", "sigma_eps[1]", "sigma_eps[2]")
-  } else if (margins == "exponential") {
+  } else if (margins[[1L]] == "exponential") {
     c("mu[1]", "mu[2]", "sigma_exp[1]", "sigma_exp[2]")
-  } else if (margins == "skew_normal") {
+  } else if (margins[[1L]] == "skew_normal") {
     c("mu[1]", "mu[2]", "omega[1]", "omega[2]", "delta[1]", "delta[2]")
-  } else if (margins == "gamma") {
+  } else if (margins[[1L]] == "gamma") {
     c("mu[1]", "mu[2]", "sigma_gam[1]", "sigma_gam[2]", "shape_gam")
   } else {
     c("mu[1]", "mu[2]")
@@ -317,16 +327,17 @@ plot_ppc <- function(object, n_sample = 100, ...) {
   }
 
   margins <- object$margins %||% "normal"
-  if (margins %in% c("gamma", "skew_normal")) {
+  copula_z_fams <- intersect(margins, c("gamma", "skew_normal"))
+  if (length(copula_z_fams) > 0L) {
     cli_abort(
       c(
-        "Posterior predictive checks are not supported for {.val {margins}} margins.",
+        "Posterior predictive checks are not supported for {.val {copula_z_fams}} margins.",
         "i" = "The stored {.field eps_rep} draws are copula-level z-scores rather than replicated residuals on the observed margin scale."
       )
     )
   }
 
-  if (!margins %in% c("normal", "exponential")) {
+  if (!all(margins %in% c("normal", "exponential"))) {
     cli_abort("Posterior predictive checks are not implemented for {.val {margins}} margins.")
   }
 
@@ -458,7 +469,7 @@ plot_random_effects <- function(object, ...) {
     ggplot2::facet_wrap(~ parameter, scales = "free_y") +
     ggplot2::labs(
       x = "Unit",
-      y = "Posterior Mean [95% CI]",
+      y = "Posterior mean [95% CrI]",
       title = "Unit-Specific VAR Coefficients"
     ) +
     ggplot2::theme_minimal() +

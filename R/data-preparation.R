@@ -228,6 +228,62 @@
 }
 
 
+#' Internal: add margin-specific entries to a Stan data list
+#'
+#' Shared by the constant, DC-VAR, and HMM data-prep functions, which build the
+#' same margin-dependent Stan data: for a mixed (per-variable) specification an
+#' integer `family` array, the normal innovation prior, and a `skew_direction`
+#' vector (defaulting to `+1` on dimensions that do not consult it); for a single
+#' family the normal prior or the exponential/gamma `skew_direction`.
+#'
+#' @param stan_data The Stan data list to extend.
+#' @param margins Normalised margin spec (length-1, or length-D when mixed).
+#' @param D Number of variables.
+#' @param skew_direction Length-D `+1/-1` vector, or `NULL`.
+#' @param prior_sigma_eps_rate Prior mean for the normal innovation SDs.
+#' @return The extended Stan data list.
+#' @noRd
+.add_margin_stan_data <- function(stan_data, margins, D, skew_direction,
+                                  prior_sigma_eps_rate) {
+  if (length(margins) > 1L && length(margins) != D) {
+    cli_abort("{.arg margins} must have length 1 or {.val {D}}, got {.val {length(margins)}}.")
+  }
+
+  if (.is_mixed_margins(margins)) {
+    margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
+    stan_data$family <- unname(as.integer(.family_codes[margins_vec]))
+    stan_data$sigma_eps_prior <- prior_sigma_eps_rate
+    if (any(margins_vec %in% c("exponential", "gamma")) && is.null(skew_direction)) {
+      cli_abort(c(
+        "Mixed margins {.val {margins_vec}} require {.arg skew_direction}.",
+        "i" = "{.arg skew_direction} must be a length-{.val {D}} vector with values 1 or -1."
+      ))
+    }
+    stan_data$skew_direction <- if (is.null(skew_direction)) {
+      rep(1, D)
+    } else {
+      as.numeric(skew_direction)
+    }
+  } else {
+    m <- margins[[1L]]
+    if (m == "normal") {
+      stan_data$sigma_eps_prior <- prior_sigma_eps_rate
+    }
+    if (m %in% c("exponential", "gamma")) {
+      if (is.null(skew_direction)) {
+        cli_abort(c(
+          "Margin {.val {m}} requires {.arg skew_direction}.",
+          "i" = "{.arg skew_direction} must be a numeric vector of length {.val {D}} with values 1 or -1."
+        ))
+      }
+      stan_data$skew_direction <- as.numeric(skew_direction)
+    }
+  }
+
+  stan_data
+}
+
+
 #' Prepare data for the DC-VAR model
 #'
 #' Transforms a data frame into a list suitable for the DC-VAR Stan model.
@@ -275,7 +331,7 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
                                prior_sigma_omega_rate = 0.1,
                                prior_rho_init_sd = 1,
                                allow_gaps = FALSE) {
-  .require_scalar_margins(margins, "prepare_dcvar_data")
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
   .prep_validate_positive_scalar(prior_mu_sd, "prior_mu_sd")
   .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
@@ -294,21 +350,8 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
     rho_init_prior_sd = prior_rho_init_sd
   )
 
-  # Normal margins need sigma_eps_prior; non-Gaussian do not
-  if (margins == "normal") {
-    stan_data$sigma_eps_prior <- prior_sigma_eps_rate
-  }
-
-  # Add margin-specific Stan data
-  if (margins %in% c("exponential", "gamma")) {
-    if (is.null(skew_direction)) {
-      cli_abort(c(
-        "Margin {.val {margins}} requires {.arg skew_direction}.",
-        "i" = "{.arg skew_direction} must be a numeric vector of length {.val {prep$D}} with values 1 or -1."
-      ))
-    }
-    stan_data$skew_direction <- as.numeric(skew_direction)
-  }
+  stan_data <- .add_margin_stan_data(stan_data, margins, prep$D, skew_direction,
+                                     prior_sigma_eps_rate)
 
   attr(stan_data, "vars") <- prep$vars
   attr(stan_data, "standardized") <- prep$standardized
@@ -348,7 +391,7 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
                              prior_alpha_off = 1,
                              prior_z_rho_sd = 1.0,
                              allow_gaps = FALSE) {
-  .require_scalar_margins(margins, "prepare_hmm_data")
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
   .prep_validate_positive_scalar(prior_mu_sd, "prior_mu_sd")
   .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
@@ -373,19 +416,8 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
     z_rho_prior_sd = prior_z_rho_sd
   )
 
-  if (margins == "normal") {
-    stan_data$sigma_eps_prior <- prior_sigma_eps_rate
-  }
-
-  if (margins %in% c("exponential", "gamma")) {
-    if (is.null(skew_direction)) {
-      cli_abort(c(
-        "Margin {.val {margins}} requires {.arg skew_direction}.",
-        "i" = "{.arg skew_direction} must be a numeric vector of length {.val {prep$D}} with values 1 or -1."
-      ))
-    }
-    stan_data$skew_direction <- as.numeric(skew_direction)
-  }
+  stan_data <- .add_margin_stan_data(stan_data, margins, prep$D, skew_direction,
+                                     prior_sigma_eps_rate)
 
   attr(stan_data, "vars") <- prep$vars
   attr(stan_data, "standardized") <- prep$standardized
@@ -733,53 +765,18 @@ prepare_constant_data <- function(data, vars, time_var = "time",
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
   prep <- .prepare_var_data(data, vars, time_var, standardize, allow_gaps)
-  D <- prep$D
-  if (length(margins) > 1L && length(margins) != D) {
-    cli_abort("{.arg margins} must have length 1 or {.val {D}}, got {.val {length(margins)}}.")
-  }
 
   stan_data <- list(
     n_time = prep$T_obs,
-    D = D,
+    D = prep$D,
     Y = prep$Y,
     sigma_mu_prior = prior_mu_sd,
     sigma_phi_prior = prior_phi_sd,
     z_rho_prior_sd = prior_z_rho_sd
   )
 
-  if (.is_mixed_margins(margins)) {
-    # Generic mixed model: per-dimension family codes + full union of priors.
-    margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
-    stan_data$family <- unname(as.integer(.family_codes[margins_vec]))
-    stan_data$sigma_eps_prior <- prior_sigma_eps_rate
-    # skew_direction is always declared by the mixed Stan model; it is consulted
-    # only for exponential/gamma dimensions and defaults to +1 elsewhere.
-    if (any(margins_vec %in% c("exponential", "gamma")) && is.null(skew_direction)) {
-      cli_abort(c(
-        "Mixed margins {.val {margins_vec}} require {.arg skew_direction}.",
-        "i" = "{.arg skew_direction} must be a length-{.val {D}} vector with values 1 or -1."
-      ))
-    }
-    stan_data$skew_direction <- if (is.null(skew_direction)) {
-      rep(1, D)
-    } else {
-      as.numeric(skew_direction)
-    }
-  } else {
-    m <- margins[[1L]]
-    if (m == "normal") {
-      stan_data$sigma_eps_prior <- prior_sigma_eps_rate
-    }
-    if (m %in% c("exponential", "gamma")) {
-      if (is.null(skew_direction)) {
-        cli_abort(c(
-          "Margin {.val {m}} requires {.arg skew_direction}.",
-          "i" = "{.arg skew_direction} must be a numeric vector of length {.val {D}} with values 1 or -1."
-        ))
-      }
-      stan_data$skew_direction <- as.numeric(skew_direction)
-    }
-  }
+  stan_data <- .add_margin_stan_data(stan_data, margins, prep$D, skew_direction,
+                                     prior_sigma_eps_rate)
 
   attr(stan_data, "vars") <- prep$vars
   attr(stan_data, "standardized") <- prep$standardized

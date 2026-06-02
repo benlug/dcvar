@@ -213,13 +213,16 @@
     if (!identical(copula, "gaussian")) {
       cli_abort("Mixed per-variable margins currently require the {.val gaussian} copula.")
     }
-    if (!identical(model_type, "constant")) {
+    mixed_file <- switch(model_type,
+      constant = "constant_mixed.stan",
+      dcvar = "dcvar_mixed_ncp.stan",
+      hmm = "hmm_mixed.stan",
       cli_abort(c(
-        "Mixed per-variable margins are currently implemented only for the constant model.",
-        "i" = "Use {.fun dcvar_constant} with a length-2 {.arg margins} vector."
+        "Mixed per-variable margins are currently implemented only for the {.val constant}, {.val dcvar}, and {.val hmm} models.",
+        "i" = "Got {.arg model_type} = {.val {model_type}}."
       ))
-    }
-    return("constant_mixed.stan")
+    )
+    return(mixed_file)
   }
   margins <- margins[[1L]]
 

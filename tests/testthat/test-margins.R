@@ -162,11 +162,13 @@ test_that(".margin_stan_file routes mixed margins to the generic model", {
                "constant_GG.stan")
 })
 
-test_that(".margin_stan_file rejects mixed margins outside the constant model", {
-  expect_error(.margin_stan_file("dcvar", c("normal", "exponential")),
-               "only.*constant")
-  expect_error(.margin_stan_file("hmm", c("normal", "gamma")),
-               "only.*constant")
+test_that(".margin_stan_file rejects mixed margins for unsupported models/copulas", {
+  # Mixed margins are supported for the three single-level models only.
+  expect_error(.margin_stan_file("multilevel", c("normal", "exponential")),
+               "constant.*dcvar.*hmm")
+  expect_error(.margin_stan_file("sem", c("normal", "exponential")),
+               "constant.*dcvar.*hmm")
+  # Mixed margins require the Gaussian copula.
   expect_error(
     .margin_stan_file("constant", c("normal", "exponential"), copula = "clayton"),
     "gaussian"
@@ -202,27 +204,23 @@ test_that("routing helpers validate family names before dispatching", {
                "constant_mixed\\.stan$")
 })
 
-test_that("non-constant fit functions reject mixed margins with a clear message", {
+test_that("multilevel/SEM fits reject mixed margins with a clear message", {
   # The scalar guard fires before any sampling, so these are fast and need no
   # backend. They must surface the helpful message, not an R length-1 condition
   # error from a downstream `margins %in% ...` / `margins == ...` check.
-  df <- data.frame(time = 1:20, y1 = rnorm(20), y2 = rnorm(20))
+  # (The single-level models dcvar()/dcvar_hmm() now accept mixed margins.)
   dfm <- data.frame(id = rep(1:2, each = 10), time = rep(1:10, 2),
                     y1 = rnorm(20), y2 = rnorm(20))
 
   expect_error(
-    dcvar(df, vars = c("y1", "y2"),
-          margins = c("normal", "exponential"), skew_direction = c(1, 1)),
-    "not supported by"
-  )
-  expect_error(
-    dcvar_hmm(df, vars = c("y1", "y2"),
-              margins = c("normal", "exponential"), skew_direction = c(1, 1)),
-    "not supported by"
-  )
-  expect_error(
     dcvar_multilevel(dfm, vars = c("y1", "y2"), id_var = "id",
                      margins = c("normal", "exponential"), skew_direction = c(1, 1)),
+    "not supported by"
+  )
+  expect_error(
+    prepare_multilevel_data(dfm, vars = c("y1", "y2"), id_var = "id",
+                            margins = c("normal", "exponential"),
+                            skew_direction = c(1, 1)),
     "not supported by"
   )
 })

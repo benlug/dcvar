@@ -123,16 +123,34 @@ test_that("simulate_dcvar collapses identical margin vectors to scalar", {
   expect_identical(sim$Y, sim_scalar$Y)
 })
 
-test_that("simulate_dcvar mixed margins reject non-constant model fits downstream", {
-  # A mixed simulation feeds dcvar_constant; the dynamic model rejects it.
+test_that("mixed-margin simulation feeds the single-level prep functions", {
+  # Mixed margins are supported by the constant, dynamic, and HMM prep paths;
+  # each builds a per-dimension family array.
   traj <- rho_constant(20, 0.5)
   sim <- simulate_dcvar(n_time = 20, rho_trajectory = traj,
                         margins = c("normal", "exponential"),
                         skew_direction = c(1, 1), seed = 9)
-  expect_error(
+  for (prep in list(
+    prepare_constant_data(sim$Y_df, vars = c("y1", "y2"),
+                          margins = c("normal", "exponential"),
+                          skew_direction = c(1, 1)),
     prepare_dcvar_data(sim$Y_df, vars = c("y1", "y2"),
                        margins = c("normal", "exponential"),
                        skew_direction = c(1, 1)),
-    "mixed"
+    prepare_hmm_data(sim$Y_df, vars = c("y1", "y2"), K = 2,
+                     margins = c("normal", "exponential"),
+                     skew_direction = c(1, 1))
+  )) {
+    expect_equal(prep$family, c(1L, 2L))
+  }
+
+  # Multilevel still requires a single margin family.
+  dfm <- data.frame(id = rep(1:2, each = 10), time = rep(1:10, 2),
+                    y1 = rnorm(20), y2 = rnorm(20))
+  expect_error(
+    prepare_multilevel_data(dfm, vars = c("y1", "y2"), id_var = "id",
+                            margins = c("normal", "exponential"),
+                            skew_direction = c(1, 1)),
+    "not supported by"
   )
 })

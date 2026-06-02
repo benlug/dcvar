@@ -2,14 +2,16 @@
 
 ## Per-variable (mixed) margins
 
-- `dcvar_constant()` now accepts a length-2 `margins` vector so each variable
-  can use its own marginal family, e.g.
+- `dcvar_constant()`, `dcvar()`, and `dcvar_hmm()` now accept a length-2
+  `margins` vector so each variable can use its own marginal family, e.g.
   `margins = c("normal", "exponential")`. This exploits the copula's separation
   of the marginal distributions from the dependence structure. Mixed margins
   currently require the Gaussian copula.
-- Added a generic mixed-margins Stan model (`constant_mixed.stan`) that
-  dispatches each dimension to its own marginal family and applies the Gaussian
-  copula on the CDF scale.
+- Added generic mixed-margins Stan models (`constant_mixed.stan`,
+  `dcvar_mixed_ncp.stan`, `hmm_mixed.stan`) that dispatch each dimension to its
+  own marginal family and apply the Gaussian copula on the CDF scale. The mixed
+  models cover the constant (single rho), dynamic (time-varying rho random
+  walk), and regime-switching (state-specific rho) dependence structures.
 - `simulate_dcvar()` accepts the same length-2 `margins` vector so mixed-family
   data can be generated (for example for parameter-recovery studies).
 - `coef()`, `var_params()`, `pit_values()`, and the diagnostics/plots report
@@ -21,9 +23,10 @@
   (such as `c("normal", "normal")`) routes to the existing specialised
   single-family model, so prior results, tests, and the gamma shared-shape
   parameterisation are preserved exactly.
-- Mixed margins are implemented for `dcvar_constant()` only; the dynamic,
-  HMM, multilevel, and SEM models still require a single margin family and
-  report a clear error if given a per-variable vector.
+- Mixed margins are implemented for the single-level time-series models
+  (`dcvar_constant()`, `dcvar()`, `dcvar_hmm()`); the multilevel and SEM models
+  still require a single margin family and report a clear error if given a
+  per-variable vector.
 
 # dcvar 0.2.0
 

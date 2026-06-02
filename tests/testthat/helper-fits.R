@@ -818,6 +818,80 @@ get_constant_mixed_fit_warnings <- function() {
   })$warnings
 }
 
+get_dcvar_mixed_fit <- function() {
+  .cache_fit_result("dcvar_fit_mixed", function() {
+    # Mixed normal + exponential margins under a time-varying Gaussian copula.
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_decreasing(120),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar(
+      sim$Y_df, vars = c("y1", "y2"),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 12, refresh = 0, seed = 123
+    )
+  })$fit
+}
+
+get_dcvar_mixed_fit_warnings <- function() {
+  .cache_fit_result("dcvar_fit_mixed", function() {
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_decreasing(120),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar(
+      sim$Y_df, vars = c("y1", "y2"),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 12, refresh = 0, seed = 123
+    )
+  })$warnings
+}
+
+get_hmm_mixed_fit <- function() {
+  .cache_fit_result("hmm_fit_mixed", function() {
+    # Mixed normal + exponential margins with two correlation regimes.
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_step(120, rho_before = 0.8, rho_after = 0.1),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_hmm(
+      sim$Y_df, vars = c("y1", "y2"), K = 2,
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$fit
+}
+
+get_hmm_mixed_fit_warnings <- function() {
+  .cache_fit_result("hmm_fit_mixed", function() {
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_step(120, rho_before = 0.8, rho_after = 0.1),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_hmm(
+      sim$Y_df, vars = c("y1", "y2"), K = 2,
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$warnings
+}
+
 get_dcvar_cmdstanr_fit <- function() {
   .cache_fit_result("dcvar_cmdstanr_fit", function() {
     skip_if_no_cmdstanr_backend()

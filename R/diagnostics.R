@@ -51,7 +51,9 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "multilevel")) {
     N <- .diagnostic_positive_int(object$N, "N", "object")
-    margin_vars <- if (identical(margins, "exponential")) {
+    margin_vars <- if (.is_mixed_margins(margins)) {
+      .mixed_diagnostic_margin_vars(margins)
+    } else if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {
       paste0("sigma[", seq_len(2), "]")
@@ -74,7 +76,9 @@ dcvar_diagnostics.default <- function(object, ...) {
   if (identical(model, "sem")) {
     n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
     method <- object$method %||% "indicator"
-    margin_vars <- if (identical(margins, "exponential")) {
+    margin_vars <- if (.is_mixed_margins(margins)) {
+      .mixed_diagnostic_margin_vars(margins)
+    } else if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {
       paste0("sigma[", seq_len(2), "]")
@@ -113,14 +117,7 @@ dcvar_diagnostics.default <- function(object, ...) {
     # Generic mixed model: check the sampled parameter each dimension actually
     # uses for its own family (the union's unused parameters merely sample from
     # their priors and need not be monitored).
-    unlist(lapply(seq_len(D), function(i) {
-      switch(margins[[i]],
-        normal = paste0("sigma_eps[", i, "]"),
-        exponential = paste0("eta[", i, "]"),
-        skew_normal = c(paste0("omega[", i, "]"), paste0("delta[", i, "]")),
-        gamma = c(paste0("eta[", i, "]"), paste0("shape_gam[", i, "]"))
-      )
-    }))
+    .mixed_diagnostic_margin_vars(margins)
   } else {
     switch(margins[[1L]],
       normal = paste0("sigma_eps[", seq_len(D), "]"),

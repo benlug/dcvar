@@ -58,6 +58,40 @@
   length(margins) > 1L && length(unique(margins)) > 1L
 }
 
+#' Sampled per-dimension margin parameters to monitor for a mixed fit
+#'
+#' Returns the indexed names of the *sampled* parameter each dimension uses for
+#' its family (the union's unused parameters merely sample from their priors and
+#' need not be monitored for convergence). Used by the diagnostics machinery.
+#' @noRd
+.mixed_diagnostic_margin_vars <- function(margins) {
+  unlist(lapply(seq_along(margins), function(i) {
+    switch(margins[[i]],
+      normal = paste0("sigma_eps[", i, "]"),
+      exponential = paste0("eta[", i, "]"),
+      skew_normal = c(paste0("omega[", i, "]"), paste0("delta[", i, "]")),
+      gamma = c(paste0("eta[", i, "]"), paste0("shape_gam[", i, "]"))
+    )
+  }))
+}
+
+#' Per-dimension scale/shape variables to display in trace plots for a mixed fit
+#'
+#' Returns the indexed names of the interpretable scale/shape variable each
+#' dimension uses (e.g. `sigma_exp[d]` for an exponential dimension). Used by the
+#' diagnostic plots.
+#' @noRd
+.mixed_plot_margin_vars <- function(margins) {
+  unlist(lapply(seq_along(margins), function(i) {
+    switch(margins[[i]],
+      normal = paste0("sigma_eps[", i, "]"),
+      exponential = paste0("sigma_exp[", i, "]"),
+      skew_normal = c(paste0("omega[", i, "]"), paste0("delta[", i, "]")),
+      gamma = c(paste0("sigma_gam[", i, "]"), paste0("shape_gam[", i, "]"))
+    )
+  }))
+}
+
 #' Per-dimension scale/shape variables to report for a mixed fit
 #'
 #' Maps a mixed margins vector to the indexed Stan variable names that should be
@@ -166,13 +200,17 @@
 #' @return Invisible TRUE if valid.
 #' @noRd
 .validate_sem_margins <- function(margins, skew_direction = NULL) {
-  .require_scalar_margins(margins, "dcvar_sem")
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
 
-  if (!margins %in% c("normal", "exponential")) {
-    cli_abort(
-      "{.arg margins} for {.fun dcvar_sem} must be one of {.val {c('normal', 'exponential')}}, got {.val {margins}}."
-    )
+  # Homogeneous SEM fits use the specialised normal/exponential models; mixed
+  # (per-variable) fits use the generic sem_mixed / sem_naive_mixed models,
+  # which support all four families per dimension.
+  if (!.is_mixed_margins(margins) && !all(margins %in% c("normal", "exponential"))) {
+    cli_abort(c(
+      "Single-family {.fun dcvar_sem} supports only {.val {c('normal', 'exponential')}} margins.",
+      "i" = "Use a per-variable {.arg margins} vector (e.g. {.code c('normal', 'gamma')}) for other families."
+    ))
   }
 
   invisible(TRUE)
@@ -210,16 +248,25 @@
   .validate_margin_families(margins)
 
   if (.is_mixed_margins(margins)) {
-    if (!identical(copula, "gaussian")) {
-      cli_abort("Mixed per-variable margins currently require the {.val gaussian} copula.")
+    if (identical(copula, "clayton")) {
+      if (!identical(model_type, "constant")) {
+        cli_abort(c(
+          "Mixed margins with the Clayton copula are currently implemented only for the constant model.",
+          "i" = "Use {.fun dcvar_constant} with {.code copula = \"clayton\"}."
+        ))
+      }
+      return("constant_mixed_clayton.stan")
     }
     mixed_file <- switch(model_type,
       constant = "constant_mixed.stan",
       dcvar = "dcvar_mixed_ncp.stan",
       hmm = "hmm_mixed.stan",
+      multilevel = "multilevel_mixed.stan",
+      sem = "sem_mixed.stan",
+      sem_naive = "sem_naive_mixed.stan",
       cli_abort(c(
-        "Mixed per-variable margins are currently implemented only for the {.val constant}, {.val dcvar}, and {.val hmm} models.",
-        "i" = "Got {.arg model_type} = {.val {model_type}}."
+        "Mixed per-variable margins are not implemented for the {.val {model_type}} model.",
+        "i" = "Supported: {.val constant}, {.val dcvar}, {.val hmm}, {.val multilevel}, {.val sem}, {.val sem_naive}."
       ))
     )
     return(mixed_file)

@@ -162,16 +162,21 @@ test_that(".margin_stan_file routes mixed margins to the generic model", {
                "constant_GG.stan")
 })
 
-test_that(".margin_stan_file rejects mixed margins for unsupported models/copulas", {
-  # Mixed margins are supported for the three single-level models only.
-  expect_error(.margin_stan_file("multilevel", c("normal", "exponential")),
-               "constant.*dcvar.*hmm")
-  expect_error(.margin_stan_file("sem", c("normal", "exponential")),
-               "constant.*dcvar.*hmm")
-  # Mixed margins require the Gaussian copula.
+test_that(".margin_stan_file routes mixed margins for every supported model", {
+  expect_equal(.margin_stan_file("multilevel", c("normal", "exponential")),
+               "multilevel_mixed.stan")
+  expect_equal(.margin_stan_file("sem", c("normal", "exponential")),
+               "sem_mixed.stan")
+  expect_equal(.margin_stan_file("sem_naive", c("normal", "exponential")),
+               "sem_naive_mixed.stan")
+  # Clayton mixed is constant-only; the Gaussian copula covers the rest.
+  expect_equal(
+    .margin_stan_file("constant", c("normal", "gamma"), copula = "clayton"),
+    "constant_mixed_clayton.stan"
+  )
   expect_error(
-    .margin_stan_file("constant", c("normal", "exponential"), copula = "clayton"),
-    "gaussian"
+    .margin_stan_file("dcvar", c("normal", "exponential"), copula = "clayton"),
+    "Clayton.*constant"
   )
 })
 
@@ -204,23 +209,16 @@ test_that("routing helpers validate family names before dispatching", {
                "constant_mixed\\.stan$")
 })
 
-test_that("multilevel/SEM fits reject mixed margins with a clear message", {
-  # The scalar guard fires before any sampling, so these are fast and need no
-  # backend. They must surface the helpful message, not an R length-1 condition
-  # error from a downstream `margins %in% ...` / `margins == ...` check.
-  # (The single-level models dcvar()/dcvar_hmm() now accept mixed margins.)
-  dfm <- data.frame(id = rep(1:2, each = 10), time = rep(1:10, 2),
-                    y1 = rnorm(20), y2 = rnorm(20))
-
+test_that("single-family SEM still rejects gamma/skew_normal", {
+  # All model families now accept *mixed* margins; single-family SEM keeps its
+  # normal/exponential-only restriction (no specialised gamma/skew_normal model).
+  df <- data.frame(time = 1:30, y1_1 = rnorm(30), y1_2 = rnorm(30),
+                   y2_1 = rnorm(30), y2_2 = rnorm(30))
+  indicators <- list(latent1 = c("y1_1", "y1_2"), latent2 = c("y2_1", "y2_2"))
   expect_error(
-    dcvar_multilevel(dfm, vars = c("y1", "y2"), id_var = "id",
-                     margins = c("normal", "exponential"), skew_direction = c(1, 1)),
-    "not supported by"
-  )
-  expect_error(
-    prepare_multilevel_data(dfm, vars = c("y1", "y2"), id_var = "id",
-                            margins = c("normal", "exponential"),
-                            skew_direction = c(1, 1)),
-    "not supported by"
+    prepare_sem_data(df, indicators = indicators, J = 2,
+                     lambda = c(0.8, 0.8), sigma_e = 0.5,
+                     margins = "gamma", skew_direction = c(1, 1)),
+    "only.*normal"
   )
 })

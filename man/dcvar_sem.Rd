@@ -48,12 +48,18 @@ Required when \code{method = "indicator"}.}
 \item{sigma_e}{Fixed measurement error SD (scalar). Required when
 \code{method = "indicator"}.}
 
-\item{margins}{Character string specifying the latent innovation margin.
-One of \code{"normal"} (default) or \code{"exponential"}.}
+\item{margins}{Latent-innovation marginal specification. A single string
+applies the same family to both latent variables; single-family SEM fits
+support \code{"normal"} (default) and \code{"exponential"} only. A length-2 character
+vector gives a per-variable (mixed) margin (for example
+\code{c("normal", "gamma")}); mixed fits use a generic Stan model that supports
+all of \code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, and \code{"gamma"} per
+dimension, under the Gaussian copula. Applies to both the indicator and
+naive methods.}
 
-\item{skew_direction}{Integer vector of length 2 indicating skew direction
-for exponential margins. Each element must be \code{1} (right-skewed) or \code{-1}
-(left-skewed). Required when \code{margins = "exponential"}.}
+\item{skew_direction}{Integer vector of length 2 of \code{1} (right-skewed) or
+\code{-1} (left-skewed). Required whenever any dimension uses an
+\code{"exponential"} or \code{"gamma"} margin; only those dimensions consult it.}
 
 \item{time_var}{Name of the time column (default: \code{"time"}).}
 

@@ -29,13 +29,19 @@
 #' @param sigma_e Measurement error SD (scalar).
 #' @param Phi 2x2 VAR coefficient matrix.
 #' @param mu Length-2 intercept vector.
-#' @param margins Character string specifying the latent innovation margin.
-#'   One of `"normal"` (default) or `"exponential"`.
-#' @param sigma Length-2 latent innovation SD vector for normal margins.
-#' @param sigma_exp Length-2 shifted-exponential scale vector for exponential
-#'   margins.
-#' @param skew_direction Integer vector of length 2 indicating skew direction
-#'   for exponential margins. Required when `margins = "exponential"`.
+#' @param margins Latent-innovation marginal family. Either a single string
+#'   (`"normal"` default or `"exponential"`), or a length-2 character vector for
+#'   per-variable (mixed) margins, e.g. `c("normal", "gamma")`, where each entry
+#'   is one of `"normal"`, `"exponential"`, `"skew_normal"`, or `"gamma"`.
+#' @param sigma Length-2 latent innovation SD vector for normal dimensions
+#'   (also used by the normal dimensions of a mixed specification).
+#' @param sigma_exp Length-2 shifted-exponential scale vector for the
+#'   single-family exponential path.
+#' @param skew_direction Integer vector of length 2 of `1`/`-1`. Required
+#'   whenever any dimension uses an `"exponential"` or `"gamma"` margin.
+#' @param skew_params Named list of margin-specific parameters for mixed
+#'   margins: `alpha` (length-2 skew-normal shape) and/or `shape` (scalar gamma
+#'   shape).
 #' @param rho Copula correlation.
 #' @param burnin Retained for backward compatibility but ignored. Default `0`
 #'   keeps the default simulation path aligned with the fitted SEM model,
@@ -59,11 +65,18 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
                                 sigma = c(1, 1),
                                 sigma_exp = c(1, 1),
                                 skew_direction = NULL,
+                                skew_params = NULL,
                                 rho = 0.3,
                                 burnin = 0,
                                 seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
+  margins <- .normalize_margins_spec(margins)
   .validate_sem_margins(margins, skew_direction)
+  margins_vec <- if (length(margins) == 1L) rep(margins, 2L) else margins
+  mixed <- .is_mixed_margins(margins)
+  skew_params <- if (is.list(skew_params)) skew_params else list()
+  if (any(margins_vec == "skew_normal")) skew_params$alpha <- skew_params$alpha %||% rep(0, 2L)
+  if (any(margins_vec == "gamma")) skew_params$shape <- skew_params$shape %||% 1
   if (!is.numeric(n_time) || length(n_time) != 1L || n_time != as.integer(n_time) || n_time < 1) {
     cli_abort("{.arg n_time} must be an integer >= 1, got {.val {n_time}}.")
   }
@@ -83,7 +96,7 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   if (length(mu) != 2L) {
     cli_abort("{.arg mu} must have length 2, got {.val {length(mu)}}.")
   }
-  if (identical(margins, "normal")) {
+  if (mixed || any(margins_vec == "normal")) {
     .simulate_sem_validate_numeric_vector(sigma, "sigma")
     if (length(sigma) != 2L) {
       cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")
@@ -91,7 +104,8 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
     if (any(sigma <= 0)) {
       cli_abort("{.arg sigma} values must be positive.")
     }
-  } else {
+  }
+  if (!mixed && identical(margins, "exponential")) {
     .simulate_sem_validate_numeric_vector(sigma_exp, "sigma_exp")
     if (length(sigma_exp) != 2L) {
       cli_abort("{.arg sigma_exp} must have length 2, got {.val {length(sigma_exp)}}.")
@@ -119,7 +133,9 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   for (time_index in seq_len(n_time)) {
     z <- rnorm(2)
     w <- drop(L %*% z)
-    if (identical(margins, "normal")) {
+    if (mixed) {
+      zeta[time_index, ] <- .sim_marginal_quantile(w, margins, sigma, skew_direction, skew_params)
+    } else if (identical(margins, "normal")) {
       zeta[time_index, ] <- w * sigma
     } else {
       u <- stats::pnorm(w)
@@ -156,7 +172,11 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
     sigma_e = sigma_e,
     J = J
   )
-  if (identical(margins, "normal")) {
+  if (mixed) {
+    true_params$sigma <- sigma
+    true_params$skew_direction <- skew_direction
+    true_params$skew_params <- skew_params
+  } else if (identical(margins, "normal")) {
     true_params$sigma <- sigma
   } else {
     true_params$sigma_exp <- sigma_exp

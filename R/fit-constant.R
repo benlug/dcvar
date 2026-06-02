@@ -89,8 +89,12 @@ dcvar_constant <- function(data, vars,
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
   .validate_copula(copula)
-  if (identical(copula, "clayton") && !all(margins == "normal")) {
-    cli_abort("Clayton copula support in {.fun dcvar_constant} currently requires {.arg margins = 'normal'}.")
+  if (identical(copula, "clayton") &&
+      !.is_mixed_margins(margins) && !all(margins == "normal")) {
+    cli_abort(c(
+      "Clayton copula support in {.fun dcvar_constant} requires {.arg margins = 'normal'} or a per-variable (mixed) margin vector.",
+      "i" = "A single non-normal family with the Clayton copula is not yet available."
+    ))
   }
 
   # Prepare data

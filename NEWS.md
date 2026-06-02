@@ -2,20 +2,23 @@
 
 ## Per-variable (mixed) margins
 
-- `dcvar_constant()`, `dcvar()`, and `dcvar_hmm()` now accept a length-2
-  `margins` vector so each variable can use its own marginal family, e.g.
+- All copula VAR model families now accept a length-2 `margins` vector so each
+  variable can use its own marginal family, e.g.
   `margins = c("normal", "exponential")`. This exploits the copula's separation
-  of the marginal distributions from the dependence structure. Mixed margins
-  currently require the Gaussian copula.
-- Added generic mixed-margins Stan models (`constant_mixed.stan`,
-  `dcvar_mixed_ncp.stan`, `hmm_mixed.stan`) that dispatch each dimension to its
-  own marginal family and apply the Gaussian copula on the CDF scale. The mixed
-  models cover the constant (single rho), dynamic (time-varying rho random
-  walk), and regime-switching (state-specific rho) dependence structures.
-- `simulate_dcvar()` accepts the same length-2 `margins` vector so mixed-family
-  data can be generated (for example for parameter-recovery studies).
+  of the marginal distributions from the dependence structure. Supported across
+  `dcvar_constant()`, `dcvar()`, `dcvar_hmm()`, `dcvar_multilevel()`, and
+  `dcvar_sem()` (both the indicator and naive methods).
+- Added generic mixed-margins Stan models that dispatch each dimension to its
+  own marginal family and apply the copula on the CDF scale:
+  `constant_mixed.stan`, `dcvar_mixed_ncp.stan`, `hmm_mixed.stan`,
+  `multilevel_mixed.stan`, `sem_mixed.stan`, and `sem_naive_mixed.stan`.
+- Mixed margins are also available with the **Clayton** copula for the constant
+  model (`constant_mixed_clayton.stan`), previously limited to normal margins.
+- `simulate_dcvar()`, `simulate_dcvar_multilevel()`, and `simulate_dcvar_sem()`
+  accept the same per-variable `margins` vector so mixed-family data can be
+  generated (for example for parameter-recovery studies).
 - `coef()`, `var_params()`, `pit_values()`, and the diagnostics/plots report
-  each dimension under its own family for mixed fits.
+  each dimension under its own family for mixed fits across all model families.
 
 ## Backward compatibility
 
@@ -23,10 +26,11 @@
   (such as `c("normal", "normal")`) routes to the existing specialised
   single-family model, so prior results, tests, and the gamma shared-shape
   parameterisation are preserved exactly.
-- Mixed margins are implemented for the single-level time-series models
-  (`dcvar_constant()`, `dcvar()`, `dcvar_hmm()`); the multilevel and SEM models
-  still require a single margin family and report a clear error if given a
-  per-variable vector.
+- The mixed multilevel and SEM models support all four families per dimension.
+  Single-family multilevel and SEM fits keep their existing
+  normal/exponential-only restriction (there is no specialised gamma or
+  skew-normal model for those structures); request the other families through a
+  per-variable `margins` vector instead.
 
 # dcvar 0.2.0
 

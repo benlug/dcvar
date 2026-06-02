@@ -14,8 +14,16 @@
 #' @param phi_bar Population mean for VAR coefficients (length-4 vector:
 #'   phi11, phi12, phi21, phi22).
 #' @param tau_phi Population SD for each VAR coefficient (length-4 vector).
-#' @param sigma Innovation SDs (length-2 vector).
+#' @param sigma Innovation SDs (length-2 vector; used by normal dimensions).
 #' @param rho Global copula correlation.
+#' @param margins Marginal family. Either a single string applied to both
+#'   variables, or a length-2 character vector for per-variable (mixed) margins,
+#'   e.g. `c("normal", "exponential")`. Each entry is one of `"normal"`
+#'   (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
+#' @param skew_direction Length-2 `1`/`-1` vector. Required whenever any
+#'   dimension uses an `"exponential"` or `"gamma"` margin.
+#' @param skew_params Named list of margin-specific parameters: `alpha`
+#'   (length-2 skew-normal shape) and/or `shape` (scalar gamma shape).
 #' @param burnin Number of burn-in observations to discard (default: 30).
 #' @param center Logical; person-mean center the data (default: `TRUE`).
 #' @param seed Random seed for reproducibility.
@@ -30,10 +38,23 @@ simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
                                       tau_phi = c(0.1, 0.05, 0.05, 0.1),
                                       sigma = c(1, 1),
                                       rho = 0.3,
+                                      margins = "normal",
+                                      skew_direction = NULL,
+                                      skew_params = NULL,
                                       burnin = 30,
                                       center = TRUE,
                                       seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
+  margins <- .normalize_margins_spec(margins)
+  .validate_margins(margins, skew_direction)
+  margins_vec <- if (length(margins) == 1L) rep(margins, 2L) else margins
+  skew_params <- if (is.list(skew_params)) skew_params else list()
+  if (any(margins_vec == "skew_normal")) {
+    skew_params$alpha <- skew_params$alpha %||% rep(0, 2L)
+  }
+  if (any(margins_vec == "gamma")) {
+    skew_params$shape <- skew_params$shape %||% 1
+  }
   if (!is.numeric(N) || length(N) != 1L || N != as.integer(N) || N < 1) {
     cli_abort("{.arg N} must be an integer >= 1, got {.val {N}}.")
   }
@@ -85,10 +106,11 @@ simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
   for (i in seq_len(N)) {
     Y <- matrix(0, n_time_sim, 2)
     for (time_index in 2:n_time_sim) {
-      # Correlated innovations via Cholesky
+      # Correlated standard normals via Cholesky, then per-dimension margins.
       L <- matrix(c(1, rho, 0, sqrt(1 - rho^2)), 2, 2)
       z <- rnorm(2)
-      eps <- L %*% z * sigma
+      w <- as.numeric(L %*% z)
+      eps <- .sim_marginal_quantile(w, margins, sigma, skew_direction, skew_params)
 
       Y[time_index, ] <- Phi_list[[i]] %*% Y[time_index - 1L, ] + eps
     }
@@ -126,6 +148,9 @@ simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
       tau_phi = tau_phi,
       sigma = sigma,
       rho = rho,
+      margins = margins,
+      skew_direction = skew_direction,
+      skew_params = skew_params,
       Phi_mat = Phi_mat,
       Phi_list = Phi_list
     ),

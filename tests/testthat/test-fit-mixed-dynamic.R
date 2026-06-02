@@ -12,9 +12,6 @@ test_that("mixed margins route to the generic dynamic and HMM Stan models", {
                "dcvar_model_ncp.stan")
   expect_equal(.margin_stan_file("hmm", c("gamma", "gamma")),
                "hmm_GG.stan")
-  # Still unsupported elsewhere.
-  expect_error(.margin_stan_file("multilevel", c("normal", "exponential")),
-               "constant.*dcvar.*hmm")
 })
 
 test_that("prepare_dcvar_data / prepare_hmm_data build the family array for mixed", {

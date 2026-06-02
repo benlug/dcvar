@@ -276,7 +276,17 @@
     z_phi = matrix(rnorm(N * 4, 0, 0.5), N, 4),
     rho = runif(1, -0.3, 0.3)
   )
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    # Generic mixed multilevel model: union of per-dimension margin parameters.
+    return(c(base, list(
+      sigma_eps = runif(D, 0.8, 1.2),
+      eta = rnorm(D, 0, 0.3),
+      omega = runif(D, 0.5, 1.5),
+      delta = runif(D, -0.3, 0.3),
+      shape_gam = runif(D, 0.5, 2.0)
+    )))
+  }
+  if (identical(margins[[1L]], "exponential")) {
     c(base, list(eta = rep(log(0.2), D)))
   } else {
     c(base, list(sigma = runif(D, 0.8, 1.2)))
@@ -301,7 +311,13 @@
     zeta = matrix(rnorm(T_obs * 2, 0, 0.5), T_obs, 2)
   )
 
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    init$sigma_eps <- runif(2, 0.8, 1.2)
+    init$eta <- rnorm(2, 0, 0.3)
+    init$omega <- runif(2, 0.5, 1.5)
+    init$delta <- runif(2, -0.3, 0.3)
+    init$shape_gam <- runif(2, 0.5, 2.0)
+  } else if (identical(margins[[1L]], "exponential")) {
     init$eta <- rnorm(2, 0, 0.2)
   } else {
     init$sigma <- runif(2, 0.5, 1.5)
@@ -341,7 +357,13 @@
     rho_raw = rnorm(1, 0, 0.5)
   )
 
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    init$sigma_eps <- runif(2, 0.8, 1.2)
+    init$eta <- rnorm(2, 0, 0.3)
+    init$omega <- runif(2, 0.5, 1.5)
+    init$delta <- runif(2, -0.3, 0.3)
+    init$shape_gam <- runif(2, 0.5, 2.0)
+  } else if (identical(margins[[1L]], "exponential")) {
     init$eta <- rep(log(0.2), 2)
   } else {
     init$sigma <- runif(2, 0.8, 1.2)

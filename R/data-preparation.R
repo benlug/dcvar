@@ -228,6 +228,25 @@
 }
 
 
+#' Internal: add the per-dimension family array for multilevel/SEM mixed models
+#'
+#' Like [.add_margin_stan_data()] but without `sigma_eps_prior` (the multilevel
+#' and SEM models parameterise the normal innovation scale through their own
+#' `prior_sigma_sd`, not an exponential rate).
+#' @noRd
+.add_mixed_family_data <- function(stan_data, margins, D, skew_direction) {
+  margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
+  stan_data$family <- unname(as.integer(.family_codes[margins_vec]))
+  if (any(margins_vec %in% c("exponential", "gamma")) && is.null(skew_direction)) {
+    cli_abort(c(
+      "Mixed margins {.val {margins_vec}} require {.arg skew_direction}.",
+      "i" = "{.arg skew_direction} must be a length-{.val {D}} vector with values 1 or -1."
+    ))
+  }
+  stan_data$skew_direction <- if (is.null(skew_direction)) rep(1, D) else as.numeric(skew_direction)
+  stan_data
+}
+
 #' Internal: add margin-specific entries to a Stan data list
 #'
 #' Shared by the constant, DC-VAR, and HMM data-prep functions, which build the
@@ -461,11 +480,14 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
                                     skew_direction = NULL) {
   if (!is.data.frame(data)) cli_abort("{.arg data} must be a data frame.")
   .prep_validate_scalar_logical(center, "center")
-  .require_scalar_margins(margins, "prepare_multilevel_data")
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
-  if (!margins %in% c("normal", "exponential")) {
+  # Homogeneous multilevel fits use the specialised normal/exponential models;
+  # mixed (per-variable) fits use the generic multilevel_mixed model, which
+  # supports all four families per dimension.
+  if (!.is_mixed_margins(margins) && !all(margins %in% c("normal", "exponential"))) {
     cli_abort(
-      "{.arg margins} for {.fun prepare_multilevel_data} must be one of {.val {c('normal', 'exponential')}}, got {.val {margins}}."
+      "Single-family {.fun dcvar_multilevel} supports only {.val {c('normal', 'exponential')}} margins; use a per-variable {.arg margins} vector for other families."
     )
   }
   if (length(vars) != 2) {
@@ -557,7 +579,9 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
     prior_sigma_sd = prior_sigma_sd,
     prior_rho_sd = prior_rho_sd
   )
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    stan_data <- .add_mixed_family_data(stan_data, margins, 2L, skew_direction)
+  } else if (identical(margins, "exponential")) {
     stan_data$skew_direction <- as.numeric(skew_direction)
   }
 
@@ -614,6 +638,7 @@ prepare_sem_data <- function(data, indicators, J = NULL, lambda = NULL, sigma_e 
   if (!is.data.frame(data)) {
     cli_abort("{.arg data} must be a data frame.")
   }
+  margins <- .normalize_margins_spec(margins)
   .validate_sem_margins(margins, skew_direction)
   if (!is.list(indicators) || length(indicators) != 2) {
     cli_abort("{.arg indicators} must be a list of two character vectors.")
@@ -704,7 +729,9 @@ prepare_sem_data <- function(data, indicators, J = NULL, lambda = NULL, sigma_e 
     )
   }
 
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    stan_data <- .add_mixed_family_data(stan_data, margins, 2L, skew_direction)
+  } else if (identical(margins, "exponential")) {
     stan_data$skew_direction <- as.numeric(skew_direction)
   }
 

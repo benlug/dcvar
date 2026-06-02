@@ -123,9 +123,9 @@ test_that("simulate_dcvar collapses identical margin vectors to scalar", {
   expect_identical(sim$Y, sim_scalar$Y)
 })
 
-test_that("mixed-margin simulation feeds the single-level prep functions", {
-  # Mixed margins are supported by the constant, dynamic, and HMM prep paths;
-  # each builds a per-dimension family array.
+test_that("mixed-margin simulation feeds every prep function", {
+  # Mixed margins are supported by all prep paths; each builds a per-dimension
+  # family array.
   traj <- rho_constant(20, 0.5)
   sim <- simulate_dcvar(n_time = 20, rho_trajectory = traj,
                         margins = c("normal", "exponential"),
@@ -144,13 +144,11 @@ test_that("mixed-margin simulation feeds the single-level prep functions", {
     expect_equal(prep$family, c(1L, 2L))
   }
 
-  # Multilevel still requires a single margin family.
+  # Multilevel now accepts mixed margins too.
   dfm <- data.frame(id = rep(1:2, each = 10), time = rep(1:10, 2),
                     y1 = rnorm(20), y2 = rnorm(20))
-  expect_error(
-    prepare_multilevel_data(dfm, vars = c("y1", "y2"), id_var = "id",
-                            margins = c("normal", "exponential"),
-                            skew_direction = c(1, 1)),
-    "not supported by"
-  )
+  sd_ml <- prepare_multilevel_data(dfm, vars = c("y1", "y2"), id_var = "id",
+                                   margins = c("normal", "exponential"),
+                                   skew_direction = c(1, 1))
+  expect_equal(sd_ml$family, c(1L, 2L))
 })

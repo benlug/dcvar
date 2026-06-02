@@ -13,10 +13,16 @@
 #'   (default: `TRUE`). The bundled multilevel Stan model requires
 #'   `center = TRUE`; set `center = FALSE` only with a custom
 #'   `stan_file` that includes intercept terms.
-#' @param margins Character string specifying the marginal distribution.
-#'   One of `"normal"` (default) or `"exponential"`.
-#' @param skew_direction Integer vector of length 2 indicating skew direction
-#'   for exponential margins. Required when `margins = "exponential"`.
+#' @param margins Marginal distribution specification. A single string applies
+#'   the same family to both variables; single-family multilevel fits support
+#'   `"normal"` (default) and `"exponential"` only. A length-2 character vector
+#'   gives a per-variable (mixed) margin (for example
+#'   `c("normal", "gamma")`); mixed fits use a generic Stan model that supports
+#'   all of `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per
+#'   dimension, under the Gaussian copula.
+#' @param skew_direction Integer vector of length 2 of `1`/`-1`. Required
+#'   whenever any dimension uses an `"exponential"` or `"gamma"` margin; only
+#'   those dimensions consult it.
 #' @param prior_phi_bar_sd Prior SD for population-mean VAR coefficients.
 #' @param prior_tau_phi_scale Prior scale for half-t(3) on tau_phi.
 #' @param prior_sigma_sd Prior SD for half-normal on innovation SDs.
@@ -77,12 +83,13 @@ dcvar_multilevel <- function(data, vars,
                              stan_file = NULL,
                              backend = getOption("dcvar.backend", "auto"),
                              ...) {
-  .require_scalar_margins(margins, "dcvar_multilevel")
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
-  if (!margins %in% c("normal", "exponential")) {
-    cli_abort(
-      "{.arg margins} for {.fun dcvar_multilevel} must be one of {.val {c('normal', 'exponential')}}, got {.val {margins}}."
-    )
+  if (!.is_mixed_margins(margins) && !all(margins %in% c("normal", "exponential"))) {
+    cli_abort(c(
+      "Single-family {.fun dcvar_multilevel} supports only {.val {c('normal', 'exponential')}} margins.",
+      "i" = "Use a per-variable {.arg margins} vector (e.g. {.code c('normal', 'gamma')}) for other families."
+    ))
   }
 
   bundled_stan <- dcvar_stan_path("multilevel", margins = margins)
@@ -121,7 +128,7 @@ dcvar_multilevel <- function(data, vars,
   N <- stan_data$N
   n_time_obs <- stan_data$n_time
 
-  margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
+  margins_label <- if (all(margins == "normal")) "" else paste0(" [", paste(margins, collapse = ", "), "]")
   cli_inform("Fitting multilevel copula VAR model{margins_label} (N = {N}, n_time = {n_time_obs})...")
 
   # Compile model

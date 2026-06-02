@@ -212,28 +212,24 @@ plot_diagnostics <- function(object, ...) {
   margins <- object$margins %||% "normal"
 
   trace_pars <- if (object$model == "multilevel") {
-    if (identical(margins, "exponential")) {
-      c("phi_bar[1]", "phi_bar[2]", "phi_bar[3]", "phi_bar[4]",
-        "sigma_exp[1]", "sigma_exp[2]", "rho")
+    phi_bars <- paste0("phi_bar[", 1:4, "]")
+    if (.is_mixed_margins(margins)) {
+      c(phi_bars, .mixed_plot_margin_vars(margins), "rho")
+    } else if (identical(margins, "exponential")) {
+      c(phi_bars, "sigma_exp[1]", "sigma_exp[2]", "rho")
     } else {
-      c("phi_bar[1]", "phi_bar[2]", "phi_bar[3]", "phi_bar[4]", "rho")
+      c(phi_bars, "rho")
     }
   } else if (object$model == "sem") {
-    if (margins == "exponential") {
+    if (.is_mixed_margins(margins)) {
+      c("mu[1]", "mu[2]", "phi11", "phi22", .mixed_plot_margin_vars(margins), "rho")
+    } else if (identical(margins, "exponential")) {
       c("mu[1]", "mu[2]", "phi11", "phi22", "sigma_exp[1]", "sigma_exp[2]", "rho")
     } else {
       c("mu[1]", "mu[2]", "phi11", "phi22", "sigma[1]", "sigma[2]", "rho")
     }
   } else if (.is_mixed_margins(margins)) {
-    margin_pars <- unlist(lapply(seq_along(margins), function(d) {
-      switch(margins[[d]],
-        normal = paste0("sigma_eps[", d, "]"),
-        exponential = paste0("sigma_exp[", d, "]"),
-        skew_normal = c(paste0("omega[", d, "]"), paste0("delta[", d, "]")),
-        gamma = c(paste0("sigma_gam[", d, "]"), paste0("shape_gam[", d, "]"))
-      )
-    }))
-    c("mu[1]", "mu[2]", margin_pars)
+    c("mu[1]", "mu[2]", .mixed_plot_margin_vars(margins))
   } else if (margins[[1L]] == "normal") {
     c("mu[1]", "mu[2]", "sigma_eps[1]", "sigma_eps[2]")
   } else if (margins[[1L]] == "exponential") {

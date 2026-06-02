@@ -15,6 +15,7 @@ simulate_dcvar_sem(
   sigma = c(1, 1),
   sigma_exp = c(1, 1),
   skew_direction = NULL,
+  skew_params = NULL,
   rho = 0.3,
   burnin = 0,
   seed = NULL
@@ -33,16 +34,23 @@ simulate_dcvar_sem(
 
 \item{mu}{Length-2 intercept vector.}
 
-\item{margins}{Character string specifying the latent innovation margin.
-One of \code{"normal"} (default) or \code{"exponential"}.}
+\item{margins}{Latent-innovation marginal family. Either a single string
+(\code{"normal"} default or \code{"exponential"}), or a length-2 character vector for
+per-variable (mixed) margins, e.g. \code{c("normal", "gamma")}, where each entry
+is one of \code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
 
-\item{sigma}{Length-2 latent innovation SD vector for normal margins.}
+\item{sigma}{Length-2 latent innovation SD vector for normal dimensions
+(also used by the normal dimensions of a mixed specification).}
 
-\item{sigma_exp}{Length-2 shifted-exponential scale vector for exponential
-margins.}
+\item{sigma_exp}{Length-2 shifted-exponential scale vector for the
+single-family exponential path.}
 
-\item{skew_direction}{Integer vector of length 2 indicating skew direction
-for exponential margins. Required when \code{margins = "exponential"}.}
+\item{skew_direction}{Integer vector of length 2 of \code{1}/\code{-1}. Required
+whenever any dimension uses an \code{"exponential"} or \code{"gamma"} margin.}
+
+\item{skew_params}{Named list of margin-specific parameters for mixed
+margins: \code{alpha} (length-2 skew-normal shape) and/or \code{shape} (scalar gamma
+shape).}
 
 \item{rho}{Copula correlation.}
 

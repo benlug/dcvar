@@ -184,3 +184,49 @@ test_that("mixed normal + gamma recovers rho and the VAR autoregression", {
   expect_true(phi[["Phi[1,1]"]] > 0 && phi[["Phi[1,1]"]] < 0.6)
   expect_true(phi[["Phi[2,2]"]] > 0 && phi[["Phi[2,2]"]] < 0.6)
 })
+
+
+# ---------------------------------------------------------------------------
+# Mixed margins with the Clayton copula (Phase 3)
+# ---------------------------------------------------------------------------
+
+test_that("mixed margins route to the Clayton mixed model", {
+  expect_equal(
+    .margin_stan_file("constant", c("normal", "exponential"), copula = "clayton"),
+    "constant_mixed_clayton.stan"
+  )
+  expect_equal(
+    .margin_cache_key("constant", c("normal", "exponential"), copula = "clayton"),
+    "constant_mixed12_clayton_model"
+  )
+  # Clayton mixed is constant-only.
+  expect_error(
+    .margin_stan_file("dcvar", c("normal", "exponential"), copula = "clayton"),
+    "Clayton.*constant"
+  )
+})
+
+test_that("dcvar_constant() fits mixed margins under the Clayton copula", {
+  skip_if_no_rstan()
+
+  fit <- get_constant_mixed_clayton_fit()
+  expect_s3_class(fit, "dcvar_constant_fit")
+  expect_equal(fit$margins, c("normal", "exponential"))
+  expect_equal(fit$copula, "clayton")
+  expect_equal(fit$stan_data$family, c(1L, 2L))
+
+  co <- coef(fit)
+  # Clayton fits report theta (not rho) plus per-dimension scale groups.
+  expect_true(all(c("sigma_eps", "sigma_exp", "theta") %in% names(co)))
+  expect_false("rho" %in% names(co))
+
+  # Kendall's tau is available and positive for the simulated positive dependence.
+  dep <- dependence_summary(fit)
+  expect_true(dep$mean[1] > 0)
+})
+
+test_that("clayton mixed fit emits only known diagnostic warnings", {
+  skip_if_no_rstan()
+
+  expect_known_fit_warnings(get_constant_mixed_clayton_fit_warnings(), "constant mixed clayton")
+})

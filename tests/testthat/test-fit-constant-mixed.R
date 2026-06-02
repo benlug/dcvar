@@ -87,3 +87,100 @@ test_that("identical-family vectors reuse the specialised model and collapse mar
   expect_null(fit$stan_data$family)
   expect_named(coef(fit), c("mu", "Phi", "sigma_eps", "rho"))
 })
+
+
+# ---------------------------------------------------------------------------
+# Coverage across every ordered family pair
+#
+# Exercises each marginal branch of constant_mixed.stan (normal / exponential /
+# skew_normal / gamma) in combination, and checks the R extraction picks up the
+# right per-dimension scale/shape variables. These are short smoke fits: they
+# only need the Stan variables to exist, not full convergence, so warnings are
+# suppressed and recovery is asserted separately below.
+# ---------------------------------------------------------------------------
+
+.simulate_mixed_pair <- function(fams, n = 120, rho = 0.6, seed = 7) {
+  args <- list(n_time = n, rho_trajectory = rho_constant(n, rho),
+               margins = fams, seed = seed)
+  if (any(fams %in% c("exponential", "gamma"))) args$skew_direction <- c(1, 1)
+  sp <- list()
+  if (any(fams == "gamma")) sp$shape <- 2
+  if (any(fams == "skew_normal")) sp$alpha <- c(3, 3)
+  if (length(sp) > 0L) args$skew_params <- sp
+  do.call(simulate_dcvar, args)
+}
+
+.fit_mixed_pair <- function(fams, seed = 7,
+                            iter_warmup = 150, iter_sampling = 150,
+                            chains = 1, adapt_delta = 0.95,
+                            max_treedepth = 11) {
+  sim <- .simulate_mixed_pair(fams, seed = seed)
+  args <- list(
+    sim$Y_df, vars = c("y1", "y2"), margins = fams,
+    chains = chains, iter_warmup = iter_warmup, iter_sampling = iter_sampling,
+    adapt_delta = adapt_delta, max_treedepth = max_treedepth,
+    refresh = 0, seed = 123
+  )
+  if (any(fams %in% c("exponential", "gamma"))) args$skew_direction <- c(1, 1)
+  suppressWarnings(do.call(dcvar_constant, args))
+}
+
+mixed_family_pairs <- list(
+  c("normal", "gamma"),
+  c("normal", "skew_normal"),
+  c("exponential", "gamma"),
+  c("exponential", "skew_normal"),
+  c("gamma", "skew_normal")
+)
+
+for (.fams in mixed_family_pairs) {
+  local({
+    fams <- .fams
+    label <- paste(fams, collapse = " + ")
+    test_that(sprintf("mixed %s fits and reports the right per-dim families", label), {
+      skip_if_no_rstan()
+      if (any(fams == "skew_normal")) skip_if_not_installed("sn")
+
+      fit <- .fit_mixed_pair(fams)
+      expect_s3_class(fit, "dcvar_constant_fit")
+      expect_equal(fit$margins, fams)
+      expect_equal(fit$stan_data$family, unname(.family_codes[fams]))
+
+      # coef() reports each dimension under its own family's scale/shape group.
+      co <- coef(fit)
+      expect_true("rho" %in% names(co))
+      expected_groups <- names(.mixed_margin_report_vars(fams))
+      expect_true(all(expected_groups %in% names(co)))
+
+      # var_params() exposes the same per-dimension groups.
+      vp <- var_params(fit)
+      expect_true(all(expected_groups %in% names(vp)))
+
+      # PIT runs per dimension and stays in the unit interval.
+      pit_df <- pit_values(fit)
+      expect_true(all(pit_df$pit >= 0 & pit_df$pit <= 1))
+    })
+  })
+}
+
+test_that("mixed normal + gamma recovers rho and the VAR autoregression", {
+  skip_if_no_rstan()
+
+  fams <- c("normal", "gamma")
+  sim <- .simulate_mixed_pair(fams, n = 150, rho = 0.6, seed = 13)
+  fit <- suppressWarnings(dcvar_constant(
+    sim$Y_df, vars = c("y1", "y2"), margins = fams,
+    skew_direction = c(1, 1),
+    chains = 2, iter_warmup = 500, iter_sampling = 500,
+    adapt_delta = 0.999, max_treedepth = 14, refresh = 0, seed = 123
+  ))
+
+  rho_mean <- rho_trajectory(fit)$mean[1]
+  expect_true(rho_mean > 0.3 && rho_mean < 0.8)
+
+  # The VAR(1) diagonal (true 0.3 on each series) should be recovered loosely
+  # even after standardisation.
+  phi <- coef(fit)$Phi
+  expect_true(phi[["Phi[1,1]"]] > 0 && phi[["Phi[1,1]"]] < 0.6)
+  expect_true(phi[["Phi[2,2]"]] > 0 && phi[["Phi[2,2]"]] < 0.6)
+})

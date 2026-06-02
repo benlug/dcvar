@@ -11,17 +11,17 @@ compute_rho_metrics(rho_true, rho_est, rho_lower, rho_upper)
 
 \item{rho_est}{Numeric vector of estimated rho (posterior mean).}
 
-\item{rho_lower}{Numeric vector of lower CI bounds (2.5\%).}
+\item{rho_lower}{Numeric vector of lower interval bounds (2.5\% quantiles).}
 
-\item{rho_upper}{Numeric vector of upper CI bounds (97.5\%).}
+\item{rho_upper}{Numeric vector of upper interval bounds (97.5\% quantiles).}
 }
 \value{
 A named list with:
 \itemize{
 \item \code{bias}: mean bias
 \item \code{relative_bias}: mean relative bias (\%)
-\item \code{coverage}: proportion of CIs containing true value
-\item \code{interval_width}: mean CI width
+\item \code{coverage}: proportion of intervals containing true value
+\item \code{interval_width}: mean interval width
 \item \code{correlation}: Pearson correlation between true and estimated
 \item \code{bias_start}, \code{bias_end}: bias at first/last time point
 \item \code{coverage_start}, \code{coverage_end}: coverage at endpoints

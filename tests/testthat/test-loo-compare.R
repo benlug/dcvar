@@ -31,9 +31,13 @@ test_that("dcvar_compare() works with named fits", {
     constant = get_constant_fit()
   )
 
-  expect_true(is.matrix(result))
-  expect_true(nrow(result) == 2)
-  expect_true("elpd_diff" %in% colnames(result))
+  # loo_compare() returns a two-model comparison table. Whether that object
+  # carries the base `matrix` class is loo-build-dependent (the dev build that
+  # some CI runners resolve from r-universe does not always), so coerce before
+  # asserting the structure rather than relying on is.matrix().
+  comparison <- as.matrix(result)
+  expect_equal(nrow(comparison), 2L)
+  expect_true("elpd_diff" %in% colnames(comparison))
 })
 
 test_that("dcvar_compare() rejects unnamed arguments", {

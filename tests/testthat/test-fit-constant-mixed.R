@@ -72,6 +72,7 @@ test_that("mixed normal + exponential recovers the constant rho", {
 
 test_that("identical-family vectors reuse the specialised model and collapse margins", {
   skip_if_no_rstan()
+  skip_if_not_slow()
 
   sim <- simulate_dcvar(
     n_time = 40, rho_trajectory = rho_constant(40, 0.5), seed = 42
@@ -139,6 +140,7 @@ for (.fams in mixed_family_pairs) {
     label <- paste(fams, collapse = " + ")
     test_that(sprintf("mixed %s fits and reports the right per-dim families", label), {
       skip_if_no_rstan()
+      skip_if_not_slow()
       if (any(fams == "skew_normal")) skip_if_not_installed("sn")
 
       fit <- .fit_mixed_pair(fams)
@@ -165,6 +167,7 @@ for (.fams in mixed_family_pairs) {
 
 test_that("mixed normal + gamma recovers rho and the VAR autoregression", {
   skip_if_no_rstan()
+  skip_if_not_slow()
 
   fams <- c("normal", "gamma")
   sim <- .simulate_mixed_pair(fams, n = 150, rho = 0.6, seed = 13)

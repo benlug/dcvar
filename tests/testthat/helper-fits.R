@@ -32,6 +32,19 @@ skip_if_no_cmdstanr_backend <- function() {
   skip_if_no_backend("cmdstanr")
 }
 
+# Opt-in gate for the expensive per-variable (mixed) margin fits. `rcmdcheck`
+# (and therefore the GitHub R-CMD-check matrix) sets NOT_CRAN=true, so the full
+# MCMC suite runs during CI; the mixed-margin recovery/coverage fits add enough
+# new model compilations and sampling to exceed the runner time budget. These
+# fits are exercised locally (and in any lane that sets DCVAR_SLOW_TESTS=true);
+# the routing, data-preparation, validation, and extraction tests for the
+# feature still run everywhere.
+skip_if_not_slow <- function() {
+  if (!identical(Sys.getenv("DCVAR_SLOW_TESTS"), "true")) {
+    skip("Slow mixed-margin MCMC fit; set DCVAR_SLOW_TESTS=true to run.")
+  }
+}
+
 # Cache fitted objects in the test environment
 cache_env <- new.env(parent = emptyenv())
 
@@ -768,6 +781,7 @@ get_constant_skew_normal_fit_warnings <- function() {
 }
 
 get_constant_mixed_fit <- function() {
+  skip_if_not_slow()
   .cache_fit_result("constant_fit_mixed", function() {
     # Mixed normal + exponential margins under a constant Gaussian copula.
     sim <- simulate_dcvar(
@@ -794,6 +808,7 @@ get_constant_mixed_fit <- function() {
 }
 
 get_constant_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
   .cache_fit_result("constant_fit_mixed", function() {
     sim <- simulate_dcvar(
       n_time = 150,
@@ -836,6 +851,7 @@ get_constant_mixed_fit_warnings <- function() {
 }
 
 get_constant_mixed_clayton_fit <- function() {
+  skip_if_not_slow()
   .cache_fit_result("constant_fit_mixed_clayton", function() {
     df <- .simulate_clayton_mixed(n = 120, theta = 2, seed = 7)
     dcvar_constant(
@@ -849,6 +865,7 @@ get_constant_mixed_clayton_fit <- function() {
 }
 
 get_constant_mixed_clayton_fit_warnings <- function() {
+  skip_if_not_slow()
   .cache_fit_result("constant_fit_mixed_clayton", function() {
     df <- .simulate_clayton_mixed(n = 120, theta = 2, seed = 7)
     dcvar_constant(
@@ -862,6 +879,7 @@ get_constant_mixed_clayton_fit_warnings <- function() {
 }
 
 get_dcvar_mixed_fit <- function() {
+  skip_if_not_slow()
   .cache_fit_result("dcvar_fit_mixed", function() {
     # Mixed normal + exponential margins under a time-varying Gaussian copula.
     sim <- simulate_dcvar(
@@ -881,6 +899,7 @@ get_dcvar_mixed_fit <- function() {
 }
 
 get_dcvar_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
   .cache_fit_result("dcvar_fit_mixed", function() {
     sim <- simulate_dcvar(
       n_time = 120,
@@ -899,6 +918,7 @@ get_dcvar_mixed_fit_warnings <- function() {
 }
 
 get_hmm_mixed_fit <- function() {
+  skip_if_not_slow()
   .cache_fit_result("hmm_fit_mixed", function() {
     # Mixed normal + exponential margins with two correlation regimes.
     sim <- simulate_dcvar(
@@ -918,6 +938,7 @@ get_hmm_mixed_fit <- function() {
 }
 
 get_hmm_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
   .cache_fit_result("hmm_fit_mixed", function() {
     sim <- simulate_dcvar(
       n_time = 120,
@@ -936,6 +957,7 @@ get_hmm_mixed_fit_warnings <- function() {
 }
 
 get_multilevel_mixed_fit <- function() {
+  skip_if_not_slow()
   .cache_fit_result("multilevel_fit_mixed", function() {
     sim <- simulate_dcvar_multilevel(
       N = 6, n_time = 40, rho = 0.5,
@@ -951,6 +973,7 @@ get_multilevel_mixed_fit <- function() {
 }
 
 get_multilevel_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
   .cache_fit_result("multilevel_fit_mixed", function() {
     sim <- simulate_dcvar_multilevel(
       N = 6, n_time = 40, rho = 0.5,
@@ -978,6 +1001,7 @@ get_multilevel_mixed_fit_warnings <- function() {
 }
 
 get_sem_mixed_fit <- function() {
+  skip_if_not_slow()
   .cache_fit_result("sem_fit_mixed", function() {
     J <- 2
     sim <- .simulate_sem_mixed(J = J)
@@ -992,6 +1016,7 @@ get_sem_mixed_fit <- function() {
 }
 
 get_sem_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
   .cache_fit_result("sem_fit_mixed", function() {
     J <- 2
     sim <- .simulate_sem_mixed(J = J)
@@ -1006,6 +1031,7 @@ get_sem_mixed_fit_warnings <- function() {
 }
 
 get_sem_naive_mixed_fit <- function() {
+  skip_if_not_slow()
   .cache_fit_result("sem_naive_fit_mixed", function() {
     J <- 2
     sim <- .simulate_sem_mixed(J = J)

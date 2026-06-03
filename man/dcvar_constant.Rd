@@ -40,16 +40,23 @@ dcvar_constant(
 
 \item{standardize}{Logical; whether to z-score variables (default: \code{TRUE}).}
 
-\item{margins}{Character string specifying the marginal distribution.
-One of \code{"normal"} (default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
+\item{margins}{Marginal distribution specification. Either a single string
+applied to both variables, or a length-2 character vector giving a
+per-variable (mixed) margin (for example
+\code{c("normal", "exponential")}). Each entry is one of \code{"normal"} (default),
+\code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}. When the two entries
+differ the fit uses a generic mixed-margins Stan model; identical entries
+are equivalent to the scalar form and reuse the specialised single-family
+model. Mixed margins currently require the Gaussian copula.}
 
 \item{copula}{Character string specifying the copula family. One of
 \code{"gaussian"} (default) or \code{"clayton"}. Clayton is currently available
 only with normal margins.}
 
-\item{skew_direction}{Integer vector of length D indicating skew direction
+\item{skew_direction}{Integer vector of length 2 indicating skew direction
 for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1}
-(left-skewed). Required for \code{"exponential"} and \code{"gamma"} margins.}
+(left-skewed). Required whenever any dimension uses an \code{"exponential"} or
+\code{"gamma"} margin; only those dimensions consult it.}
 
 \item{allow_gaps}{Logical; if \code{FALSE} (default), interior missing values
 cause an error because they break VAR(1) time series adjacency. Set to

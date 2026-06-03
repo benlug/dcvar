@@ -8,11 +8,17 @@
 #' @param vars Character vector of two variable names to model.
 #' @param time_var Name of the time column (default: `"time"`).
 #' @param standardize Logical; whether to z-score variables (default: `TRUE`).
-#' @param margins Character string specifying the marginal distribution.
-#'   One of `"normal"` (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
-#' @param skew_direction Integer vector of length D indicating skew direction
+#' @param margins Marginal distribution specification. Either a single string
+#'   applied to both variables, or a length-2 character vector giving a
+#'   per-variable (mixed) margin, e.g. `c("normal", "exponential")`. Each entry
+#'   is one of `"normal"` (default), `"exponential"`, `"skew_normal"`, or
+#'   `"gamma"`. When the two entries differ the fit uses a generic
+#'   mixed-margins Stan model under the Gaussian copula; identical entries reuse
+#'   the specialised single-family model.
+#' @param skew_direction Integer vector of length 2 indicating skew direction
 #'   for asymmetric margins. Each element must be `1` (right-skewed) or `-1`
-#'   (left-skewed). Required for `"exponential"` and `"gamma"` margins.
+#'   (left-skewed). Required whenever any dimension uses an `"exponential"` or
+#'   `"gamma"` margin; only those dimensions consult it.
 #' @param allow_gaps Logical; if `FALSE` (default), interior missing values
 #'   cause an error because they break VAR(1) time series adjacency. Set to
 #'   `TRUE` to allow fitting with a warning instead.
@@ -95,6 +101,7 @@ dcvar <- function(data, vars, time_var = "time",
   backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
 
   # Prepare data
@@ -105,7 +112,11 @@ dcvar <- function(data, vars, time_var = "time",
     allow_gaps = allow_gaps
   )
 
-  margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
+  margins_label <- if (all(margins == "normal")) {
+    ""
+  } else {
+    paste0(" [", paste(margins, collapse = ", "), "]")
+  }
   cli_inform("Fitting DC-VAR model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
 
   # Compile model

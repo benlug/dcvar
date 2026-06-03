@@ -32,13 +32,17 @@
 #'   `matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2)`).
 #' @param sigma_eps Innovation standard deviations, length 2 (default:
 #'   `c(1, 1)`). Used for normal margins.
-#' @param margins Character: `"normal"` (default), `"exponential"`,
-#'   `"skew_normal"`, or `"gamma"`.
-#' @param skew_direction Length-2 integer vector of +1/-1. Required for
-#'   `"exponential"` and `"gamma"` margins.
-#' @param skew_params Named list of margin-specific parameters. For
-#'   `"skew_normal"`: `alpha` (length-2 vector of skew-normal shape params).
-#'   For `"gamma"`: `shape` (scalar gamma shape parameter).
+#' @param margins Marginal family. Either a single string applied to both
+#'   variables, or a length-2 character vector for per-variable (mixed) margins,
+#'   e.g. `c("normal", "exponential")`. Each entry is one of `"normal"`
+#'   (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
+#' @param skew_direction Length-2 integer vector of +1/-1. Required whenever any
+#'   dimension uses an `"exponential"` or `"gamma"` margin; only those
+#'   dimensions consult it.
+#' @param skew_params Named list of margin-specific parameters. `alpha`
+#'   (length-2 vector of skew-normal shape params) is used by skew-normal
+#'   dimensions; `shape` (scalar gamma shape parameter) is used by gamma
+#'   dimensions. Both may be supplied together for mixed margins.
 #' @param seed Random seed for reproducibility.
 #'
 #' @return A named list with:
@@ -85,36 +89,42 @@ simulate_dcvar <- function(n_time,
     cli_abort("{.arg Phi} must be a {D}x{D} matrix.")
   }
 
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
-  if (margins == "normal" && length(sigma_eps) != D) {
-    cli_abort("{.arg sigma_eps} must have length {.val {D}}, got {.val {length(sigma_eps)}}.")
+  margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
+  if (length(margins_vec) != D) {
+    cli_abort("{.arg margins} must have length 1 or {.val {D}}, got {.val {length(margins)}}.")
   }
-  if (margins == "normal") {
+
+  if (!is.null(skew_params) && !is.list(skew_params)) {
+    cli_abort("{.arg skew_params} must be a list.")
+  }
+  skew_params <- if (is.list(skew_params)) skew_params else list()
+
+  # Normal dimensions use sigma_eps
+  if (any(margins_vec == "normal")) {
     .simulate_validate_numeric_vector(sigma_eps, "sigma_eps")
+    if (length(sigma_eps) != D) {
+      cli_abort("{.arg sigma_eps} must have length {.val {D}}, got {.val {length(sigma_eps)}}.")
+    }
     if (any(sigma_eps <= 0)) {
       cli_abort("{.arg sigma_eps} values must be positive.")
     }
   }
-  if (margins == "gamma") {
-    if (!is.null(skew_params) && !is.list(skew_params)) {
-      cli_abort("{.arg skew_params} must be a list when using gamma margins.")
-    }
-    gamma_shape <- if (is.null(skew_params) || is.null(skew_params$shape)) 1 else skew_params$shape
-    .simulate_validate_positive_scalar(gamma_shape, "skew_params$shape")
-  }
-  if (margins == "skew_normal") {
-    if (!is.null(skew_params) && !is.list(skew_params)) {
-      cli_abort("{.arg skew_params} must be a list when using skew_normal margins.")
-    }
-    alpha <- if (is.null(skew_params) || is.null(skew_params$alpha)) c(0, 0) else skew_params$alpha
+  # Skew-normal dimensions use a per-dimension alpha
+  if (any(margins_vec == "skew_normal")) {
+    alpha <- skew_params$alpha %||% rep(0, D)
     .simulate_validate_numeric_vector(alpha, "skew_params$alpha")
     if (length(alpha) != D) {
       cli_abort("{.arg skew_params$alpha} must have length {.val {D}}, got {.val {length(alpha)}}.")
     }
-    skew_params <- list(alpha = alpha)
+    skew_params$alpha <- alpha
   }
-  if (margins == "gamma") {
-    skew_params <- list(shape = gamma_shape)
+  # Gamma dimensions use a shared shape
+  if (any(margins_vec == "gamma")) {
+    gamma_shape <- skew_params$shape %||% 1
+    .simulate_validate_positive_scalar(gamma_shape, "skew_params$shape")
+    skew_params$shape <- gamma_shape
   }
 
   Y <- matrix(0, n_time, D)
@@ -148,15 +158,15 @@ simulate_dcvar <- function(n_time,
     margins = margins
   )
 
-  # Add margin-specific true params
-  if (margins == "normal") {
+  # Add margin-specific true params for every family present (independent
+  # checks so mixed margins record each family's parameters).
+  if (any(margins_vec == "normal")) {
     true_params$sigma_eps <- sigma_eps
-  } else if (margins == "exponential") {
+  }
+  if (any(margins_vec %in% c("exponential", "gamma"))) {
     true_params$skew_direction <- skew_direction
-  } else if (margins == "skew_normal") {
-    true_params$skew_params <- skew_params
-  } else if (margins == "gamma") {
-    true_params$skew_direction <- skew_direction
+  }
+  if (any(margins_vec %in% c("skew_normal", "gamma"))) {
     true_params$skew_params <- skew_params
   }
 
@@ -172,49 +182,35 @@ simulate_dcvar <- function(n_time,
 #' @noRd
 .sim_marginal_quantile <- function(w, margins, sigma_eps, skew_direction, skew_params) {
   D <- length(w)
+  margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
+  eps <- numeric(D)
 
-  switch(margins,
-    normal = {
-      # w are already standard normal, just scale
-      w * sigma_eps
-    },
-    exponential = {
-      # Convert to uniforms, then to standardized exponential
-      u <- stats::pnorm(w)
-      eps <- numeric(D)
-      for (i in seq_len(D)) {
-        x_raw <- stats::qexp(u[i], rate = 1)
-        x_std <- x_raw - 1  # standardize: mean=1, sd=1 for Exp(1)
-        eps[i] <- if (skew_direction[i] < 0) -x_std else x_std
-      }
-      eps
-    },
-    skew_normal = {
+  for (i in seq_len(D)) {
+    fam <- margins_vec[[i]]
+    if (identical(fam, "normal")) {
+      # w[i] is already standard normal, just scale
+      eps[i] <- w[i] * sigma_eps[i]
+    } else if (identical(fam, "exponential")) {
+      # Convert to uniform, then to standardized exponential (Exp(1), mean/sd 1)
+      x_std <- stats::qexp(stats::pnorm(w[i]), rate = 1) - 1
+      eps[i] <- if (skew_direction[i] < 0) -x_std else x_std
+    } else if (identical(fam, "skew_normal")) {
       if (!requireNamespace("sn", quietly = TRUE)) {
         cli_abort("Package {.pkg sn} is required for skew-normal simulation.")
       }
-      alpha <- skew_params$alpha %||% c(0, 0)
-      u <- stats::pnorm(w)
-      eps <- numeric(D)
-      for (i in seq_len(D)) {
-        delta <- alpha[i] / sqrt(1 + alpha[i]^2)
-        omega_i <- sqrt(1 / (1 - 2 * delta^2 / pi))
-        xi_i <- -omega_i * delta * sqrt(2 / pi)
-        eps[i] <- sn::qsn(u[i], xi = xi_i, omega = omega_i, alpha = alpha[i])
-      }
-      eps
-    },
-    gamma = {
+      alpha_i <- (skew_params$alpha %||% rep(0, D))[i]
+      delta <- alpha_i / sqrt(1 + alpha_i^2)
+      omega_i <- sqrt(1 / (1 - 2 * delta^2 / pi))
+      xi_i <- -omega_i * delta * sqrt(2 / pi)
+      eps[i] <- sn::qsn(stats::pnorm(w[i]), xi = xi_i, omega = omega_i, alpha = alpha_i)
+    } else if (identical(fam, "gamma")) {
       shape <- skew_params$shape %||% 1
-      u <- stats::pnorm(w)
-      eps <- numeric(D)
-      for (i in seq_len(D)) {
-        x_raw <- stats::qgamma(u[i], shape = shape, rate = sqrt(shape))
-        x_std <- x_raw - sqrt(shape)  # standardize: mean=sqrt(shape)*1/sqrt(shape)=1
-        eps[i] <- if (skew_direction[i] < 0) -x_std else x_std
-      }
-      eps
-    },
-    cli_abort("Unknown margin type: {.val {margins}}")
-  )
+      x_std <- stats::qgamma(stats::pnorm(w[i]), shape = shape, rate = sqrt(shape)) - sqrt(shape)
+      eps[i] <- if (skew_direction[i] < 0) -x_std else x_std
+    } else {
+      cli_abort("Unknown margin type: {.val {fam}}")
+    }
+  }
+
+  eps
 }

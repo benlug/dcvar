@@ -132,7 +132,9 @@ print.dcvar_multilevel_summary <- function(x, ...) {
 coef.dcvar_multilevel_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)
   margins <- object$margins %||% "normal"
-  scale_coef <- if (identical(margins, "exponential")) {
+  scale_coef <- if (.is_mixed_margins(margins)) {
+    .extract_margin_coefs(summ, margins)
+  } else if (identical(margins, "exponential")) {
     list(sigma_exp = .extract_required_coef(summ, "^sigma_exp\\[", "sigma_exp", "coef.dcvar_multilevel_fit()"))
   } else {
     list(sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_multilevel_fit()"))

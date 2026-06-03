@@ -124,7 +124,23 @@
     Phi = diag(0.25, D) + matrix(rnorm(D^2, 0, 0.05), D, D)
   )
 
-  switch(margins,
+  # Mixed (per-variable) margins use the generic Stan model, whose parameter
+  # block is the union of all per-family parameters. Initialise the whole union
+  # so every sampled parameter (including those that only sample from their
+  # prior on a given dimension) starts from a sensible value. shape_gam is a
+  # per-dimension vector in the generic model (unlike the shared scalar in the
+  # specialised gamma model).
+  if (.is_mixed_margins(margins)) {
+    return(c(base, list(
+      sigma_eps = runif(D, 0.8, 1.2),
+      eta = rnorm(D, 0, 0.3),
+      omega = runif(D, 0.5, 1.5),
+      delta = runif(D, -0.3, 0.3),
+      shape_gam = runif(D, 0.5, 2.0)
+    )))
+  }
+
+  switch(margins[[1L]],
     normal = c(base, list(sigma_eps = runif(D, 0.8, 1.2))),
     exponential = c(base, list(eta = rnorm(D, 0, 0.3))),
     skew_normal = c(base, list(
@@ -260,7 +276,17 @@
     z_phi = matrix(rnorm(N * 4, 0, 0.5), N, 4),
     rho = runif(1, -0.3, 0.3)
   )
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    # Generic mixed multilevel model: union of per-dimension margin parameters.
+    return(c(base, list(
+      sigma_eps = runif(D, 0.8, 1.2),
+      eta = rnorm(D, 0, 0.3),
+      omega = runif(D, 0.5, 1.5),
+      delta = runif(D, -0.3, 0.3),
+      shape_gam = runif(D, 0.5, 2.0)
+    )))
+  }
+  if (identical(margins[[1L]], "exponential")) {
     c(base, list(eta = rep(log(0.2), D)))
   } else {
     c(base, list(sigma = runif(D, 0.8, 1.2)))
@@ -285,7 +311,13 @@
     zeta = matrix(rnorm(T_obs * 2, 0, 0.5), T_obs, 2)
   )
 
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    init$sigma_eps <- runif(2, 0.8, 1.2)
+    init$eta <- rnorm(2, 0, 0.3)
+    init$omega <- runif(2, 0.5, 1.5)
+    init$delta <- runif(2, -0.3, 0.3)
+    init$shape_gam <- runif(2, 0.5, 2.0)
+  } else if (identical(margins[[1L]], "exponential")) {
     init$eta <- rnorm(2, 0, 0.2)
   } else {
     init$sigma <- runif(2, 0.5, 1.5)
@@ -325,7 +357,13 @@
     rho_raw = rnorm(1, 0, 0.5)
   )
 
-  if (identical(margins, "exponential")) {
+  if (.is_mixed_margins(margins)) {
+    init$sigma_eps <- runif(2, 0.8, 1.2)
+    init$eta <- rnorm(2, 0, 0.3)
+    init$omega <- runif(2, 0.5, 1.5)
+    init$delta <- runif(2, -0.3, 0.3)
+    init$shape_gam <- runif(2, 0.5, 2.0)
+  } else if (identical(margins[[1L]], "exponential")) {
     init$eta <- rep(log(0.2), 2)
   } else {
     init$sigma <- runif(2, 0.8, 1.2)
@@ -342,7 +380,19 @@
 #' @return A named list of margin-specific coefficient vectors.
 #' @noRd
 .extract_margin_coefs <- function(summ, margins) {
-  switch(margins,
+  if (.is_mixed_margins(margins)) {
+    # Report each dimension's own family scale/shape (restricted to that
+    # family's dimensions), e.g. sigma_eps[1] for a normal dim and
+    # sigma_exp[2] for an exponential dim.
+    specs <- .mixed_margin_report_vars(margins)
+    return(lapply(specs, function(vars) {
+      rows <- match(vars, summ$variable)
+      rows <- rows[!is.na(rows)]
+      if (length(rows) == 0L) return(NULL)
+      setNames(summ$mean[rows], summ$variable[rows])
+    }))
+  }
+  switch(margins[[1L]],
     normal = list(sigma_eps = .extract_coef(summ, "^sigma_eps\\[")),
     exponential = list(sigma_exp = .extract_coef(summ, "^sigma_exp\\[")),
     skew_normal = list(
@@ -388,22 +438,13 @@
 #' @noRd
 .print_margin_params <- function(var_params) {
   cols <- c("variable", "mean", "q2.5", "q97.5")
-  if (!is.null(var_params$sigma_eps)) {
-    cat("\n  sigma_eps:\n")
-    print(var_params$sigma_eps[, cols], row.names = FALSE)
-  } else if (!is.null(var_params$sigma_exp)) {
-    cat("\n  sigma_exp:\n")
-    print(var_params$sigma_exp[, cols], row.names = FALSE)
-  } else if (!is.null(var_params$omega)) {
-    cat("\n  omega:\n")
-    print(var_params$omega[, cols], row.names = FALSE)
-    cat("\n  delta:\n")
-    print(var_params$delta[, cols], row.names = FALSE)
-  } else if (!is.null(var_params$sigma_gam)) {
-    cat("\n  sigma_gam:\n")
-    print(var_params$sigma_gam[, cols], row.names = FALSE)
-    cat("\n  shape_gam:\n")
-    print(var_params$shape_gam[, cols], row.names = FALSE)
+  # Independent checks (not else-if) so mixed fits print every family's scale
+  # parameters; single-family fits still print exactly one group.
+  for (nm in c("sigma_eps", "sigma_exp", "omega", "delta", "sigma_gam", "shape_gam")) {
+    if (!is.null(var_params[[nm]])) {
+      cat(sprintf("\n  %s:\n", nm))
+      print(var_params[[nm]][, cols], row.names = FALSE)
+    }
   }
   invisible(NULL)
 }

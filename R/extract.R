@@ -304,24 +304,30 @@ var_params.default <- function(object, ...) {
 var_params.dcvar_model_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
   copula <- object$copula %||% "gaussian"
+  mixed <- .is_mixed_margins(margins)
   required_patterns <- c("^mu\\[", "^Phi\\[")
-  switch(margins,
-    normal = {
-      required_patterns <- c(required_patterns, "^sigma_eps\\[")
-    },
-    exponential = {
-      required_patterns <- c(required_patterns, "^sigma_exp\\[")
-    },
-    skew_normal = {
-      required_patterns <- c(required_patterns, "^omega\\[", "^delta\\[")
-    },
-    gamma = {
-      required_patterns <- c(required_patterns, "^sigma_gam\\[", "^shape_gam$")
-    },
-    {
-      required_patterns <- c(required_patterns, "^sigma_eps\\[")
-    }
-  )
+  if (mixed) {
+    margin_groups <- names(.mixed_margin_report_vars(margins))
+    required_patterns <- c(required_patterns, paste0("^", margin_groups, "\\["))
+  } else {
+    switch(margins[[1L]],
+      normal = {
+        required_patterns <- c(required_patterns, "^sigma_eps\\[")
+      },
+      exponential = {
+        required_patterns <- c(required_patterns, "^sigma_exp\\[")
+      },
+      skew_normal = {
+        required_patterns <- c(required_patterns, "^omega\\[", "^delta\\[")
+      },
+      gamma = {
+        required_patterns <- c(required_patterns, "^sigma_gam\\[", "^shape_gam$")
+      },
+      {
+        required_patterns <- c(required_patterns, "^sigma_eps\\[")
+      }
+    )
+  }
   has_sigma_omega <- identical(object$model, "dcvar") ||
     identical(object$model, "dcvar_covariate")
   if (has_sigma_omega) {
@@ -357,25 +363,46 @@ var_params.dcvar_model_fit <- function(object, ...) {
   )
 
   # Margin-specific scale parameters
-  switch(margins,
-    normal = {
-      result$sigma_eps <- extract_param("^sigma_eps\\[")
-    },
-    exponential = {
-      result$sigma_exp <- extract_param("^sigma_exp\\[")
-    },
-    skew_normal = {
-      result$omega <- extract_param("^omega\\[")
-      result$delta <- extract_param("^delta\\[")
-    },
-    gamma = {
-      result$sigma_gam <- extract_param("^sigma_gam\\[")
-      result$shape_gam <- extract_param("^shape_gam$")
-    },
-    {
-      result$sigma_eps <- extract_param("^sigma_eps\\[")
+  if (mixed) {
+    # Report each dimension under its own family, restricted to that family's
+    # dimensions (e.g. sigma_eps[1] for a normal dim, sigma_exp[2] for an
+    # exponential dim).
+    extract_vars <- function(vars) {
+      rows <- match(vars, summ$variable)
+      rows <- rows[!is.na(rows)]
+      data.frame(
+        variable = summ$variable[rows],
+        mean = summ$mean[rows],
+        sd = summ$sd[rows],
+        q2.5 = summ$q2.5[rows],
+        q97.5 = summ$q97.5[rows]
+      )
     }
-  )
+    specs <- .mixed_margin_report_vars(margins)
+    for (nm in names(specs)) {
+      result[[nm]] <- extract_vars(specs[[nm]])
+    }
+  } else {
+    switch(margins[[1L]],
+      normal = {
+        result$sigma_eps <- extract_param("^sigma_eps\\[")
+      },
+      exponential = {
+        result$sigma_exp <- extract_param("^sigma_exp\\[")
+      },
+      skew_normal = {
+        result$omega <- extract_param("^omega\\[")
+        result$delta <- extract_param("^delta\\[")
+      },
+      gamma = {
+        result$sigma_gam <- extract_param("^sigma_gam\\[")
+        result$shape_gam <- extract_param("^shape_gam$")
+      },
+      {
+        result$sigma_eps <- extract_param("^sigma_eps\\[")
+      }
+    )
+  }
 
   # sigma_omega is present in random-walk DC-VAR variants only.
   so <- if (has_sigma_omega) extract_param("^sigma_omega$") else NULL
@@ -642,7 +669,14 @@ random_effects.dcvar_multilevel_fit <- function(object, ...) {
 #' @export
 var_params.dcvar_multilevel_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
-  scale_pattern <- if (identical(margins, "exponential")) "^sigma_exp\\[" else "^sigma\\["
+  mixed <- .is_mixed_margins(margins)
+  scale_pattern <- if (mixed) {
+    paste0("^", names(.mixed_margin_report_vars(margins)), "\\[")
+  } else if (identical(margins, "exponential")) {
+    "^sigma_exp\\["
+  } else {
+    "^sigma\\["
+  }
   summ <- .fit_summary(
     object$fit, variables = NULL, backend = object$backend,
     required = c("^phi_bar\\[", "^tau_phi\\[", scale_pattern, "^rho$"),
@@ -663,7 +697,20 @@ var_params.dcvar_multilevel_fit <- function(object, ...) {
     )
   }
 
-  scale_param <- if (identical(margins, "exponential")) {
+  scale_param <- if (mixed) {
+    specs <- .mixed_margin_report_vars(margins)
+    lapply(specs, function(vars) {
+      rows <- match(vars, summ$variable)
+      rows <- rows[!is.na(rows)]
+      data.frame(
+        variable = summ$variable[rows],
+        mean = summ$mean[rows],
+        sd = summ$sd[rows],
+        q2.5 = summ$q2.5[rows],
+        q97.5 = summ$q97.5[rows]
+      )
+    })
+  } else if (identical(margins, "exponential")) {
     list(sigma_exp = extract_param("^sigma_exp\\["))
   } else {
     list(sigma = extract_param("^sigma\\["))
@@ -765,8 +812,12 @@ latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
 #' @export
 var_params.dcvar_sem_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
+  mixed <- .is_mixed_margins(margins)
   required_patterns <- c("^mu\\[", "^Phi\\[", "^rho$")
-  if (identical(margins, "normal")) {
+  if (mixed) {
+    required_patterns <- c(required_patterns,
+                           paste0("^", names(.mixed_margin_report_vars(margins)), "\\["))
+  } else if (identical(margins, "normal")) {
     required_patterns <- c(required_patterns, "^sigma\\[")
   } else if (identical(margins, "exponential")) {
     required_patterns <- c(required_patterns, "^sigma_exp\\[")
@@ -799,13 +850,26 @@ var_params.dcvar_sem_fit <- function(object, ...) {
     Phi = extract_param("^Phi\\["),
     rho = extract_param("^rho$")
   )
-  if (identical(margins, "normal")) {
-    result <- c(result[1:2], list(sigma = extract_param("^sigma\\[")), result[3])
+  scale_param <- if (mixed) {
+    specs <- .mixed_margin_report_vars(margins)
+    lapply(specs, function(vars) {
+      rows <- match(vars, summ$variable)
+      rows <- rows[!is.na(rows)]
+      data.frame(
+        variable = summ$variable[rows],
+        mean = summ$mean[rows],
+        sd = summ$sd[rows],
+        q2.5 = summ$q2.5[rows],
+        q97.5 = summ$q97.5[rows]
+      )
+    })
+  } else if (identical(margins, "normal")) {
+    list(sigma = extract_param("^sigma\\["))
   } else {
-    result <- c(result[1:2], list(sigma_exp = extract_param("^sigma_exp\\[")), result[3])
+    list(sigma_exp = extract_param("^sigma_exp\\["))
   }
 
-  result
+  c(result[1:2], scale_param, result[3])
 }
 
 

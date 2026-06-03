@@ -51,7 +51,9 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "multilevel")) {
     N <- .diagnostic_positive_int(object$N, "N", "object")
-    margin_vars <- if (identical(margins, "exponential")) {
+    margin_vars <- if (.is_mixed_margins(margins)) {
+      .mixed_diagnostic_margin_vars(margins)
+    } else if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {
       paste0("sigma[", seq_len(2), "]")
@@ -74,7 +76,9 @@ dcvar_diagnostics.default <- function(object, ...) {
   if (identical(model, "sem")) {
     n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
     method <- object$method %||% "indicator"
-    margin_vars <- if (identical(margins, "exponential")) {
+    margin_vars <- if (.is_mixed_margins(margins)) {
+      .mixed_diagnostic_margin_vars(margins)
+    } else if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {
       paste0("sigma[", seq_len(2), "]")
@@ -109,19 +113,26 @@ dcvar_diagnostics.default <- function(object, ...) {
     rep(seq_len(D), times = D),
     "]"
   )
-  margin_vars <- switch(margins,
-    normal = paste0("sigma_eps[", seq_len(D), "]"),
-    exponential = paste0("eta[", seq_len(D), "]"),
-    skew_normal = c(
-      paste0("omega[", seq_len(D), "]"),
-      paste0("delta[", seq_len(D), "]")
-    ),
-    gamma = c(
-      paste0("eta[", seq_len(D), "]"),
-      "shape_gam"
-    ),
-    paste0("sigma_eps[", seq_len(D), "]")
-  )
+  margin_vars <- if (.is_mixed_margins(margins)) {
+    # Generic mixed model: check the sampled parameter each dimension actually
+    # uses for its own family (the union's unused parameters merely sample from
+    # their priors and need not be monitored).
+    .mixed_diagnostic_margin_vars(margins)
+  } else {
+    switch(margins[[1L]],
+      normal = paste0("sigma_eps[", seq_len(D), "]"),
+      exponential = paste0("eta[", seq_len(D), "]"),
+      skew_normal = c(
+        paste0("omega[", seq_len(D), "]"),
+        paste0("delta[", seq_len(D), "]")
+      ),
+      gamma = c(
+        paste0("eta[", seq_len(D), "]"),
+        "shape_gam"
+      ),
+      paste0("sigma_eps[", seq_len(D), "]")
+    )
+  }
 
   if (identical(model, "constant")) {
     copula <- object$copula %||% "gaussian"

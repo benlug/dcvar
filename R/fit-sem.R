@@ -18,11 +18,17 @@
 #' @param method Character string: `"indicator"` (default) fits the fixed
 #'   measurement model; `"naive"` averages indicators within each latent block
 #'   and fits the observed score VAR.
-#' @param margins Character string specifying the latent innovation margin.
-#'   One of `"normal"` (default) or `"exponential"`.
-#' @param skew_direction Integer vector of length 2 indicating skew direction
-#'   for exponential margins. Each element must be `1` (right-skewed) or `-1`
-#'   (left-skewed). Required when `margins = "exponential"`.
+#' @param margins Latent-innovation marginal specification. A single string
+#'   applies the same family to both latent variables; single-family SEM fits
+#'   support `"normal"` (default) and `"exponential"` only. A length-2 character
+#'   vector gives a per-variable (mixed) margin (for example
+#'   `c("normal", "gamma")`); mixed fits use a generic Stan model that supports
+#'   all of `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per
+#'   dimension, under the Gaussian copula. Applies to both the indicator and
+#'   naive methods.
+#' @param skew_direction Integer vector of length 2 of `1` (right-skewed) or
+#'   `-1` (left-skewed). Required whenever any dimension uses an
+#'   `"exponential"` or `"gamma"` margin; only those dimensions consult it.
 #' @param time_var Name of the time column (default: `"time"`).
 #' @param prior_mu_sd Prior SD for intercepts: `mu ~ normal(0, prior_mu_sd)`.
 #' @param prior_phi_sd Prior SD for VAR coefficients:
@@ -105,6 +111,7 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
   backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
+  margins <- .normalize_margins_spec(margins)
   .validate_sem_margins(margins, skew_direction)
   method <- match.arg(method)
 
@@ -131,7 +138,8 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
   J_fit <- attr(stan_data, "J") %||% J
 
   method_label <- if (identical(method, "naive")) "naive SEM" else "SEM"
-  cli_inform("Fitting {method_label} copula VAR model [{margins}] (n_time = {n_time_obs}, J = {J_fit})...")
+  margins_text <- paste(margins, collapse = ", ")
+  cli_inform("Fitting {method_label} copula VAR model [{margins_text}] (n_time = {n_time_obs}, J = {J_fit})...")
 
   # Compile model
   model_type <- if (identical(method, "naive")) "sem_naive" else "sem"

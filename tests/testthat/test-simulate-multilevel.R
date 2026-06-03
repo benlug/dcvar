@@ -22,7 +22,9 @@ test_that("simulate_dcvar_multilevel true_params contains expected elements", {
   sim <- simulate_dcvar_multilevel(N = 3, n_time = 15, rho = 0.4, seed = 3)
 
   expect_named(sim$true_params,
-               c("phi_bar", "tau_phi", "sigma", "rho", "Phi_mat", "Phi_list"))
+               c("phi_bar", "tau_phi", "sigma", "rho", "margins",
+                 "skew_direction", "skew_params", "Phi_mat", "Phi_list"))
+  expect_equal(sim$true_params$margins, "normal")
   expect_equal(sim$true_params$rho, 0.4)
   expect_equal(length(sim$true_params$phi_bar), 4)
   expect_equal(length(sim$true_params$tau_phi), 4)

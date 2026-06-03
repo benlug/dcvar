@@ -5,11 +5,17 @@
 #' label switching and a sticky Dirichlet prior to encourage state persistence.
 #'
 #' @inheritParams dcvar
-#' @param margins Character string specifying the marginal distribution.
-#'   One of `"normal"` (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
-#' @param skew_direction Integer vector of length D indicating skew direction
+#' @param margins Marginal distribution specification. Either a single string
+#'   applied to both variables, or a length-2 character vector giving a
+#'   per-variable (mixed) margin, e.g. `c("normal", "exponential")`. Each entry
+#'   is one of `"normal"` (default), `"exponential"`, `"skew_normal"`, or
+#'   `"gamma"`. When the two entries differ the fit uses a generic
+#'   mixed-margins Stan model under the Gaussian copula; identical entries reuse
+#'   the specialised single-family model.
+#' @param skew_direction Integer vector of length 2 indicating skew direction
 #'   for asymmetric margins. Each element must be `1` (right-skewed) or `-1`
-#'   (left-skewed). Required for `"exponential"` and `"gamma"` margins.
+#'   (left-skewed). Required whenever any dimension uses an `"exponential"` or
+#'   `"gamma"` margin; only those dimensions consult it.
 #' @param K Number of hidden states (default: 2).
 #' @param prior_kappa Sticky Dirichlet self-transition concentration (default: 10).
 #' @param prior_alpha_off Sticky Dirichlet off-diagonal concentration (default: 1).
@@ -75,6 +81,7 @@ dcvar_hmm <- function(data, vars, K = 2,
   backend <- .resolve_backend(backend)
   .validate_sampling_args(chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth)
+  margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
 
   if (!is.numeric(K) || length(K) != 1 || K < 2 || K != as.integer(K)) {
@@ -89,7 +96,11 @@ dcvar_hmm <- function(data, vars, K = 2,
     allow_gaps = allow_gaps
   )
 
-  margins_label <- if (margins == "normal") "" else paste0(" [", margins, "]")
+  margins_label <- if (all(margins == "normal")) {
+    ""
+  } else {
+    paste0(" [", paste(margins, collapse = ", "), "]")
+  }
   cli_inform("Fitting HMM copula model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D}, K = {K})...")
 
   # Compile model

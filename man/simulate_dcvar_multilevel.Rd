@@ -11,6 +11,9 @@ simulate_dcvar_multilevel(
   tau_phi = c(0.1, 0.05, 0.05, 0.1),
   sigma = c(1, 1),
   rho = 0.3,
+  margins = "normal",
+  skew_direction = NULL,
+  skew_params = NULL,
   burnin = 30,
   center = TRUE,
   seed = NULL
@@ -26,9 +29,20 @@ phi11, phi12, phi21, phi22).}
 
 \item{tau_phi}{Population SD for each VAR coefficient (length-4 vector).}
 
-\item{sigma}{Innovation SDs (length-2 vector).}
+\item{sigma}{Innovation SDs (length-2 vector; used by normal dimensions).}
 
 \item{rho}{Global copula correlation.}
+
+\item{margins}{Marginal family. Either a single string applied to both
+variables, or a length-2 character vector for per-variable (mixed) margins,
+e.g. \code{c("normal", "exponential")}. Each entry is one of \code{"normal"}
+(default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
+
+\item{skew_direction}{Length-2 \code{1}/\code{-1} vector. Required whenever any
+dimension uses an \code{"exponential"} or \code{"gamma"} margin.}
+
+\item{skew_params}{Named list of margin-specific parameters: \code{alpha}
+(length-2 skew-normal shape) and/or \code{shape} (scalar gamma shape).}
 
 \item{burnin}{Number of burn-in observations to discard (default: 30).}
 

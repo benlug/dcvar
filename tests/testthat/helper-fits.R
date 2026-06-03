@@ -32,6 +32,19 @@ skip_if_no_cmdstanr_backend <- function() {
   skip_if_no_backend("cmdstanr")
 }
 
+# Opt-in gate for the expensive per-variable (mixed) margin fits. `rcmdcheck`
+# (and therefore the GitHub R-CMD-check matrix) sets NOT_CRAN=true, so the full
+# MCMC suite runs during CI; the mixed-margin recovery/coverage fits add enough
+# new model compilations and sampling to exceed the runner time budget. These
+# fits are exercised locally (and in any lane that sets DCVAR_SLOW_TESTS=true);
+# the routing, data-preparation, validation, and extraction tests for the
+# feature still run everywhere.
+skip_if_not_slow <- function() {
+  if (!identical(Sys.getenv("DCVAR_SLOW_TESTS"), "true")) {
+    skip("Slow mixed-margin MCMC fit; set DCVAR_SLOW_TESTS=true to run.")
+  }
+}
+
 # Cache fitted objects in the test environment
 cache_env <- new.env(parent = emptyenv())
 
@@ -765,6 +778,270 @@ get_constant_skew_normal_fit_warnings <- function() {
       seed = 123
     )
   })$warnings
+}
+
+get_constant_mixed_fit <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("constant_fit_mixed", function() {
+    # Mixed normal + exponential margins under a constant Gaussian copula.
+    sim <- simulate_dcvar(
+      n_time = 150,
+      rho_trajectory = rho_constant(150, 0.6),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_constant(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      chains = 2,
+      iter_warmup = 500,
+      iter_sampling = 500,
+      adapt_delta = 0.999,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  })$fit
+}
+
+get_constant_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("constant_fit_mixed", function() {
+    sim <- simulate_dcvar(
+      n_time = 150,
+      rho_trajectory = rho_constant(150, 0.6),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_constant(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      chains = 2,
+      iter_warmup = 500,
+      iter_sampling = 500,
+      adapt_delta = 0.999,
+      max_treedepth = 14,
+      refresh = 0,
+      seed = 123
+    )
+  })$warnings
+}
+
+.simulate_clayton_mixed <- function(n = 120, theta = 2, seed = 7) {
+  # Clayton-correlated normal + shifted-exponential innovations under a VAR(1).
+  set.seed(seed)
+  u1 <- stats::runif(n)
+  q <- stats::runif(n)
+  u2 <- (1 + u1^(-theta) * (q^(-theta / (1 + theta)) - 1))^(-1 / theta)
+  Y <- matrix(0, n, 2)
+  mu <- c(0, 0)
+  Phi <- diag(c(0.3, 0.3))
+  for (t in 2:n) {
+    e1 <- stats::qnorm(u1[t])
+    e2 <- stats::qexp(u2[t], rate = 1) - 1
+    Y[t, ] <- mu + Phi %*% (Y[t - 1, ] - mu) + c(e1, e2)
+  }
+  data.frame(time = seq_len(n), y1 = Y[, 1], y2 = Y[, 2])
+}
+
+get_constant_mixed_clayton_fit <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("constant_fit_mixed_clayton", function() {
+    df <- .simulate_clayton_mixed(n = 120, theta = 2, seed = 7)
+    dcvar_constant(
+      df, vars = c("y1", "y2"),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      copula = "clayton",
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.95, refresh = 0, seed = 123
+    )
+  })$fit
+}
+
+get_constant_mixed_clayton_fit_warnings <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("constant_fit_mixed_clayton", function() {
+    df <- .simulate_clayton_mixed(n = 120, theta = 2, seed = 7)
+    dcvar_constant(
+      df, vars = c("y1", "y2"),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      copula = "clayton",
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.95, refresh = 0, seed = 123
+    )
+  })$warnings
+}
+
+get_dcvar_mixed_fit <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("dcvar_fit_mixed", function() {
+    # Mixed normal + exponential margins under a time-varying Gaussian copula.
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_decreasing(120),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar(
+      sim$Y_df, vars = c("y1", "y2"),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 12, refresh = 0, seed = 123
+    )
+  })$fit
+}
+
+get_dcvar_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("dcvar_fit_mixed", function() {
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_decreasing(120),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar(
+      sim$Y_df, vars = c("y1", "y2"),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 12, refresh = 0, seed = 123
+    )
+  })$warnings
+}
+
+get_hmm_mixed_fit <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("hmm_fit_mixed", function() {
+    # Mixed normal + exponential margins with two correlation regimes.
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_step(120, rho_before = 0.8, rho_after = 0.1),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_hmm(
+      sim$Y_df, vars = c("y1", "y2"), K = 2,
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$fit
+}
+
+get_hmm_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("hmm_fit_mixed", function() {
+    sim <- simulate_dcvar(
+      n_time = 120,
+      rho_trajectory = rho_step(120, rho_before = 0.8, rho_after = 0.1),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      seed = 42
+    )
+    dcvar_hmm(
+      sim$Y_df, vars = c("y1", "y2"), K = 2,
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.99, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$warnings
+}
+
+get_multilevel_mixed_fit <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("multilevel_fit_mixed", function() {
+    sim <- simulate_dcvar_multilevel(
+      N = 6, n_time = 40, rho = 0.5,
+      margins = c("normal", "exponential"), skew_direction = c(1, 1), seed = 42
+    )
+    dcvar_multilevel(
+      sim$data, vars = c("y1", "y2"), id_var = "id",
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.95, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$fit
+}
+
+get_multilevel_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("multilevel_fit_mixed", function() {
+    sim <- simulate_dcvar_multilevel(
+      N = 6, n_time = 40, rho = 0.5,
+      margins = c("normal", "exponential"), skew_direction = c(1, 1), seed = 42
+    )
+    dcvar_multilevel(
+      sim$data, vars = c("y1", "y2"), id_var = "id",
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.95, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$warnings
+}
+
+.simulate_sem_mixed <- function(n_time = 120, J = 2, seed = 42) {
+  simulate_dcvar_sem(
+    n_time = n_time, J = J, lambda = rep(0.8, J), sigma_e = sqrt(0.2),
+    margins = c("normal", "exponential"), skew_direction = c(1, 1),
+    rho = 0.5, seed = seed
+  )
+}
+
+.sem_mixed_indicators <- function(J = 2) {
+  list(latent1 = paste0("y1_", seq_len(J)), latent2 = paste0("y2_", seq_len(J)))
+}
+
+get_sem_mixed_fit <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("sem_fit_mixed", function() {
+    J <- 2
+    sim <- .simulate_sem_mixed(J = J)
+    dcvar_sem(
+      sim$data, indicators = .sem_mixed_indicators(J), J = J,
+      lambda = rep(0.8, J), sigma_e = sqrt(0.2),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.999, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$fit
+}
+
+get_sem_mixed_fit_warnings <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("sem_fit_mixed", function() {
+    J <- 2
+    sim <- .simulate_sem_mixed(J = J)
+    dcvar_sem(
+      sim$data, indicators = .sem_mixed_indicators(J), J = J,
+      lambda = rep(0.8, J), sigma_e = sqrt(0.2),
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.999, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$warnings
+}
+
+get_sem_naive_mixed_fit <- function() {
+  skip_if_not_slow()
+  .cache_fit_result("sem_naive_fit_mixed", function() {
+    J <- 2
+    sim <- .simulate_sem_mixed(J = J)
+    dcvar_sem(
+      sim$data, indicators = .sem_mixed_indicators(J), J = J, method = "naive",
+      margins = c("normal", "exponential"), skew_direction = c(1, 1),
+      chains = 2, iter_warmup = 400, iter_sampling = 400,
+      adapt_delta = 0.999, max_treedepth = 13, refresh = 0, seed = 123
+    )
+  })$fit
 }
 
 get_dcvar_cmdstanr_fit <- function() {

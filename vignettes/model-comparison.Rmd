@@ -32,7 +32,9 @@ The dcvar package provides three copula VAR models:
 For normal-margin fits, all three models share a common decomposition of the
 bivariate likelihood into marginal and copula components. The package also
 supports exponential, gamma, and skew-normal margins for these three models,
-but the copula structure below is the common part.
+but the copula structure below is the common part. All three single-level
+models additionally support *per-variable* margins, where each variable can use
+a different marginal family (see the mixed-margins section below).
 
 ### VAR(1) Marginals
 
@@ -51,7 +53,7 @@ The dependence between variables is captured by a Gaussian copula with
 time-varying correlation $\rho_t$. The log-likelihood contribution of the
 copula at time $t$ is:
 
-$$\log c(u_{1t}, u_{2t}; \rho_t) = -\frac{1}{2}\log(1 - \rho_t^2) + \frac{\rho_t^2 \, (z_{1t}^2 + z_{2t}^2) - 2\rho_t \, z_{1t} z_{2t}}{2(1 - \rho_t^2)}$$
+$$\log c(u_{1t}, u_{2t}; \rho_t) = -\frac{1}{2}\log(1 - \rho_t^2) - \frac{\rho_t^2 \, (z_{1t}^2 + z_{2t}^2) - 2\rho_t \, z_{1t} z_{2t}}{2(1 - \rho_t^2)}$$
 
 where $z_{it} = \Phi^{-1}(u_{it})$ and $u_{it} = \Phi(\varepsilon_{it} / \sigma_{\varepsilon,i})$.
 
@@ -68,6 +70,47 @@ where $z_{it} = \Phi^{-1}(u_{it})$ and $u_{it} = \Phi(\varepsilon_{it} / \sigma_
 
 - **Constant Copula**: $\rho_t = \rho$ for all $t$. A special case of both
   the DC-VAR ($\sigma_\omega = 0$) and HMM ($K = 1$).
+
+## Per-variable (mixed) margins
+
+A copula separates the marginal distributions from the dependence structure, so
+each variable is free to follow its own marginal family. `dcvar_constant()`,
+`dcvar()`, and `dcvar_hmm()` expose this by accepting a length-2 `margins`
+vector. For example, a roughly-symmetric first series paired with a
+positively-skewed second series can be modelled as `normal` and `exponential`
+margins under a single Gaussian copula:
+
+```{r mixed-margins}
+library(dcvar)
+
+sim_mix <- simulate_dcvar(
+  n_time = 200,
+  rho_trajectory = rho_constant(200, rho = 0.6),
+  margins = c("normal", "exponential"),
+  skew_direction = c(1, 1),
+  seed = 11
+)
+
+fit_mix <- dcvar_constant(
+  sim_mix$Y_df,
+  vars = c("y1", "y2"),
+  margins = c("normal", "exponential"),
+  skew_direction = c(1, 1),
+  seed = 11
+)
+
+# Each dimension is reported under its own family: sigma_eps for the normal
+# variable, sigma_exp for the exponential variable.
+coef(fit_mix)[c("sigma_eps", "sigma_exp")]
+```
+
+`skew_direction` is required whenever any dimension uses an exponential or gamma
+margin, and only those dimensions consult it. A single `margins` string still
+applies the same family to both variables, and an all-identical vector such as
+`c("normal", "normal")` is treated exactly like the scalar form (it reuses the
+specialised single-family model), so existing code is unaffected. Mixed margins
+currently require the Gaussian copula and are available for the three
+single-level models (`dcvar_constant()`, `dcvar()`, `dcvar_hmm()`).
 
 ## Fitting All Three Models
 

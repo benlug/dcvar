@@ -8,14 +8,14 @@
 #'
 #' @param rho_true Numeric vector of true rho values (length T-1).
 #' @param rho_est Numeric vector of estimated rho (posterior mean).
-#' @param rho_lower Numeric vector of lower CI bounds (2.5%).
-#' @param rho_upper Numeric vector of upper CI bounds (97.5%).
+#' @param rho_lower Numeric vector of lower interval bounds (2.5% quantiles).
+#' @param rho_upper Numeric vector of upper interval bounds (97.5% quantiles).
 #'
 #' @return A named list with:
 #'   - `bias`: mean bias
 #'   - `relative_bias`: mean relative bias (%)
-#'   - `coverage`: proportion of CIs containing true value
-#'   - `interval_width`: mean CI width
+#'   - `coverage`: proportion of intervals containing true value
+#'   - `interval_width`: mean interval width
 #'   - `correlation`: Pearson correlation between true and estimated
 #'   - `bias_start`, `bias_end`: bias at first/last time point
 #'   - `coverage_start`, `coverage_end`: coverage at endpoints
@@ -58,8 +58,8 @@ compute_rho_metrics <- function(rho_true, rho_est, rho_lower, rho_upper) {
 #'
 #' @param true_value True parameter value.
 #' @param est_mean Estimated posterior mean.
-#' @param est_lower Lower CI bound (2.5%).
-#' @param est_upper Upper CI bound (97.5%).
+#' @param est_lower Lower interval bound (2.5% quantile).
+#' @param est_upper Upper interval bound (97.5% quantile).
 #'
 #' @return A named list with `bias`, `relative_bias`, `covered`,
 #'   `interval_width`.

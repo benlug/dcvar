@@ -11,9 +11,9 @@ compute_param_metrics(true_value, est_mean, est_lower, est_upper)
 
 \item{est_mean}{Estimated posterior mean.}
 
-\item{est_lower}{Lower CI bound (2.5\%).}
+\item{est_lower}{Lower interval bound (2.5\% quantile).}
 
-\item{est_upper}{Upper CI bound (97.5\%).}
+\item{est_upper}{Upper interval bound (97.5\% quantile).}
 }
 \value{
 A named list with \code{bias}, \code{relative_bias}, \code{covered},

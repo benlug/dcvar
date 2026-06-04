@@ -70,8 +70,8 @@ rho_constant <- function(n_time, rho = 0.5) {
 #' Mimics a therapy effect where coupling decreases from high to low.
 #'
 #' @param n_time Number of time points.
-#' @param rho_start Starting rho value (default: 0.7).
-#' @param rho_end Ending rho value (default: 0.3).
+#' @param rho_start Starting rho value (default: 0.7). Must be in \[-1, 1\].
+#' @param rho_end Ending rho value (default: 0.3). Must be in \[-1, 1\].
 #' @param midpoint Time point of inflection (default: `n_time/2`).
 #' @param steepness Controls transition sharpness (default: 0.05).
 #'
@@ -83,6 +83,8 @@ rho_constant <- function(n_time, rho = 0.5) {
 rho_decreasing <- function(n_time, rho_start = 0.7, rho_end = 0.3,
                             midpoint = NULL, steepness = 0.05) {
   if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
+  .trajectory_validate_rho_scalar(rho_start, "rho_start")
+  .trajectory_validate_rho_scalar(rho_end, "rho_end")
   if (is.null(midpoint)) midpoint <- n_time / 2
   t_vec <- seq_len(n_time - 1L)
   rho_end + (rho_start - rho_end) / (1 + exp(steepness * (t_vec - midpoint)))
@@ -94,8 +96,8 @@ rho_decreasing <- function(n_time, rho_start = 0.7, rho_end = 0.3,
 #' Mimics deterioration where coupling increases from low to high.
 #'
 #' @inheritParams rho_decreasing
-#' @param rho_start Starting rho value (default: 0.3).
-#' @param rho_end Ending rho value (default: 0.7).
+#' @param rho_start Starting rho value (default: 0.3). Must be in \[-1, 1\].
+#' @param rho_end Ending rho value (default: 0.7). Must be in \[-1, 1\].
 #'
 #' @return Numeric vector of length `n_time - 1`.
 #' @export
@@ -105,6 +107,8 @@ rho_decreasing <- function(n_time, rho_start = 0.7, rho_end = 0.3,
 rho_increasing <- function(n_time, rho_start = 0.3, rho_end = 0.7,
                             midpoint = NULL, steepness = 0.05) {
   if (n_time < 2) cli_abort("{.arg n_time} must be >= 2, got {.val {n_time}}.")
+  .trajectory_validate_rho_scalar(rho_start, "rho_start")
+  .trajectory_validate_rho_scalar(rho_end, "rho_end")
   if (is.null(midpoint)) midpoint <- n_time / 2
   t_vec <- seq_len(n_time - 1L)
   rho_start + (rho_end - rho_start) / (1 + exp(-steepness * (t_vec - midpoint)))

@@ -5,16 +5,21 @@
 #' Fitted values from a copula VAR model
 #'
 #' Returns the one-step-ahead fitted values (posterior mean of y_hat) from the
-#' VAR(1) component: `y_hat[t] = mu + Phi * (y[t-1] - mu)`.
+#' VAR(1) component. For single-level fits (constant, dynamic, HMM, covariate)
+#' this is the mean-centered form `y_hat[t] = mu + Phi * (y[t-1] - mu)`.
 #'
 #' If the model was fit with `standardize = TRUE` (the default), fitted values
 #' are on the standardized (z-scored) scale by default. Use `type = "response"`
 #' to back-transform to the original data scale.
 #'
 #' `fitted()` and `predict()` are implemented for the public fit classes. For
-#' multilevel fits, the methods return unit-specific trajectories. For SEM fits,
-#' `type = "link"` returns latent-state summaries and `type = "response"`
-#' returns observed indicator-scale summaries.
+#' multilevel fits, the methods return unit-specific trajectories; because the
+#' data are already person-mean-centered, the link-scale fitted values apply the
+#' unit's VAR matrix to the previous observation with no `mu` term
+#' (`y_hat[t] = Phi_unit %*% y[t-1]`), and the person mean is re-added only for
+#' `type = "response"`. For SEM fits, `type = "link"`
+#' returns latent-state summaries and `type = "response"` returns observed
+#' indicator-scale summaries.
 #'
 #' @param object A fitted model object.
 #' @param type Character; `"link"` (default) returns values on the model's

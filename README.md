@@ -90,9 +90,9 @@ dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 | **SEM** | `dcvar_sem()` | Fixed measurement model for latent processes | Experimental |
 
 Most models use Gaussian copulas. Because the copula separates the margins from
-the dependence, every model accepts **per-variable (mixed) margins** — pass a
-length-2 vector such as `margins = c("normal", "exponential")` to give each
-variable its own marginal family. The core time-series models (`dcvar()`,
+the dependence, each of the models above accepts **per-variable (mixed)
+margins** — pass a length-2 vector such as `margins = c("normal", "exponential")`
+to give each variable its own marginal family. The core time-series models (`dcvar()`,
 `dcvar_hmm()`, `dcvar_constant(copula = "gaussian")`) support all four marginal
 families — **normal**, **exponential**, **skew-normal**, and **gamma** — singly
 or mixed. `dcvar_multilevel()` and `dcvar_sem()` support normal and exponential

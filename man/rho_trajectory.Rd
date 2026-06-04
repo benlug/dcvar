@@ -29,7 +29,8 @@ rho_trajectory(object, ...)
 }
 \arguments{
 \item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_covariate_fit},
-\code{dcvar_hmm_fit}, or \code{dcvar_constant_fit}).}
+\code{dcvar_hmm_fit}, \code{dcvar_constant_fit}, \code{dcvar_multilevel_fit}, or
+\code{dcvar_sem_fit}).}
 
 \item{...}{Additional arguments (unused).}
 

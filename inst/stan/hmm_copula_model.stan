@@ -20,7 +20,7 @@ data {
   // Prior hyperparameters (VAR)
   real<lower=0> sigma_mu_prior;      // Prior SD for intercepts
   real<lower=0> sigma_phi_prior;     // Prior SD for VAR coefficients
-  real<lower=0> sigma_eps_prior;     // Prior SD for innovation SDs
+  real<lower=0> sigma_eps_prior;     // Prior mean for innovation SDs (exponential prior scale)
 
   // Prior hyperparameters (HMM)
   real<lower=0> kappa;               // Sticky Dirichlet: self-transition concentration

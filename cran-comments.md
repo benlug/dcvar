@@ -8,7 +8,7 @@
 
 ## R CMD check results
 
-Local `R CMD check --as-cran` on `dcvar_0.3.0.tar.gz`:
+Local `R CMD check --as-cran` on `dcvar_0.3.1.tar.gz`:
 
 - 0 errors
 - 0 package-caused warnings

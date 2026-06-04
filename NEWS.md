@@ -1,3 +1,38 @@
+# dcvar 0.3.1
+
+## Bug fixes
+
+- `summary()` printouts for HMM and multilevel fits now include the marginal
+  scale/shape parameters (e.g. `sigma_exp`, `omega`, `delta`, `sigma_gam`,
+  `shape_gam`) for non-normal and per-variable (mixed) margins. Previously the
+  HMM summary omitted all margin scale parameters, and the multilevel summary
+  dropped them for mixed margins.
+- `simulate_breakpoint_data()` now records the breakpoint specification
+  (`type`, plus `breakpoint` or `breakpoints`) in `true_params`, so the
+  documented access no longer returns `NULL`.
+
+## Validation
+
+- `rho_decreasing()` and `rho_increasing()` now validate that `rho_start` and
+  `rho_end` are single finite values in `[-1, 1]`, matching the other rho
+  trajectory generators.
+
+## Documentation
+
+- Extensive roxygen, vignette, README, and CITATION updates so the
+  documentation reflects per-variable (mixed) margin support across all model
+  families (including the Clayton-copula constant model) and the correct
+  `coef()` / `fitted()` / data-preparation contracts.
+
+## Internal
+
+- Removed unused helper code, made the exponential-margin diagnostic generated
+  quantity (`b_gq`) report the clamped lower bound consistently across the
+  exponential models (inference-neutral), and corrected Stan prior-hyperparameter
+  comments. The Clayton-normal constant model's `sigma_eps` prior is left
+  unchanged and its intentional divergence from the other constant models is now
+  documented.
+
 # dcvar 0.3.0
 
 ## Per-variable (mixed) margins

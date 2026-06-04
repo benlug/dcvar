@@ -113,6 +113,7 @@ print.dcvar_hmm_summary <- function(x, ...) {
   print(x$var_params$mu[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
   cat("\n  Phi:\n")
   print(x$var_params$Phi[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+  .print_margin_params(x$var_params)
 
   cat("\nDiagnostics:\n")
   cat(sprintf("  Divergences: %d\n", x$diagnostics$n_divergent))

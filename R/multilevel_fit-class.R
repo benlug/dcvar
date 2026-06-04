@@ -95,10 +95,10 @@ print.dcvar_multilevel_summary <- function(x, ...) {
   if (!is.null(x$var_params$sigma)) {
     cat("\n  sigma:\n")
     print(x$var_params$sigma[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
-  }
-  if (!is.null(x$var_params$sigma_exp)) {
-    cat("\n  sigma_exp:\n")
-    print(x$var_params$sigma_exp[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+  } else {
+    # Exponential and per-variable (mixed) margins report scale/shape under
+    # family-specific names (sigma_exp / omega / delta / sigma_gam / shape_gam).
+    .print_margin_params(x$var_params)
   }
   if (!is.null(x$var_params$rho)) {
     cat("\n  rho:\n")

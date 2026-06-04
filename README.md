@@ -10,10 +10,12 @@
 
 `dcvar` is an R package for fitting Bayesian copula VAR(1) models to bivariate
 time series. Most bundled models use Gaussian copulas; the constant-copula
-baseline also supports a Clayton copula with normal margins. The core scope is
-single-level dynamic, regime-switching, and constant-copula specifications, all
-estimated through [Stan](https://mc-stan.org/). The package also ships
-experimental multilevel and SEM extensions.
+baseline also supports a Clayton copula. Because a copula separates the marginal
+distributions from the dependence structure, each variable can take its own
+marginal family (**per-variable margins**). The core scope is single-level
+dynamic, regime-switching, and constant-copula specifications, all estimated
+through [Stan](https://mc-stan.org/). The package also ships experimental
+multilevel and SEM extensions.
 
 ## Installation
 
@@ -42,9 +44,6 @@ install.packages(
 )
 cmdstanr::install_cmdstan()
 ```
-
-CI includes a dedicated Ubuntu release lane that runs the `backend = "cmdstanr"`
-regression tests when both `cmdstanr` and CmdStan are available.
 
 For skew-normal margins, install `sn`:
 
@@ -90,12 +89,16 @@ dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 | **Multilevel** | `dcvar_multilevel()` | Random VAR coefficients for panel data | Experimental |
 | **SEM** | `dcvar_sem()` | Fixed measurement model for latent processes | Experimental |
 
-Most models use Gaussian copulas. The core three time-series models
-(`dcvar()`, `dcvar_hmm()`, and `dcvar_constant(copula = "gaussian")`) support
-four marginal distributions: **normal**, **exponential**, **skew-normal**, and
-**gamma**. `dcvar_constant(copula = "clayton")` supports a Clayton-copula
-baseline with normal margins. The multilevel and SEM variants support normal
-and exponential margins.
+Most models use Gaussian copulas. Because the copula separates the margins from
+the dependence, every model accepts **per-variable (mixed) margins** — pass a
+length-2 vector such as `margins = c("normal", "exponential")` to give each
+variable its own marginal family. The core time-series models (`dcvar()`,
+`dcvar_hmm()`, `dcvar_constant(copula = "gaussian")`) support all four marginal
+families — **normal**, **exponential**, **skew-normal**, and **gamma** — singly
+or mixed. `dcvar_multilevel()` and `dcvar_sem()` support normal and exponential
+as a single family, and all four families when mixed.
+`dcvar_constant(copula = "clayton")` provides a Clayton-copula baseline with
+normal or mixed margins.
 
 If you are reading the accompanying manuscript, note that `dcvar` now includes
 the constant Clayton-copula baseline, the exponential-margin multilevel model,

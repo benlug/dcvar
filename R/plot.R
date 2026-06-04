@@ -4,7 +4,8 @@
 
 #' Plot the rho trajectory with credible intervals
 #'
-#' @param object A `dcvar_fit` or `dcvar_hmm_fit` object.
+#' @param object A fitted model object with a rho trajectory (`dcvar_fit`,
+#'   `dcvar_covariate_fit`, `dcvar_hmm_fit`, or `dcvar_constant_fit`).
 #' @param show_ci Logical; show credible interval ribbons (default: `TRUE`).
 #' @param ci_level Credible interval level for the outer ribbon (default: 0.95).
 #' @param inner_level Credible interval level for the inner ribbon (default:

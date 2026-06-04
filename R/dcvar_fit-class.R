@@ -119,7 +119,8 @@ print.dcvar_summary <- function(x, ...) {
 
 
 #' @describeIn dcvar_fit-methods Extract posterior means of model coefficients.
-#' @return A named list with elements `mu`, `Phi`, `sigma_eps`, and
+#' @return A named list of posterior means: `mu`, `Phi`, margin-specific
+#'   scale/shape parameters (e.g. `sigma_eps` for normal margins), and
 #'   `sigma_omega`.
 #' @export
 coef.dcvar_fit <- function(object, ...) {

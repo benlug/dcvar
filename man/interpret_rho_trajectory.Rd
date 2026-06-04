@@ -14,17 +14,20 @@ interpret_rho_trajectory(
 )
 }
 \arguments{
-\item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_hmm_fit}, or
-\code{dcvar_constant_fit}).}
+\item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_covariate_fit},
+\code{dcvar_hmm_fit}, \code{dcvar_constant_fit}, \code{dcvar_multilevel_fit}, or
+\code{dcvar_sem_fit}).}
 
 \item{threshold}{Minimum absolute change in posterior-mean rho to be
 considered "meaningful" (default: 0.1).}
 
 \item{strength_breaks}{Named numeric vector of thresholds for classifying
-correlation strength (default: \code{c(strong = 0.7, moderate = 0.4, weak = 0.2)}). Values above the highest threshold are "strong", etc.}
+correlation strength (default: \code{c(strong = 0.7, moderate = 0.4, weak = 0.2)}). Values above the highest threshold are "strong", etc.;
+values at or below the lowest threshold are classified as "negligible".}
 
 \item{magnitude_breaks}{Named numeric vector of thresholds for classifying
-the magnitude of trajectory range (default: \code{c(large = 0.5, moderate = 0.3, small = 0.1)}).}
+the magnitude of trajectory range (default: \code{c(large = 0.5, moderate = 0.3, small = 0.1)}). Values at or below the lowest threshold are classified as
+"negligible".}
 
 \item{fluctuation_threshold}{Proportion of sign changes in first differences
 to flag "substantial fluctuation" (default: 0.3).}

@@ -95,10 +95,10 @@ print.dcvar_multilevel_summary <- function(x, ...) {
   if (!is.null(x$var_params$sigma)) {
     cat("\n  sigma:\n")
     print(x$var_params$sigma[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
-  }
-  if (!is.null(x$var_params$sigma_exp)) {
-    cat("\n  sigma_exp:\n")
-    print(x$var_params$sigma_exp[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+  } else {
+    # Exponential and per-variable (mixed) margins report scale/shape under
+    # family-specific names (sigma_exp / omega / delta / sigma_gam / shape_gam).
+    .print_margin_params(x$var_params)
   }
   if (!is.null(x$var_params$rho)) {
     cat("\n  rho:\n")
@@ -123,7 +123,10 @@ print.dcvar_multilevel_summary <- function(x, ...) {
 #'   \item{`phi_bar`}{Population-mean VAR coefficients (analogous to `Phi`
 #'     in single-level models, vectorised as phi11, phi12, phi21, phi22).}
 #'   \item{`tau_phi`}{Between-unit SD of VAR coefficients.}
-#'   \item{`sigma`}{Innovation SDs.}
+#'   \item{scale parameters}{`sigma` (innovation SDs) for normal margins,
+#'     `sigma_exp` for exponential margins, or per-family scale/shape parameters
+#'     (e.g. `sigma_eps`, `sigma_gam`, `shape_gam`) for per-variable (mixed)
+#'     margins.}
 #'   \item{`rho`}{Copula correlation (constant across units).}
 #' }
 #' Use [random_effects()] to obtain unit-specific VAR coefficients.

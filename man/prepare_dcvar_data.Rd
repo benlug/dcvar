@@ -28,12 +28,19 @@ prepare_dcvar_data(
 
 \item{standardize}{Logical; whether to z-score variables (default: \code{TRUE}).}
 
-\item{margins}{Character string specifying the marginal distribution.
-One of \code{"normal"} (default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
+\item{margins}{Marginal distribution specification. Either a single string
+applied to both variables, or a length-2 character vector giving a
+per-variable (mixed) margin (for example \code{c("normal", "exponential")}).
+Each entry is one of \code{"normal"} (default), \code{"exponential"},
+\code{"skew_normal"}, or \code{"gamma"}. When the two entries differ the returned
+data carries an integer \code{family} array for the generic mixed-margins Stan
+model; identical entries are equivalent to the scalar form and reuse the
+specialised single-family model.}
 
 \item{skew_direction}{Integer vector of length D indicating skew direction
 for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1}
-(left-skewed). Required for \code{"exponential"} and \code{"gamma"} margins.}
+(left-skewed). Required whenever any dimension uses an \code{"exponential"} or
+\code{"gamma"} margin.}
 
 \item{prior_mu_sd}{Prior SD for intercepts: \code{mu ~ normal(0, prior_mu_sd)}.}
 

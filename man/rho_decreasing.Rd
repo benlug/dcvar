@@ -15,9 +15,9 @@ rho_decreasing(
 \arguments{
 \item{n_time}{Number of time points.}
 
-\item{rho_start}{Starting rho value (default: 0.7).}
+\item{rho_start}{Starting rho value (default: 0.7). Must be in [-1, 1].}
 
-\item{rho_end}{Ending rho value (default: 0.3).}
+\item{rho_end}{Ending rho value (default: 0.3). Must be in [-1, 1].}
 
 \item{midpoint}{Time point of inflection (default: \code{n_time/2}).}
 

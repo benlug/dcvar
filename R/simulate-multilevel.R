@@ -30,7 +30,10 @@
 #'
 #' @return A named list with:
 #'   - `data`: panel data frame with columns `id`, `time`, `y1`, `y2`
-#'   - `true_params`: list of true parameter values
+#'   - `true_params`: list of true parameter values, including `phi_bar`,
+#'     `tau_phi`, `sigma`, `rho`, `margins`, `skew_direction`, `skew_params`,
+#'     and the per-unit VAR coefficients `Phi_mat` (an `N x 4` matrix) and
+#'     `Phi_list` (a length-`N` list of `2 x 2` matrices)
 #'   - `person_means`: N x 2 matrix of person means (before centering)
 #' @export
 simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
@@ -156,13 +159,6 @@ simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
     ),
     person_means = person_means
   )
-}
-
-
-#' Compute the spectral radius of a 2x2 VAR coefficient matrix
-#' @noRd
-.spectral_radius <- function(Phi) {
-  max(Mod(eigen(Phi, only.values = TRUE)$values))
 }
 
 

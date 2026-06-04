@@ -107,7 +107,7 @@ generated quantities {
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
       for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-      b_gq[i] = m;
+      b_gq[i] = fmax(m, 0);
       sigma_exp[i] = fmax(m, 0) + exp(eta[i]) + sigma_eps;
       rate_exp[i] = 1.0 / sigma_exp[i];
     }

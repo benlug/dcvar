@@ -139,9 +139,9 @@ dcvar_compare(dcvar = fit_dc, hmm = fit_hmm, constant = fit_con)
 ## Extracting Tidy Summaries
 
 All fit objects support `as.data.frame()` for exporting tidy parameter
-summaries. The three core time-series fits shown here also support
-`fitted()`/`predict()` for one-step-ahead values; SEM and multilevel fits do
-not currently implement those methods:
+summaries. All five fit families also support `fitted()`/`predict()` for
+one-step-ahead values (for SEM and multilevel fits as well), with prediction
+intervals restricted to normal margins:
 
 ```{r tidy}
 # Full parameter summary as a data frame

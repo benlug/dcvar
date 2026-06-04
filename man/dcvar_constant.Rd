@@ -47,11 +47,13 @@ per-variable (mixed) margin (for example
 \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}. When the two entries
 differ the fit uses a generic mixed-margins Stan model; identical entries
 are equivalent to the scalar form and reuse the specialised single-family
-model. Mixed margins currently require the Gaussian copula.}
+model. Mixed margins are supported with the Gaussian copula, and (for
+\code{dcvar_constant}) additionally with the Clayton copula.}
 
 \item{copula}{Character string specifying the copula family. One of
-\code{"gaussian"} (default) or \code{"clayton"}. Clayton is currently available
-only with normal margins.}
+\code{"gaussian"} (default) or \code{"clayton"}. Clayton is currently available with
+normal margins or a per-variable (mixed) margin vector; a single
+non-normal family with Clayton is not yet supported.}
 
 \item{skew_direction}{Integer vector of length 2 indicating skew direction
 for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1}

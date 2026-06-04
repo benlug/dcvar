@@ -92,9 +92,6 @@ simulate_dcvar <- function(n_time,
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
   margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
-  if (length(margins_vec) != D) {
-    cli_abort("{.arg margins} must have length 1 or {.val {D}}, got {.val {length(margins)}}.")
-  }
 
   if (!is.null(skew_params) && !is.list(skew_params)) {
     cli_abort("{.arg skew_params} must be a list.")

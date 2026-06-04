@@ -36,7 +36,8 @@ Invisibly returns \code{x}.
 
 A \code{dcvar_hmm_summary} object (a list).
 
-A named list with elements \code{mu}, \code{Phi}, \code{sigma_eps}, \code{z_rho}, and
+A named list of posterior means: \code{mu}, \code{Phi}, margin-specific
+scale/shape parameters (e.g. \code{sigma_eps} for normal margins), \code{z_rho}, and
 \code{rho_state}.
 
 A ggplot object.

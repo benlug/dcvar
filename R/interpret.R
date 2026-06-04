@@ -15,16 +15,19 @@
 #' Generates a human-readable interpretation of the estimated rho trajectory,
 #' describing the overall trend, magnitude of change, and key features.
 #'
-#' @param object A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
-#'   `dcvar_constant_fit`).
+#' @param object A fitted model object (`dcvar_fit`, `dcvar_covariate_fit`,
+#'   `dcvar_hmm_fit`, `dcvar_constant_fit`, `dcvar_multilevel_fit`, or
+#'   `dcvar_sem_fit`).
 #' @param threshold Minimum absolute change in posterior-mean rho to be
 #'   considered "meaningful" (default: 0.1).
 #' @param strength_breaks Named numeric vector of thresholds for classifying
 #'   correlation strength (default: `c(strong = 0.7, moderate = 0.4,
-#'   weak = 0.2)`). Values above the highest threshold are "strong", etc.
+#'   weak = 0.2)`). Values above the highest threshold are "strong", etc.;
+#'   values at or below the lowest threshold are classified as "negligible".
 #' @param magnitude_breaks Named numeric vector of thresholds for classifying
 #'   the magnitude of trajectory range (default: `c(large = 0.5, moderate = 0.3,
-#'   small = 0.1)`).
+#'   small = 0.1)`). Values at or below the lowest threshold are classified as
+#'   "negligible".
 #' @param fluctuation_threshold Proportion of sign changes in first differences
 #'   to flag "substantial fluctuation" (default: 0.3).
 #' @param ... Additional arguments (unused).

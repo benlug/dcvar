@@ -8,9 +8,11 @@
 
 #' Per-dimension margin family codes passed to the generic mixed Stan model
 #'
-#' These integer codes label each dimension's marginal family for
-#' `constant_mixed.stan` (and future generic models). The order must match the
-#' `family[i] == k` dispatch in the Stan code.
+#' These integer codes label each dimension's marginal family for the generic
+#' mixed Stan models (`constant_mixed`, `constant_mixed_clayton`,
+#' `dcvar_mixed_ncp`, `hmm_mixed`, `multilevel_mixed`, `sem_mixed`, and
+#' `sem_naive_mixed`). The order must match the `family[i] == k` dispatch in the
+#' Stan code.
 #' @noRd
 .family_codes <- c(normal = 1L, exponential = 2L, skew_normal = 3L, gamma = 4L)
 
@@ -30,23 +32,6 @@
   } else {
     margins
   }
-}
-
-#' Require a scalar (single-family) margin specification
-#'
-#' Phase 1 of the per-variable margins feature implements mixed margins for the
-#' constant model only. The other model families still require a single margin
-#' family applied to both variables; this guard fails fast with a clear message
-#' if a length-2 vector reaches them.
-#' @noRd
-.require_scalar_margins <- function(margins, fn) {
-  if (length(margins) > 1L) {
-    cli_abort(c(
-      "Per-variable (mixed) margins are not supported by {.fun {fn}}.",
-      "i" = "Mixed margins are currently available only via {.fun dcvar_constant}."
-    ))
-  }
-  invisible(TRUE)
 }
 
 #' Is this a genuinely mixed (per-variable) margin specification?

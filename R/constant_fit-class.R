@@ -131,7 +131,9 @@ print.dcvar_constant_summary <- function(x, ...) {
 
 #' @describeIn dcvar_constant_fit-methods Extract posterior means of model
 #'   coefficients.
-#' @return A named list with elements `mu`, `Phi`, `sigma_eps`, and `rho`.
+#' @return A named list of posterior means: `mu`, `Phi`, margin-specific
+#'   scale/shape parameters (e.g. `sigma_eps` for normal margins), and either
+#'   `rho` (Gaussian copula) or `theta` (Clayton copula).
 #' @export
 coef.dcvar_constant_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)

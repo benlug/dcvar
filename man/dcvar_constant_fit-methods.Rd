@@ -32,7 +32,9 @@ Invisibly returns \code{x}.
 
 A \code{dcvar_constant_summary} object (a list).
 
-A named list with elements \code{mu}, \code{Phi}, \code{sigma_eps}, and \code{rho}.
+A named list of posterior means: \code{mu}, \code{Phi}, margin-specific
+scale/shape parameters (e.g. \code{sigma_eps} for normal margins), and either
+\code{rho} (Gaussian copula) or \code{theta} (Clayton copula).
 
 A ggplot object.
 }

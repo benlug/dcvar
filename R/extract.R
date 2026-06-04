@@ -8,7 +8,8 @@
 #' time-varying correlation at each time point.
 #'
 #' @param object A fitted model object (`dcvar_fit`, `dcvar_covariate_fit`,
-#'   `dcvar_hmm_fit`, or `dcvar_constant_fit`).
+#'   `dcvar_hmm_fit`, `dcvar_constant_fit`, `dcvar_multilevel_fit`, or
+#'   `dcvar_sem_fit`).
 #' @param probs Numeric vector of quantile probabilities (default: `c(0.025, 0.1, 0.5, 0.9, 0.975)`).
 #' @param ... Additional arguments (unused).
 #'

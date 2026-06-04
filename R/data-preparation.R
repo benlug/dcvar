@@ -128,7 +128,7 @@
 #' @param allow_gaps Logical scalar; if `FALSE` (default), interior missing values
 #'   cause an error. If `TRUE`, they produce a warning and are removed.
 #'
-#' @return A list with elements `Y`, `n_time`, `D`, and standardization metadata.
+#' @return A list with elements `Y`, `T_obs`, `D`, and standardization metadata.
 #' @noRd
 .prepare_var_data <- function(data, vars, time_var = "time",
                               standardize = TRUE, allow_gaps = FALSE) {
@@ -321,11 +321,18 @@
 #' @param vars Character vector of two variable names to model.
 #' @param time_var Name of the time column (default: `"time"`).
 #' @param standardize Logical; whether to z-score variables (default: `TRUE`).
-#' @param margins Character string specifying the marginal distribution.
-#'   One of `"normal"` (default), `"exponential"`, `"skew_normal"`, or `"gamma"`.
+#' @param margins Marginal distribution specification. Either a single string
+#'   applied to both variables, or a length-2 character vector giving a
+#'   per-variable (mixed) margin (for example `c("normal", "exponential")`).
+#'   Each entry is one of `"normal"` (default), `"exponential"`,
+#'   `"skew_normal"`, or `"gamma"`. When the two entries differ the returned
+#'   data carries an integer `family` array for the generic mixed-margins Stan
+#'   model; identical entries are equivalent to the scalar form and reuse the
+#'   specialised single-family model.
 #' @param skew_direction Integer vector of length D indicating skew direction
 #'   for asymmetric margins. Each element must be `1` (right-skewed) or `-1`
-#'   (left-skewed). Required for `"exponential"` and `"gamma"` margins.
+#'   (left-skewed). Required whenever any dimension uses an `"exponential"` or
+#'   `"gamma"` margin.
 #' @param prior_mu_sd Prior SD for intercepts: `mu ~ normal(0, prior_mu_sd)`.
 #' @param prior_phi_sd Prior SD for VAR coefficients: `Phi ~ normal(0, prior_phi_sd)`.
 #' @param prior_sigma_eps_rate Prior mean for innovation SDs:
@@ -463,10 +470,13 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
 #' @param prior_tau_phi_scale Prior scale for tau_phi.
 #' @param prior_sigma_sd Prior SD for sigma.
 #' @param prior_rho_sd Prior SD for rho.
-#' @param margins Character string specifying the marginal distribution.
-#'   One of `"normal"` (default) or `"exponential"`.
-#' @param skew_direction Length-2 integer vector of +1/-1 for exponential
-#'   margins.
+#' @param margins Marginal distribution specification. A single string is
+#'   restricted to `"normal"` (default) or `"exponential"`. A length-2 character
+#'   vector gives a per-variable (mixed) margin that may combine any of
+#'   `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per dimension,
+#'   routing to the generic `multilevel_mixed` Stan model.
+#' @param skew_direction Length-2 integer vector of +1/-1. Required whenever any
+#'   dimension uses an `"exponential"` or `"gamma"` margin.
 #'
 #' @return A named list suitable as Stan data input.
 #' @export
@@ -610,10 +620,13 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
 #' @param J Number of indicators per latent variable.
 #' @param lambda Numeric vector of length J with fixed factor loadings.
 #' @param sigma_e Fixed measurement error SD (scalar).
-#' @param margins Character string specifying the latent innovation margin.
-#'   One of `"normal"` (default) or `"exponential"`.
-#' @param skew_direction Integer vector of length 2 indicating skew direction
-#'   for exponential margins. Required when `margins = "exponential"`.
+#' @param margins Latent innovation margin specification. A single string is
+#'   restricted to `"normal"` (default) or `"exponential"`. A length-2 character
+#'   vector gives a per-variable (mixed) margin that may combine any of
+#'   `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per dimension,
+#'   routing to the generic `sem_mixed` / `sem_naive_mixed` Stan model.
+#' @param skew_direction Integer vector of length 2 of +1/-1. Required whenever
+#'   any dimension uses an `"exponential"` or `"gamma"` margin.
 #' @param time_var Name of the time column (default: `"time"`).
 #' @param prior_mu_sd Prior SD for intercepts.
 #' @param prior_phi_sd Prior SD for VAR coefficients.

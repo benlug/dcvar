@@ -30,7 +30,8 @@ columns (\code{type = "link"}) or observed-indicator columns
 }
 \description{
 Returns the one-step-ahead fitted values (posterior mean of y_hat) from the
-VAR(1) component: \code{y_hat[t] = mu + Phi * (y[t-1] - mu)}.
+VAR(1) component. For single-level fits (constant, dynamic, HMM, covariate)
+this is the mean-centered form \code{y_hat[t] = mu + Phi * (y[t-1] - mu)}.
 }
 \details{
 If the model was fit with \code{standardize = TRUE} (the default), fitted values
@@ -38,7 +39,11 @@ are on the standardized (z-scored) scale by default. Use \code{type = "response"
 to back-transform to the original data scale.
 
 \code{fitted()} and \code{predict()} are implemented for the public fit classes. For
-multilevel fits, the methods return unit-specific trajectories. For SEM fits,
-\code{type = "link"} returns latent-state summaries and \code{type = "response"}
-returns observed indicator-scale summaries.
+multilevel fits, the methods return unit-specific trajectories; because the
+data are already person-mean-centered, the link-scale fitted values apply the
+unit's VAR matrix to the previous observation with no \code{mu} term
+(\code{y_hat[t] = Phi_unit \%*\% y[t-1]}), and the person mean is re-added only for
+\code{type = "response"}. For SEM fits, \code{type = "link"}
+returns latent-state summaries and \code{type = "response"} returns observed
+indicator-scale summaries.
 }

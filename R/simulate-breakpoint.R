@@ -20,11 +20,15 @@
 #' @param transition_width Number of time points for smooth transition
 #'   (default: 0 = abrupt).
 #' @param mu Intercept vector of length 2 (default: `c(0, 0)`).
-#' @param Phi VAR(1) coefficient matrix, 2x2.
+#' @param Phi VAR(1) coefficient matrix, 2x2 (default:
+#'   `matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2)`).
 #' @param sigma_eps Innovation SDs, length 2 (default: `c(1, 1)`).
 #' @param seed Random seed.
 #'
-#' @return A named list as returned by [simulate_dcvar()].
+#' @return A named list as returned by [simulate_dcvar()]. Its `true_params`
+#'   additionally records the breakpoint specification: `type`, plus
+#'   `breakpoint` (single) or `breakpoints` (double), as proportions of
+#'   `n_time - 1`.
 #' @export
 #'
 #' @examples
@@ -53,6 +57,17 @@ simulate_breakpoint_data <- function(n_time,
                     transition_width = transition_width)
   }
 
-  simulate_dcvar(n_time = n_time, rho_trajectory = rho_traj,
-                 mu = mu, Phi = Phi, sigma_eps = sigma_eps, seed = seed)
+  sim <- simulate_dcvar(n_time = n_time, rho_trajectory = rho_traj,
+                        mu = mu, Phi = Phi, sigma_eps = sigma_eps, seed = seed)
+
+  # Record the breakpoint specification so it is available alongside the other
+  # true parameters (as proportions of n_time - 1, matching the arguments).
+  sim$true_params$type <- type
+  if (type == "single") {
+    sim$true_params$breakpoint <- breakpoint
+  } else {
+    sim$true_params$breakpoints <- breakpoints
+  }
+
+  sim
 }

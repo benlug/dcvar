@@ -26,7 +26,7 @@ data {
   // Prior hyperparameters
   real<lower=0> sigma_mu_prior;                // Prior SD for intercepts
   real<lower=0> sigma_phi_prior;               // Prior SD for VAR coefficients
-  real<lower=0> sigma_eps_prior;               // Prior SD for normal innovation SDs
+  real<lower=0> sigma_eps_prior;               // Prior mean for normal innovation SDs (exponential prior scale)
 }
 
 transformed data {

@@ -94,7 +94,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
     gamma = {
       .pit_gamma(object, eps_mean)
     },
-    cli_abort("Unknown margin type: {.val {margins}}")
+    cli_abort("Unknown margin type: {.val {margins[[1L]]}}")
   )
 }
 

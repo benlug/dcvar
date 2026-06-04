@@ -54,7 +54,10 @@ dimension uses an \code{"exponential"} or \code{"gamma"} margin.}
 A named list with:
 \itemize{
 \item \code{data}: panel data frame with columns \code{id}, \code{time}, \code{y1}, \code{y2}
-\item \code{true_params}: list of true parameter values
+\item \code{true_params}: list of true parameter values, including \code{phi_bar},
+\code{tau_phi}, \code{sigma}, \code{rho}, \code{margins}, \code{skew_direction}, \code{skew_params},
+and the per-unit VAR coefficients \code{Phi_mat} (an \verb{N x 4} matrix) and
+\code{Phi_list} (a length-\code{N} list of \verb{2 x 2} matrices)
 \item \code{person_means}: N x 2 matrix of person means (before centering)
 }
 }

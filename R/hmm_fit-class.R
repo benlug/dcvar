@@ -113,6 +113,7 @@ print.dcvar_hmm_summary <- function(x, ...) {
   print(x$var_params$mu[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
   cat("\n  Phi:\n")
   print(x$var_params$Phi[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+  .print_margin_params(x$var_params)
 
   cat("\nDiagnostics:\n")
   cat(sprintf("  Divergences: %d\n", x$diagnostics$n_divergent))
@@ -125,7 +126,8 @@ print.dcvar_hmm_summary <- function(x, ...) {
 
 #' @describeIn dcvar_hmm_fit-methods Extract posterior means of model
 #'   coefficients including state-specific rho values.
-#' @return A named list with elements `mu`, `Phi`, `sigma_eps`, `z_rho`, and
+#' @return A named list of posterior means: `mu`, `Phi`, margin-specific
+#'   scale/shape parameters (e.g. `sigma_eps` for normal margins), `z_rho`, and
 #'   `rho_state`.
 #' @export
 coef.dcvar_hmm_fit <- function(object, ...) {

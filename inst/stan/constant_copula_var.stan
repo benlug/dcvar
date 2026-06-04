@@ -17,7 +17,7 @@ data {
   // Prior hyperparameters
   real<lower=0> sigma_mu_prior;      // Prior SD for intercepts
   real<lower=0> sigma_phi_prior;     // Prior SD for VAR coefficients
-  real<lower=0> sigma_eps_prior;     // Prior SD for innovation SDs
+  real<lower=0> sigma_eps_prior;     // Prior mean for innovation SDs (exponential prior scale)
   real<lower=0> z_rho_prior_sd;      // Prior SD for rho (on z/tanh scale)
 }
 

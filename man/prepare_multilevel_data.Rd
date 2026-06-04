@@ -37,11 +37,14 @@ prepare_multilevel_data(
 
 \item{prior_rho_sd}{Prior SD for rho.}
 
-\item{margins}{Character string specifying the marginal distribution.
-One of \code{"normal"} (default) or \code{"exponential"}.}
+\item{margins}{Marginal distribution specification. A single string is
+restricted to \code{"normal"} (default) or \code{"exponential"}. A length-2 character
+vector gives a per-variable (mixed) margin that may combine any of
+\code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, and \code{"gamma"} per dimension,
+routing to the generic \code{multilevel_mixed} Stan model.}
 
-\item{skew_direction}{Length-2 integer vector of +1/-1 for exponential
-margins.}
+\item{skew_direction}{Length-2 integer vector of +1/-1. Required whenever any
+dimension uses an \code{"exponential"} or \code{"gamma"} margin.}
 }
 \value{
 A named list suitable as Stan data input.

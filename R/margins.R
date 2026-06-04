@@ -32,23 +32,6 @@
   }
 }
 
-#' Require a scalar (single-family) margin specification
-#'
-#' Phase 1 of the per-variable margins feature implements mixed margins for the
-#' constant model only. The other model families still require a single margin
-#' family applied to both variables; this guard fails fast with a clear message
-#' if a length-2 vector reaches them.
-#' @noRd
-.require_scalar_margins <- function(margins, fn) {
-  if (length(margins) > 1L) {
-    cli_abort(c(
-      "Per-variable (mixed) margins are not supported by {.fun {fn}}.",
-      "i" = "Mixed margins are currently available only via {.fun dcvar_constant}."
-    ))
-  }
-  invisible(TRUE)
-}
-
 #' Is this a genuinely mixed (per-variable) margin specification?
 #'
 #' Returns `TRUE` only when the margins vector contains more than one distinct

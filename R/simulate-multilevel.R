@@ -159,13 +159,6 @@ simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
 }
 
 
-#' Compute the spectral radius of a 2x2 VAR coefficient matrix
-#' @noRd
-.spectral_radius <- function(Phi) {
-  max(Mod(eigen(Phi, only.values = TRUE)$values))
-}
-
-
 #' Project VAR matrix to ensure stationarity
 #' @noRd
 .project_if_needed <- function(Phi, alpha = 0.995) {

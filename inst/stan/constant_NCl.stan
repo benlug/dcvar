@@ -13,7 +13,9 @@ data {
   // Prior hyperparameters
   real<lower=0> sigma_mu_prior;
   real<lower=0> sigma_phi_prior;
-  real<lower=0> sigma_eps_prior;
+  real<lower=0> sigma_eps_prior;  // Half-normal SD for sigma_eps here (NOT an
+                                  // exponential mean as in the other constant
+                                  // models); see the prior in the model block.
 }
 
 transformed data {
@@ -39,6 +41,13 @@ transformed parameters {
 model {
   mu ~ normal(0, sigma_mu_prior);
   to_vector(Phi) ~ normal(0, sigma_phi_prior);
+  // NOTE: this Clayton-normal model intentionally puts a half-normal prior on
+  // sigma_eps (with sigma_eps_prior as its scale), which differs from the
+  // exponential(1 / sigma_eps_prior) prior used by the Gaussian and mixed
+  // constant models (constant_copula_var.stan, constant_mixed.stan,
+  // constant_mixed_clayton.stan). The two priors therefore interpret the same
+  // sigma_eps_prior hyperparameter differently; this divergence is deliberate
+  // and retained to keep existing Clayton-normal results reproducible.
   sigma_eps ~ normal(0, sigma_eps_prior);
   theta ~ lognormal(0, 1);
 

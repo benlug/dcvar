@@ -126,7 +126,8 @@ print.dcvar_hmm_summary <- function(x, ...) {
 
 #' @describeIn dcvar_hmm_fit-methods Extract posterior means of model
 #'   coefficients including state-specific rho values.
-#' @return A named list with elements `mu`, `Phi`, `sigma_eps`, `z_rho`, and
+#' @return A named list of posterior means: `mu`, `Phi`, margin-specific
+#'   scale/shape parameters (e.g. `sigma_eps` for normal margins), `z_rho`, and
 #'   `rho_state`.
 #' @export
 coef.dcvar_hmm_fit <- function(object, ...) {

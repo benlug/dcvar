@@ -7,8 +7,9 @@
 #' Returns the full parameter summary as a tidy data frame with
 #' correct 2.5%/97.5% quantiles.
 #'
-#' @param x A fitted model object (`dcvar_fit`, `dcvar_hmm_fit`, or
-#'   `dcvar_constant_fit`).
+#' @param x A fitted dcvar model object (any subclass of `dcvar_model_fit`:
+#'   `dcvar_fit`, `dcvar_constant_fit`, `dcvar_hmm_fit`, `dcvar_covariate_fit`,
+#'   `dcvar_sem_fit`, or `dcvar_multilevel_fit`).
 #' @param row.names Ignored.
 #' @param optional Ignored.
 #' @param ... Additional arguments (unused).

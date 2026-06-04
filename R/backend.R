@@ -366,6 +366,14 @@ NULL
 #' @param variables Character vector of parameter names, or `NULL` for all.
 #' @param format One of `"draws_array"`, `"draws_matrix"`, `"draws_df"`.
 #' @param backend Character: `"rstan"` or `"cmdstanr"`.
+#' @param required Character vector of variable names (or patterns) that must be
+#'   present in the draws, passed to `.validate_required_stan_outputs()`; `NULL`
+#'   skips the check.
+#' @param required_type Either `"exact"` (match `required` as literal variable
+#'   names) or `"pattern"` (match as regular expressions).
+#' @param context,output_type Message-customisation strings used to build a
+#'   clear error when a `required` output is missing (the calling method name
+#'   and a human label for the expected output, respectively).
 #' @return A `posterior::draws_*` object.
 #' @noRd
 .fit_draws <- function(fit, variables = NULL,
@@ -463,7 +471,11 @@ NULL
 #' @param variables Character vector or `NULL`.
 #' @param backend Character.
 #' @param ... Optional summary functions forwarded to
-#'   [posterior::summarise_draws()].
+#'   [posterior::summarise_draws()]. The names `required`, `required_type`,
+#'   `context`, and `output_type` are reserved: they are consumed here for
+#'   output validation (routed to `.fit_draws()` /
+#'   `.validate_required_stan_outputs()`) and are stripped before forwarding, so
+#'   they are never passed to [posterior::summarise_draws()].
 #' @return A tibble.
 #' @noRd
 .fit_summary <- function(fit, variables = NULL, backend, ...) {

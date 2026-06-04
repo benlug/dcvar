@@ -129,10 +129,12 @@ via \code{rho = 0.97 * tanh(rho_raw)} to avoid boundary singularity in the
 Gaussian copula density. Extremely high correlations near \eqn{\pm 1}
 are truncated.
 
-\strong{Margins.} The SEM model currently supports normal and exponential latent
+\strong{Margins.} Single-family SEM fits support normal and exponential latent
 innovation margins. Exponential margins use the same shifted-exponential
 parameterization as the single-level models and therefore require
-\code{skew_direction}. Other non-normal margins are not yet available.
+\code{skew_direction}. A per-variable (mixed) \code{margins} vector additionally
+supports \code{"skew_normal"} and \code{"gamma"} per dimension, routing to a generic
+mixed-margins Stan model.
 
 \strong{Post-estimation.} \code{fitted()} and \code{predict()} are available for both the
 latent-state scale (\code{type = "link"}) and the observed-indicator scale
@@ -140,9 +142,12 @@ latent-state scale (\code{type = "link"}) and the observed-indicator scale
 full posterior summaries of the latent trajectories.
 }
 \note{
-This model currently supports normal and exponential latent margins.
-For skew-normal or gamma margins, use \code{\link[=dcvar]{dcvar()}}, \code{\link[=dcvar_constant]{dcvar_constant()}}, or
-\code{\link[=dcvar_hmm]{dcvar_hmm()}}.
+Single-family SEM fits are limited to normal and exponential latent
+margins. Skew-normal and gamma margins are available within \code{dcvar_sem}
+itself via a per-variable (mixed) \code{margins} vector (for example
+\code{c("normal", "gamma")}); only a homogeneous skew-normal or gamma latent
+margin requires another model family such as \code{\link[=dcvar]{dcvar()}},
+\code{\link[=dcvar_constant]{dcvar_constant()}}, or \code{\link[=dcvar_hmm]{dcvar_hmm()}}.
 }
 \seealso{
 \code{\link[=latent_states]{latent_states()}} for extracting estimated latent states,

@@ -32,11 +32,14 @@ columns per latent variable.}
 
 \item{sigma_e}{Fixed measurement error SD (scalar).}
 
-\item{margins}{Character string specifying the latent innovation margin.
-One of \code{"normal"} (default) or \code{"exponential"}.}
+\item{margins}{Latent innovation margin specification. A single string is
+restricted to \code{"normal"} (default) or \code{"exponential"}. A length-2 character
+vector gives a per-variable (mixed) margin that may combine any of
+\code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, and \code{"gamma"} per dimension,
+routing to the generic \code{sem_mixed} / \code{sem_naive_mixed} Stan model.}
 
-\item{skew_direction}{Integer vector of length 2 indicating skew direction
-for exponential margins. Required when \code{margins = "exponential"}.}
+\item{skew_direction}{Integer vector of length 2 of +1/-1. Required whenever
+any dimension uses an \code{"exponential"} or \code{"gamma"} margin.}
 
 \item{time_var}{Name of the time column (default: \code{"time"}).}
 

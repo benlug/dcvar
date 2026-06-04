@@ -8,9 +8,11 @@
 
 #' Per-dimension margin family codes passed to the generic mixed Stan model
 #'
-#' These integer codes label each dimension's marginal family for
-#' `constant_mixed.stan` (and future generic models). The order must match the
-#' `family[i] == k` dispatch in the Stan code.
+#' These integer codes label each dimension's marginal family for the generic
+#' mixed Stan models (`constant_mixed`, `constant_mixed_clayton`,
+#' `dcvar_mixed_ncp`, `hmm_mixed`, `multilevel_mixed`, `sem_mixed`, and
+#' `sem_naive_mixed`). The order must match the `family[i] == k` dispatch in the
+#' Stan code.
 #' @noRd
 .family_codes <- c(normal = 1L, exponential = 2L, skew_normal = 3L, gamma = 4L)
 

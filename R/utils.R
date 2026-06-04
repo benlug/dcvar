@@ -297,7 +297,9 @@
 #' Generate default SEM initialization values
 #'
 #' @param T_obs Number of time points.
-#' @param margins Character string: `"normal"` or `"exponential"`.
+#' @param margins Margin type: a single string (`"normal"` or `"exponential"`),
+#'   or a per-variable (mixed) margin vector, in which case the union of
+#'   per-family parameters is initialised.
 #' @return A named list with SEM params.
 #' @noRd
 .init_sem_params <- function(T_obs, margins = "normal") {
@@ -329,7 +331,9 @@
 #' Generate default naive SEM initialization values
 #'
 #' @param y T x 2 matrix of row-mean factor scores.
-#' @param margins Character string: `"normal"` or `"exponential"`.
+#' @param margins Margin type: a single string (`"normal"` or `"exponential"`),
+#'   or a per-variable (mixed) margin vector, in which case the union of
+#'   per-family parameters is initialised.
 #' @return A named list with observed-score VAR params.
 #' @noRd
 .init_sem_naive_params <- function(y, margins = "normal") {

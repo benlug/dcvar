@@ -42,14 +42,18 @@ simulate_breakpoint_data(
 
 \item{mu}{Intercept vector of length 2 (default: \code{c(0, 0)}).}
 
-\item{Phi}{VAR(1) coefficient matrix, 2x2.}
+\item{Phi}{VAR(1) coefficient matrix, 2x2 (default:
+\code{matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2)}).}
 
 \item{sigma_eps}{Innovation SDs, length 2 (default: \code{c(1, 1)}).}
 
 \item{seed}{Random seed.}
 }
 \value{
-A named list as returned by \code{\link[=simulate_dcvar]{simulate_dcvar()}}.
+A named list as returned by \code{\link[=simulate_dcvar]{simulate_dcvar()}}. Its \code{true_params}
+additionally records the breakpoint specification: \code{type}, plus
+\code{breakpoint} (single) or \code{breakpoints} (double), as proportions of
+\code{n_time - 1}.
 }
 \description{
 Convenience wrapper that combines \code{\link[=rho_step]{rho_step()}} or \code{\link[=rho_double_step]{rho_double_step()}} with

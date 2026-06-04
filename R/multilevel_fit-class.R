@@ -123,7 +123,10 @@ print.dcvar_multilevel_summary <- function(x, ...) {
 #'   \item{`phi_bar`}{Population-mean VAR coefficients (analogous to `Phi`
 #'     in single-level models, vectorised as phi11, phi12, phi21, phi22).}
 #'   \item{`tau_phi`}{Between-unit SD of VAR coefficients.}
-#'   \item{`sigma`}{Innovation SDs.}
+#'   \item{scale parameters}{`sigma` (innovation SDs) for normal margins,
+#'     `sigma_exp` for exponential margins, or per-family scale/shape parameters
+#'     (e.g. `sigma_eps`, `sigma_gam`, `shape_gam`) for per-variable (mixed)
+#'     margins.}
 #'   \item{`rho`}{Copula correlation (constant across units).}
 #' }
 #' Use [random_effects()] to obtain unit-specific VAR coefficients.

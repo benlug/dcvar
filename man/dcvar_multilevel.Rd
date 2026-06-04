@@ -109,7 +109,9 @@ hierarchical structure with random effects benefits from deeper trees but
 does not require aggressive step-size adaptation.
 }
 \note{
-This model currently supports normal and exponential margins.
+Single-family fits support only normal and exponential margins; use a
+per-variable \code{margins} vector (for example \code{c("normal", "gamma")}) to
+access skew_normal and gamma margins via the mixed-margin model.
 
 The bundled multilevel Stan program is defined for person-mean
 centered data and omits intercept terms. With the bundled model,

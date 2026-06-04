@@ -7,8 +7,9 @@
 \method{as.data.frame}{dcvar_model_fit}(x, row.names = NULL, optional = FALSE, ...)
 }
 \arguments{
-\item{x}{A fitted model object (\code{dcvar_fit}, \code{dcvar_hmm_fit}, or
-\code{dcvar_constant_fit}).}
+\item{x}{A fitted dcvar model object (any subclass of \code{dcvar_model_fit}:
+\code{dcvar_fit}, \code{dcvar_constant_fit}, \code{dcvar_hmm_fit}, \code{dcvar_covariate_fit},
+\code{dcvar_sem_fit}, or \code{dcvar_multilevel_fit}).}
 
 \item{row.names}{Ignored.}
 

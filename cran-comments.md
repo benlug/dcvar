@@ -8,7 +8,7 @@
 
 ## R CMD check results
 
-Local `R CMD check --as-cran` on `dcvar_0.2.0.tar.gz`:
+Local `R CMD check --as-cran` on `dcvar_0.3.0.tar.gz`:
 
 - 0 errors
 - 0 package-caused warnings
@@ -49,6 +49,9 @@ the check-visible surface still exercise real model-fitting paths.
 
 3. Scope of the package
 
-This update adds parity with the simulation-study model families: a constant
-Clayton-copula model for normal margins, exponential-margin multilevel fits,
-and naive SEM score models with normal or exponential margins.
+This update adds per-variable (mixed) margins: each variable can take its own
+marginal family (normal, exponential, skew-normal, or gamma). Mixed margins are
+supported across all model families (constant, dynamic DC-VAR, HMM, multilevel,
+and SEM) via generic mixed-margins Stan models, and additionally with the
+Clayton copula for the constant model. Single-family fits retain the families
+each specialised model already supported.

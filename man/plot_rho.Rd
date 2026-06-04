@@ -15,7 +15,8 @@ plot_rho(
 )
 }
 \arguments{
-\item{object}{A \code{dcvar_fit} or \code{dcvar_hmm_fit} object.}
+\item{object}{A fitted model object with a rho trajectory (\code{dcvar_fit},
+\code{dcvar_covariate_fit}, \code{dcvar_hmm_fit}, or \code{dcvar_constant_fit}).}
 
 \item{show_ci}{Logical; show credible interval ribbons (default: \code{TRUE}).}
 

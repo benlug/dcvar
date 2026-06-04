@@ -12,10 +12,12 @@
 #'   `"exponential"`, `"skew_normal"`, or `"gamma"`. When the two entries
 #'   differ the fit uses a generic mixed-margins Stan model; identical entries
 #'   are equivalent to the scalar form and reuse the specialised single-family
-#'   model. Mixed margins currently require the Gaussian copula.
+#'   model. Mixed margins are supported with the Gaussian copula, and (for
+#'   `dcvar_constant`) additionally with the Clayton copula.
 #' @param copula Character string specifying the copula family. One of
-#'   `"gaussian"` (default) or `"clayton"`. Clayton is currently available
-#'   only with normal margins.
+#'   `"gaussian"` (default) or `"clayton"`. Clayton is currently available with
+#'   normal margins or a per-variable (mixed) margin vector; a single
+#'   non-normal family with Clayton is not yet supported.
 #' @param skew_direction Integer vector of length 2 indicating skew direction
 #'   for asymmetric margins. Each element must be `1` (right-skewed) or `-1`
 #'   (left-skewed). Required whenever any dimension uses an `"exponential"` or

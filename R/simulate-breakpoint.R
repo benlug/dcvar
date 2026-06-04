@@ -20,7 +20,8 @@
 #' @param transition_width Number of time points for smooth transition
 #'   (default: 0 = abrupt).
 #' @param mu Intercept vector of length 2 (default: `c(0, 0)`).
-#' @param Phi VAR(1) coefficient matrix, 2x2.
+#' @param Phi VAR(1) coefficient matrix, 2x2 (default:
+#'   `matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2)`).
 #' @param sigma_eps Innovation SDs, length 2 (default: `c(1, 1)`).
 #' @param seed Random seed.
 #'

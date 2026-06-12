@@ -20,8 +20,8 @@ A named list with:
 \itemize{
 \item \code{bias}: mean bias
 \item \code{relative_bias}: relative bias (\%), the mean error normalized by the
-mean absolute true value (\code{NA} with a warning when all true values are
-near zero)
+mean true value (by the mean absolute true value for mixed-sign
+trajectories; \code{NA} with a warning when all true values are near zero)
 \item \code{coverage}: proportion of intervals containing true value
 \item \code{interval_width}: mean interval width
 \item \code{correlation}: Pearson correlation between true and estimated

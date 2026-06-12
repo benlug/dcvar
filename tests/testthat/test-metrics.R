@@ -134,3 +134,30 @@ test_that("aggregate_metrics rejects malformed rho elements", {
     "full set"
   )
 })
+
+test_that(".relative_bias preserves the sign convention and handles edge cases", {
+  # all-positive truth: ratio-of-means
+  expect_equal(.relative_bias(rep(0.6, 5), rep(0.5, 5)), 20)
+  # all-negative truth: attenuation toward zero stays negative (conventional)
+  expect_equal(.relative_bias(-0.4, -0.5), -20)
+  # mixed-sign truth: magnitude-normalized, no explosion at zero crossings
+  rb <- .relative_bias(c(-0.4, 0, 0.6), c(-0.5, 0, 0.5))
+  expect_true(is.finite(rb))
+  # all-zero truth: NA with a warning
+  expect_warning(rb0 <- .relative_bias(c(0.1, -0.1), c(0, 0)), "undefined")
+  expect_true(is.na(rb0))
+})
+
+test_that("aggregate_metrics tolerates NA relative_bias from null conditions", {
+  m <- suppressWarnings(compute_rho_metrics(
+    rho_true = rep(0, 10),
+    rho_est = rnorm(10, 0, 0.01),
+    rho_lower = rep(-0.2, 10),
+    rho_upper = rep(0.2, 10)
+  ))
+  expect_true(is.na(m$relative_bias))
+  agg <- aggregate_metrics(list(list(rho = m), list(rho = m)))
+  expect_s3_class(agg$rho, "data.frame")
+  expect_true(is.nan(agg$rho$mean[agg$rho$metric == "relative_bias"]) ||
+                is.na(agg$rho$mean[agg$rho$metric == "relative_bias"]))
+})

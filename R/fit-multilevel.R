@@ -49,8 +49,9 @@
 #' @return A `dcvar_multilevel_fit` object.
 #'
 #' @details **Experimental extension.** This multilevel variant supports
-#'   `fitted()` and `predict()`. PSIS-LOO is available for exponential-margin
-#'   multilevel fits. PIT diagnostics are not yet implemented.
+#'   `fitted()` and `predict()`. PSIS-LOO is available for all multilevel
+#'   fits; the stored `log_lik` values are conditional one-step-ahead
+#'   densities given the unit-level random effects. PIT diagnostics are not yet implemented.
 #'
 #'   `adapt_delta` defaults to 0.90 and `max_treedepth` to 14 because the
 #'   hierarchical structure with random effects benefits from deeper trees but

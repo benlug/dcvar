@@ -105,8 +105,9 @@ parameterization for the random Phi coefficients.
 }
 \details{
 \strong{Experimental extension.} This multilevel variant supports
-\code{fitted()} and \code{predict()}. PSIS-LOO is available for exponential-margin
-multilevel fits. PIT diagnostics are not yet implemented.
+\code{fitted()} and \code{predict()}. PSIS-LOO is available for all multilevel
+fits; the stored \code{log_lik} values are conditional one-step-ahead
+densities given the unit-level random effects. PIT diagnostics are not yet implemented.
 
 \code{adapt_delta} defaults to 0.90 and \code{max_treedepth} to 14 because the
 hierarchical structure with random effects benefits from deeper trees but

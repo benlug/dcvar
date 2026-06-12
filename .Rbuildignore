@@ -13,3 +13,10 @@
 ^vignettes/dcvar-walkthrough\.qmd$
 ^cran-comments\.md$
 .*-test-local\.log$
+^inst/stan/constant_mixed_clayton$
+^inst/stan/dcvar_mixed_ncp$
+^inst/stan/hmm_mixed$
+^inst/stan/multilevel_mixed$
+^inst/stan/sem_mixed$
+^inst/stan/sem_naive_mixed$
+^inst/stan/.*\.hpp$

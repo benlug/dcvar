@@ -29,11 +29,14 @@
   regime mixture (a state sampled from the smoothed probabilities, then that
   state's rho) instead of the gamma-weighted mean rho.
 - `.relative_bias()` (used by `compute_rho_metrics()` /
-  `compute_param_metrics()`) now normalizes the mean error by the mean
-  absolute true value. The previous pointwise form exploded to ~1e12 % when
-  any true value was near zero (e.g. null-dependence conditions), silently
-  corrupting aggregated summaries. It returns `NA` with a warning when all
-  true values are near zero.
+  `compute_param_metrics()`) now normalizes the mean error by the mean true
+  value (by the mean absolute true value for mixed-sign trajectories, which
+  preserves the conventional sign for negative parameters). The previous
+  pointwise form exploded to ~1e12 % when any true value was near zero
+  (e.g. null-dependence conditions), silently corrupting aggregated
+  summaries. It returns `NA` with a warning when all true values are near
+  zero, and `aggregate_metrics()` now tolerates that `NA` (its summaries
+  already used `na.rm = TRUE`).
 
 ## Bug fixes
 
@@ -86,7 +89,14 @@
   accept each argument.
 - Warnings are emitted for prior arguments that a configuration ignores
   (`prior_sigma_eps_rate` with no normal margin; `prior_z_rho_sd` with the
-  Clayton copula), and the recorded `priors` list omits unused entries.
+  Clayton copula; `prior_sigma_omega_rate` and `zero_init_eta` with
+  `dcvar_covariate(drift = FALSE)`), and the recorded `priors` list omits
+  unused entries.
+- `interpret_rho_trajectory()` classifies Clayton dependence strength on the
+  rho-equivalent scale (`sin(pi * tau / 2)`), so the labels are comparable
+  with the Gaussian branch for equivalent dependence.
+- Per-chain init seeds are derived in double arithmetic, so seeds near
+  `.Machine$integer.max` no longer overflow and abort the fit.
 
 ## Validation
 

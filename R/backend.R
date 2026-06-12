@@ -342,7 +342,10 @@ NULL
   }, add = TRUE)
 
   lapply(seq_len(chains), function(chain) {
-    set.seed(seed + chain)
+    # Derive the per-chain seed in double arithmetic and wrap: the backends
+    # accept seeds up to .Machine$integer.max, where `seed + chain` would
+    # overflow to NA in integer arithmetic and abort set.seed().
+    set.seed((as.numeric(seed) + chain) %% .Machine$integer.max)
     if (has_chain_arg) init(chain_id = chain) else init()
   })
 }

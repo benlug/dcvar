@@ -102,6 +102,12 @@ reference:
       - dcvar_covariate_fit-methods
       - dcvar_multilevel_fit-methods
       - dcvar_sem_fit-methods
+      - print.dcvar_summary
+      - print.dcvar_hmm_summary
+      - print.dcvar_constant_summary
+      - print.dcvar_covariate_summary
+      - print.dcvar_multilevel_summary
+      - print.dcvar_sem_summary
 
   - title: Utilities
     contents:

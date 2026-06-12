@@ -72,7 +72,11 @@ interpret_rho_trajectory <- function(object, threshold = 0.1,
   if (object$model == "constant" && identical(object$copula %||% "gaussian", "clayton")) {
     tau_df <- dependence_summary(object)
     tau_val <- tau_df$mean[1]
-    strength <- .classify(abs(tau_val), strength_breaks)
+    # tau lives on a compressed scale relative to rho (rho = sin(pi * tau / 2)
+    # for a Gaussian copula), so classify the rho-equivalent value to keep the
+    # strength labels comparable with the Gaussian branch.
+    rho_equiv <- sin(pi * tau_val / 2)
+    strength <- .classify(abs(rho_equiv), strength_breaks)
     direction <- if (tau_val > 0) "positive" else "negative"
 
     msg <- sprintf(

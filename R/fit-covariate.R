@@ -13,6 +13,9 @@
 #'   their original scale.
 #' @param prior_beta_sd Prior SD for the covariate effects:
 #'   `beta ~ normal(0, prior_beta_sd)`.
+#' @param prior_rho_init_sd Prior SD for the dependence intercept `beta_0` on
+#'   the Fisher-z scale (the covariate model has no separate initial-rho
+#'   parameter; `beta_0` plays that role).
 #' @param zero_init_eta Logical; if `TRUE` (default), fixes the first residual
 #'   drift state at zero (`eta[1] = 0`). If `FALSE`, the first transition can
 #'   receive an immediate residual random-walk shock.
@@ -126,6 +129,9 @@ prepare_dcvar_covariate_data <- function(data, vars, covariates,
 #' @param zero_init_eta Logical; if `TRUE` (default), fixes `eta[1] = 0` in the
 #'   residual-drift model.
 #' @param prior_beta_sd Prior SD for covariate effects.
+#' @param prior_rho_init_sd Prior SD for the dependence intercept `beta_0` on
+#'   the Fisher-z scale (the covariate model has no separate initial-rho
+#'   parameter; `beta_0` plays that role).
 #'
 #' @return A `dcvar_covariate_fit` object.
 #'
@@ -220,6 +226,18 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
                           backend = backend)
 
   if (!drift) {
+    # The no-drift model has no residual random walk, so the drift-specific
+    # arguments are inert; warn when the user supplied non-default values.
+    if (!isTRUE(all.equal(prior_sigma_omega_rate, 0.1))) {
+      cli_warn(
+        "{.arg prior_sigma_omega_rate} is ignored when {.code drift = FALSE}: the no-drift model has no residual random walk."
+      )
+    }
+    if (!isTRUE(zero_init_eta)) {
+      cli_warn(
+        "{.arg zero_init_eta} is ignored when {.code drift = FALSE}: the no-drift model has no residual drift states."
+      )
+    }
     stan_data$sigma_omega_prior <- NULL
     stan_data$zero_init_eta <- NULL
   }
@@ -267,13 +285,19 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
     drift = drift,
     zero_init_eta = zero_init_eta,
     backend = backend,
-    priors = list(
-      mu_sd = prior_mu_sd,
-      phi_sd = prior_phi_sd,
-      sigma_eps_rate = prior_sigma_eps_rate,
-      sigma_omega_rate = prior_sigma_omega_rate,
-      rho_init_sd = prior_rho_init_sd,
-      beta_sd = prior_beta_sd
+    priors = c(
+      list(
+        mu_sd = prior_mu_sd,
+        phi_sd = prior_phi_sd,
+        sigma_eps_rate = prior_sigma_eps_rate
+      ),
+      # sigma_omega only exists in the drift model; recording its prior for a
+      # no-drift fit would suggest it was used.
+      if (drift) list(sigma_omega_rate = prior_sigma_omega_rate),
+      list(
+        rho_init_sd = prior_rho_init_sd,
+        beta_sd = prior_beta_sd
+      )
     ),
     meta = list(
       chains = chains,

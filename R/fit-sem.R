@@ -43,7 +43,8 @@
 #' @param iter_sampling Sampling iterations per chain.
 #' @param adapt_delta Target acceptance rate.
 #' @param max_treedepth Maximum tree depth.
-#' @param seed Random seed.
+#' @param seed Random seed. When supplied, it seeds both the Stan sampler and
+#'   the default per-chain initial values, so repeated fits are reproducible.
 #' @param cores Number of parallel chains.
 #' @param refresh How often to print progress.
 #' @param init Custom init function or `NULL`.

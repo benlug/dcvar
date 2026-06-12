@@ -21,7 +21,7 @@ test_that("edge-only NA still just warns", {
 
 test_that("all-NA data errors", {
   df <- data.frame(time = 1:5, y1 = rep(NA_real_, 5), y2 = rep(NA_real_, 5))
-  expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "missing|observations|NA")
+  expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "no complete rows")
 })
 
 # --- Minimum observation requirements ---------------------------------------
@@ -166,10 +166,10 @@ test_that("multilevel rejects missing unit ids", {
 
 test_that("multilevel drops unused factor levels in ids", {
   df <- data.frame(
-    time = c(1, 2, 1, 2),
-    y1 = rnorm(4),
-    y2 = rnorm(4),
-    id = factor(c("A", "A", "B", "B"), levels = c("A", "B", "C"))
+    time = c(1, 2, 3, 1, 2, 3),
+    y1 = rnorm(6),
+    y2 = rnorm(6),
+    id = factor(c("A", "A", "A", "B", "B", "B"), levels = c("A", "B", "C"))
   )
   out <- prepare_multilevel_data(df, vars = c("y1", "y2"), id_var = "id")
   expect_equal(out$N, 2)

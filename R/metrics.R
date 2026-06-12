@@ -13,7 +13,9 @@
 #'
 #' @return A named list with:
 #'   - `bias`: mean bias
-#'   - `relative_bias`: mean relative bias (%)
+#'   - `relative_bias`: relative bias (%), the mean error normalized by the
+#'     mean true value (by the mean absolute true value for mixed-sign
+#'     trajectories; `NA` with a warning when all true values are near zero)
 #'   - `coverage`: proportion of intervals containing true value
 #'   - `interval_width`: mean interval width
 #'   - `correlation`: Pearson correlation between true and estimated
@@ -123,8 +125,15 @@ aggregate_metrics <- function(metrics_list) {
 
   rho_rows <- vapply(metrics_list, function(m) {
     vals <- m$rho[expected_metric_names]
-    if (!all(vapply(vals, function(x) is.numeric(x) && length(x) == 1L && is.finite(x), logical(1)))) {
-      cli_abort("Each metric in {.val rho} must be a single finite numeric value.")
+    # NA is a documented value for relative_bias (null conditions) and for
+    # correlation (degenerate series); the summaries below use na.rm = TRUE.
+    ok <- vapply(
+      vals,
+      function(x) is.numeric(x) && length(x) == 1L && !is.nan(x) && !is.infinite(x),
+      logical(1)
+    )
+    if (!all(ok)) {
+      cli_abort("Each metric in {.val rho} must be a single finite or NA numeric value.")
     }
     unlist(vals, use.names = FALSE)
   }, numeric(length(expected_metric_names)))
@@ -149,10 +158,31 @@ aggregate_metrics <- function(metrics_list) {
 
 
 #' Internal: compute relative bias (%)
+#'
+#' Normalized form: mean error relative to the mean true value. Averaging
+#' pointwise ratios instead would explode (or flip sign) whenever a single
+#' true value is at or near zero -- e.g. a null-dependence rho trajectory --
+#' silently dominating any aggregated summaries.
+#'
+#' When all true values share a sign, the denominator is `mean(true)`, which
+#' preserves the conventional sign of relative bias for negative parameters
+#' (attenuation toward zero is negative). For mixed-sign trajectories the
+#' pointwise convention is ill-defined, so the mean error is normalized by the
+#' mean absolute true value instead.
 #' @noRd
 .relative_bias <- function(estimated, true, epsilon = 1e-10) {
-  denom <- ifelse(abs(true) < epsilon, epsilon, true)
-  mean((estimated - true) / denom) * 100
+  denom <- mean(abs(true))
+  if (denom < epsilon) {
+    cli_warn(c(
+      "Relative bias is undefined when all true values are (near) zero; returning {.val NA}.",
+      "i" = "Use the absolute {.val bias} metric for null conditions."
+    ))
+    return(NA_real_)
+  }
+  if (all(true >= 0) || all(true <= 0)) {
+    return(mean(estimated - true) / mean(true) * 100)
+  }
+  mean(estimated - true) / denom * 100
 }
 
 #' Internal: validate a numeric vector for metric calculations

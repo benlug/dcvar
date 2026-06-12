@@ -301,6 +301,7 @@ NULL
                           chains, iter_warmup, iter_sampling,
                           adapt_delta, max_treedepth,
                           seed, cores, init, refresh, ...) {
+  init <- .seeded_chain_inits(init, chains, seed)
   switch(backend,
     rstan = .sample_rstan(compiled_model, stan_data,
                           chains, iter_warmup, iter_sampling,
@@ -311,6 +312,42 @@ NULL
                                 adapt_delta, max_treedepth,
                                 seed, cores, init, refresh, ...)
   )
+}
+
+
+#' Materialize per-chain initial values under a deterministic RNG
+#'
+#' The default init closures draw starting values with `rnorm()`/`runif()`.
+#' Without this step those draws come from the global, unseeded R RNG, so two
+#' fits with the same `seed` argument start their chains from different points
+#' and `seed` does not actually reproduce the MCMC output. When `seed` is
+#' supplied, evaluate the init function once per chain under `set.seed(seed +
+#' chain)` on a temporarily swapped RNG state (the caller's RNG stream is left
+#' untouched) and hand both backends an explicit list of per-chain inits.
+#' @noRd
+.seeded_chain_inits <- function(init, chains, seed) {
+  if (!is.function(init) || is.null(seed)) {
+    return(init)
+  }
+
+  has_chain_arg <- "chain_id" %in% names(formals(init))
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (had_seed) get(".Random.seed", envir = globalenv()) else NULL
+  on.exit({
+    if (had_seed) {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    } else if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      rm(".Random.seed", envir = globalenv())
+    }
+  }, add = TRUE)
+
+  lapply(seq_len(chains), function(chain) {
+    # Derive the per-chain seed in double arithmetic and wrap: the backends
+    # accept seeds up to .Machine$integer.max, where `seed + chain` would
+    # overflow to NA in integer arithmetic and abort set.seed().
+    set.seed((as.numeric(seed) + chain) %% .Machine$integer.max)
+    if (has_chain_arg) init(chain_id = chain) else init()
+  })
 }
 
 
@@ -342,7 +379,7 @@ NULL
                              chains, iter_warmup, iter_sampling,
                              adapt_delta, max_treedepth,
                              seed, cores, init, refresh, ...) {
-  compiled_model$sample(
+  fit <- compiled_model$sample(
     data = stan_data,
     chains = chains,
     iter_warmup = iter_warmup,
@@ -355,6 +392,15 @@ NULL
     refresh = refresh,
     ...
   )
+
+  # Eagerly read the posterior into the R6 object (what $save_object() does):
+  # CmdStan writes its CSVs to the session tempdir, so a lazily-loaded fit
+  # silently loses all draws after saveRDS() and an R restart.
+  invisible(fit$draws())
+  try(invisible(fit$sampler_diagnostics()), silent = TRUE)
+  try(invisible(fit$init()), silent = TRUE)
+
+  fit
 }
 
 
@@ -569,6 +615,12 @@ NULL
     return(fit$diagnostic_summary(quiet = TRUE))
   }
 
+  # A bare draws object (e.g. a fit rebuilt without sampler state) carries no
+  # sampler diagnostics; report unknown rather than claiming zero issues.
+  if (inherits(fit, "draws")) {
+    return(list(num_divergent = NA_integer_, num_max_treedepth = NA_integer_))
+  }
+
   # rstan path
   sampler_diags <- .fit_sampler_diagnostics(fit, "rstan")
   diag_names <- dimnames(sampler_diags)[[3L]]
@@ -580,12 +632,14 @@ NULL
 
   num_max_treedepth <- 0L
   if ("treedepth__" %in% diag_names) {
-    # rstan stores max_treedepth in the stan_args slot
+    # rstan stores max_treedepth in the stan_args slot. as.numeric(NULL) is
+    # numeric(0), which slips past both the tryCatch and is.na(), so guard on
+    # length too (e.g. stanfits rebuilt from CSVs store no control list).
     max_td <- tryCatch(
       as.numeric(fit@stan_args[[1L]]$control$max_treedepth),
       error = function(e) 10
     )
-    if (is.na(max_td)) max_td <- 10
+    if (length(max_td) != 1L || is.na(max_td)) max_td <- 10
     num_max_treedepth <- sum(sampler_diags[, , "treedepth__"] >= max_td)
   }
 

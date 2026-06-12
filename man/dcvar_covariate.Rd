@@ -68,7 +68,9 @@ cause an error because they break VAR(1) time series adjacency. Set to
 \item{prior_sigma_omega_rate}{Prior mean for rho process SD (see
 \code{\link[=prepare_dcvar_data]{prepare_dcvar_data()}}).}
 
-\item{prior_rho_init_sd}{Prior SD for initial rho on Fisher-z scale.}
+\item{prior_rho_init_sd}{Prior SD for the dependence intercept \code{beta_0} on
+the Fisher-z scale (the covariate model has no separate initial-rho
+parameter; \code{beta_0} plays that role).}
 
 \item{prior_beta_sd}{Prior SD for covariate effects.}
 
@@ -84,7 +86,8 @@ non-centered parameterisation already handles posterior geometry well.}
 
 \item{max_treedepth}{Maximum tree depth (default: 12).}
 
-\item{seed}{Random seed.}
+\item{seed}{Random seed. When supplied, it seeds both the Stan sampler and
+the default per-chain initial values, so repeated fits are reproducible.}
 
 \item{cores}{Number of parallel chains. \code{NULL} uses all available cores.}
 

@@ -17,7 +17,9 @@ plot_trajectories(
 \item{scenarios}{Character vector of scenario names (see \code{\link[=rho_scenario]{rho_scenario()}}).
 Default: all built-in scenarios.}
 
-\item{...}{Additional arguments passed to \code{\link[=rho_scenario]{rho_scenario()}}.}
+\item{...}{Additional arguments passed to \code{\link[=rho_scenario]{rho_scenario()}}. Each argument is
+forwarded only to the scenarios whose generator accepts it; arguments not
+used by any requested scenario produce a warning.}
 }
 \value{
 A ggplot object.

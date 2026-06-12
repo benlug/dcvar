@@ -86,7 +86,8 @@ significant cost, reducing occasional divergences near the rho boundary.}
 
 \item{max_treedepth}{Maximum tree depth (default: 12).}
 
-\item{seed}{Random seed.}
+\item{seed}{Random seed. When supplied, it seeds both the Stan sampler and
+the default per-chain initial values, so repeated fits are reproducible.}
 
 \item{cores}{Number of parallel chains. \code{NULL} uses all available cores.}
 

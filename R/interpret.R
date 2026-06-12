@@ -59,8 +59,6 @@ interpret_rho_trajectory <- function(object, threshold = 0.1,
                                      magnitude_breaks = .default_magnitude_breaks,
                                      fluctuation_threshold = 0.3,
                                      ...) {
-  rho_df <- rho_trajectory(object)
-
   .classify <- function(value, breaks) {
     # breaks must be sorted descending (e.g., c(strong = 0.7, moderate = 0.4, weak = 0.2))
     for (i in seq_along(breaks)) {
@@ -68,6 +66,28 @@ interpret_rho_trajectory <- function(object, threshold = 0.1,
     }
     "negligible"
   }
+
+  # Clayton fits have no Gaussian-copula rho trajectory; interpret the
+  # dependence via Kendall's tau instead of calling rho_trajectory().
+  if (object$model == "constant" && identical(object$copula %||% "gaussian", "clayton")) {
+    tau_df <- dependence_summary(object)
+    tau_val <- tau_df$mean[1]
+    # tau lives on a compressed scale relative to rho (rho = sin(pi * tau / 2)
+    # for a Gaussian copula), so classify the rho-equivalent value to keep the
+    # strength labels comparable with the Gaussian branch.
+    rho_equiv <- sin(pi * tau_val / 2)
+    strength <- .classify(abs(rho_equiv), strength_breaks)
+    direction <- if (tau_val > 0) "positive" else "negative"
+
+    msg <- sprintf(
+      "Constant Clayton copula model: The estimated Kendall's tau is %.3f (%s %s coupling).\nThis suggests a stable, time-invariant dependence structure between the variables.",
+      tau_val, strength, direction
+    )
+    cat(msg, "\n")
+    return(invisible(msg))
+  }
+
+  rho_df <- rho_trajectory(object)
 
   if (object$model == "constant") {
     rho_val <- rho_df$mean[1]

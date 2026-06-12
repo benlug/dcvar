@@ -36,7 +36,8 @@
 #'   uses a lower default than `dcvar_constant()` (0.999) because the
 #'   non-centered parameterisation already handles posterior geometry well.
 #' @param max_treedepth Maximum tree depth (default: 12).
-#' @param seed Random seed.
+#' @param seed Random seed. When supplied, it seeds both the Stan sampler and
+#'   the default per-chain initial values, so repeated fits are reproducible.
 #' @param cores Number of parallel chains. `NULL` uses all available cores.
 #' @param refresh How often to print progress (default: 500). Set to 0 for
 #'   silent operation.

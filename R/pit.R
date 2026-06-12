@@ -64,6 +64,24 @@ pit_values.dcvar_model_fit <- function(object, ...) {
 }
 
 
+#' Internal: posterior means for a margin parameter group, validated
+#'
+#' Mirrors the per-name validation in `.pit_mixed()`: a margin parameter that
+#' is absent from the Stan output must abort with a clear message instead of
+#' silently yielding all-NA PIT values.
+#' @noRd
+.pit_margin_means <- function(summ, pattern, expected, label) {
+  rows <- grep(pattern, summ$variable)
+  if (length(rows) != expected) {
+    cli_abort(c(
+      "PIT values require the Stan output {.val {label}}, which is missing from the fit.",
+      "i" = "Custom Stan files must preserve the expected parameter names."
+    ))
+  }
+  summ$mean[rows]
+}
+
+
 #' Internal: compute PIT values for given residuals and margin type
 #' @noRd
 .pit_compute <- function(object, eps_mean, margins) {
@@ -77,8 +95,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   switch(margins[[1L]],
     normal = {
       summ <- .fit_summary(object$fit, backend = object$backend)
-      sigma_rows <- grep("^sigma_eps\\[", summ$variable)
-      sigma_mean <- summ$mean[sigma_rows]
+      sigma_mean <- .pit_margin_means(summ, "^sigma_eps\\[", D, "sigma_eps")
       pit_mat <- matrix(NA_real_, T_eff, D)
       for (d in seq_len(D)) {
         pit_mat[, d] <- stats::pnorm(eps_mean[, d] / sigma_mean[d])
@@ -107,8 +124,7 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)
   skew_dir <- object$skew_direction
 
-  sigma_rows <- grep("^sigma_exp\\[", summ$variable)
-  sigma_exp_mean <- summ$mean[sigma_rows]
+  sigma_exp_mean <- .pit_margin_means(summ, "^sigma_exp\\[", D, "sigma_exp")
   rate_exp <- 1.0 / sigma_exp_mean
 
   pit_mat <- matrix(NA_real_, T_eff, D)
@@ -132,10 +148,8 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   D <- ncol(eps_mean)
   summ <- .fit_summary(object$fit, backend = object$backend)
 
-  omega_rows <- grep("^omega\\[", summ$variable)
-  delta_rows <- grep("^delta\\[", summ$variable)
-  omega_mean <- summ$mean[omega_rows]
-  delta_mean <- summ$mean[delta_rows]
+  omega_mean <- .pit_margin_means(summ, "^omega\\[", D, "omega")
+  delta_mean <- .pit_margin_means(summ, "^delta\\[", D, "delta")
 
   alpha_mean <- delta_mean / sqrt(1 - delta_mean^2)
   xi_mean <- -omega_mean * delta_mean * sqrt(2 / pi)
@@ -158,10 +172,8 @@ pit_values.dcvar_model_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)
   skew_dir <- object$skew_direction
 
-  sigma_rows <- grep("^sigma_gam\\[", summ$variable)
-  shape_row <- grep("^shape_gam$", summ$variable)
-  sigma_gam_mean <- summ$mean[sigma_rows]
-  shape_gam_mean <- summ$mean[shape_row]
+  sigma_gam_mean <- .pit_margin_means(summ, "^sigma_gam\\[", D, "sigma_gam")
+  shape_gam_mean <- .pit_margin_means(summ, "^shape_gam$", 1L, "shape_gam")
 
   sqrt_shape <- sqrt(shape_gam_mean)
   rate_gam <- sqrt_shape / sigma_gam_mean

@@ -181,3 +181,58 @@ test_that("prepare_dcvar_data handles irregular time values consistently", {
   )
   expect_equal(attr(out, "time_values"), c(1, 3, 4))
 })
+
+test_that("prepare_dcvar_data rejects character and unordered-factor time columns", {
+  df <- data.frame(time = paste0("T", 1:12), y1 = rnorm(12), y2 = rnorm(12))
+  expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "lexicographically")
+
+  df$time <- factor(df$time)
+  expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "lexicographically")
+})
+
+test_that("prepare_dcvar_data accepts ordered-factor time columns", {
+  lv <- paste0("T", 1:12)
+  df <- data.frame(time = factor(lv, levels = lv, ordered = TRUE),
+                   y1 = rnorm(12), y2 = rnorm(12))
+  out <- prepare_dcvar_data(df, vars = c("y1", "y2"))
+  expect_equal(out$n_time, 12)
+})
+
+test_that("prepare_dcvar_data treats edge runs of missing rows as edges, not gaps", {
+  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
+  df$y1[1:2] <- NA
+  df$y2[49:50] <- NA
+
+  expect_warning(
+    out <- prepare_dcvar_data(df, vars = c("y1", "y2")),
+    "edges only"
+  )
+  expect_equal(out$n_time, 46)
+  expect_equal(attr(out, "time_values"), 3:48)
+})
+
+test_that("prepare_dcvar_data still errors on genuinely interior missing runs", {
+  df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
+  df$y1[20:21] <- NA
+  expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "interior missing")
+})
+
+test_that("prepare_dcvar_data aborts cleanly when too few complete rows remain", {
+  df <- data.frame(time = 1:5, y1 = c(NA, NA, 1, NA, NA), y2 = rnorm(5))
+  expect_warning(
+    expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "At least 3 observations"),
+    "edges only"
+  )
+
+  df_all_na <- data.frame(time = 1:5, y1 = NA_real_, y2 = rnorm(5))
+  expect_error(prepare_dcvar_data(df_all_na, vars = c("y1", "y2")), "no complete rows")
+})
+
+test_that("prepare_dcvar_data accepts tibble input identically to data.frame", {
+  skip_if_not_installed("tibble")
+  df <- data.frame(time = 1:30, y1 = rnorm(30), y2 = rnorm(30))
+  out_df <- prepare_dcvar_data(df, vars = c("y1", "y2"))
+  out_tbl <- prepare_dcvar_data(tibble::as_tibble(df), vars = c("y1", "y2"))
+  expect_equal(out_tbl$Y, out_df$Y)
+  expect_equal(attr(out_tbl, "time_values"), attr(out_df, "time_values"))
+})

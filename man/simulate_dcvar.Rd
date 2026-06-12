@@ -53,7 +53,13 @@ A named list with:
 \item \code{Y}: \verb{n_time x 2} observation matrix
 \item \code{Y_df}: data frame with columns \code{time}, \code{y1}, \code{y2} (ready for
 \code{\link[=dcvar]{dcvar()}})
-\item \code{true_params}: list of true parameter values
+\item \code{true_params}: list of true parameter values. These are on the raw
+data scale; the fitting functions standardize by default, so round-trip
+comparisons of \code{mu}, \code{Phi}, and \code{sigma_eps} require fitting with
+\code{standardize = FALSE} (the \code{rho} trajectory is scale-invariant).
+Exponential and gamma dimensions are simulated with unit-SD
+standardized innovations, so their implied true scale
+(\code{sigma_exp}/\code{sigma_gam}) is 1.
 }
 }
 \description{

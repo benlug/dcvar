@@ -25,14 +25,18 @@
 #'   those dimensions consult it.
 #' @param prior_phi_bar_sd Prior SD for population-mean VAR coefficients.
 #' @param prior_tau_phi_scale Prior scale for half-t(3) on tau_phi.
-#' @param prior_sigma_sd Prior SD for half-normal on innovation SDs.
+#' @param prior_sigma_sd Prior SD for the innovation scales. For normal
+#'   margins this is the SD of a half-normal prior on `sigma`; for
+#'   exponential/gamma margins it is the SD of the lognormal prior on the
+#'   marginal scale.
 #' @param prior_rho_sd Prior SD for normal on rho.
 #' @param chains Number of MCMC chains.
 #' @param iter_warmup Warmup iterations per chain.
 #' @param iter_sampling Sampling iterations per chain.
 #' @param adapt_delta Target acceptance rate.
 #' @param max_treedepth Maximum tree depth.
-#' @param seed Random seed.
+#' @param seed Random seed. When supplied, it seeds both the Stan sampler and
+#'   the default per-chain initial values, so repeated fits are reproducible.
 #' @param cores Number of parallel chains.
 #' @param refresh How often to print progress.
 #' @param init Custom init function or `NULL`.
@@ -45,8 +49,9 @@
 #' @return A `dcvar_multilevel_fit` object.
 #'
 #' @details **Experimental extension.** This multilevel variant supports
-#'   `fitted()` and `predict()`. PSIS-LOO is available for exponential-margin
-#'   multilevel fits. PIT diagnostics are not yet implemented.
+#'   `fitted()` and `predict()`. PSIS-LOO is available for all multilevel
+#'   fits; the stored `log_lik` values are conditional one-step-ahead
+#'   densities given the unit-level random effects. PIT diagnostics are not yet implemented.
 #'
 #'   `adapt_delta` defaults to 0.90 and `max_treedepth` to 14 because the
 #'   hierarchical structure with random effects benefits from deeper trees but

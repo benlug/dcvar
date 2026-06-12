@@ -8,7 +8,7 @@ functions {
 
 data {
   int<lower=2> n_time;
-  int<lower=2> D;
+  int<lower=2, upper=2> D;  // copula code is hard-wired bivariate
   matrix[n_time, D] Y;
   vector[D] skew_direction;
 
@@ -117,6 +117,11 @@ generated quantities {
         real z2_rep = rho * z1_rep + sqrt(1 - square(rho)) * std_normal_rng();
         real u1 = Phi(z1_rep);
         real u2 = Phi(z2_rep);
+        // The likelihood uses u = 1 - F(x_shifted) on left-skewed dimensions,
+        // so invert at the flipped uniform to keep eps_rep's dependence
+        // orientation consistent with rho.
+        if (skew_direction[1] < 0) u1 = 1 - u1;
+        if (skew_direction[2] < 0) u2 = 1 - u2;
         eps_rep[t, 1] = skew_direction[1] * (-log1m(u1) / rate_exp[1] - sigma_exp[1]);
         eps_rep[t, 2] = skew_direction[2] * (-log1m(u2) / rate_exp[2] - sigma_exp[2]);
       }

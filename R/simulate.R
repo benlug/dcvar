@@ -49,7 +49,13 @@
 #'   - `Y`: `n_time x 2` observation matrix
 #'   - `Y_df`: data frame with columns `time`, `y1`, `y2` (ready for
 #'     [dcvar()])
-#'   - `true_params`: list of true parameter values
+#'   - `true_params`: list of true parameter values. These are on the raw
+#'     data scale; the fitting functions standardize by default, so round-trip
+#'     comparisons of `mu`, `Phi`, and `sigma_eps` require fitting with
+#'     `standardize = FALSE` (the `rho` trajectory is scale-invariant).
+#'     Exponential and gamma dimensions are simulated with unit-SD
+#'     standardized innovations, so their implied true scale
+#'     (`sigma_exp`/`sigma_gam`) is 1.
 #' @export
 #'
 #' @examples
@@ -188,9 +194,14 @@ simulate_dcvar <- function(n_time,
       # w[i] is already standard normal, just scale
       eps[i] <- w[i] * sigma_eps[i]
     } else if (identical(fam, "exponential")) {
-      # Convert to uniform, then to standardized exponential (Exp(1), mean/sd 1)
-      x_std <- stats::qexp(stats::pnorm(w[i]), rate = 1) - 1
-      eps[i] <- if (skew_direction[i] < 0) -x_std else x_std
+      # Convert to uniform, then to standardized exponential (Exp(1), mean/sd 1).
+      # The Stan likelihoods use u = 1 - F(x_shifted) for left-skewed dimensions,
+      # so the uniform must be flipped before the quantile to keep the simulated
+      # eps comonotone with the latent copula normal w.
+      u <- stats::pnorm(w[i])
+      if (skew_direction[i] < 0) u <- 1 - u
+      x_std <- stats::qexp(u, rate = 1) - 1
+      eps[i] <- skew_direction[i] * x_std
     } else if (identical(fam, "skew_normal")) {
       if (!requireNamespace("sn", quietly = TRUE)) {
         cli_abort("Package {.pkg sn} is required for skew-normal simulation.")
@@ -202,8 +213,11 @@ simulate_dcvar <- function(n_time,
       eps[i] <- sn::qsn(stats::pnorm(w[i]), xi = xi_i, omega = omega_i, alpha = alpha_i)
     } else if (identical(fam, "gamma")) {
       shape <- skew_params$shape %||% 1
-      x_std <- stats::qgamma(stats::pnorm(w[i]), shape = shape, rate = sqrt(shape)) - sqrt(shape)
-      eps[i] <- if (skew_direction[i] < 0) -x_std else x_std
+      # Same uniform flip as the exponential branch (see comment there).
+      u <- stats::pnorm(w[i])
+      if (skew_direction[i] < 0) u <- 1 - u
+      x_std <- stats::qgamma(u, shape = shape, rate = sqrt(shape)) - sqrt(shape)
+      eps[i] <- skew_direction[i] * x_std
     } else {
       cli_abort("Unknown margin type: {.val {fam}}")
     }

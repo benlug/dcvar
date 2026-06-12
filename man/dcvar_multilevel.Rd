@@ -61,7 +61,10 @@ those dimensions consult it.}
 
 \item{prior_tau_phi_scale}{Prior scale for half-t(3) on tau_phi.}
 
-\item{prior_sigma_sd}{Prior SD for half-normal on innovation SDs.}
+\item{prior_sigma_sd}{Prior SD for the innovation scales. For normal
+margins this is the SD of a half-normal prior on \code{sigma}; for
+exponential/gamma margins it is the SD of the lognormal prior on the
+marginal scale.}
 
 \item{prior_rho_sd}{Prior SD for normal on rho.}
 
@@ -75,7 +78,8 @@ those dimensions consult it.}
 
 \item{max_treedepth}{Maximum tree depth.}
 
-\item{seed}{Random seed.}
+\item{seed}{Random seed. When supplied, it seeds both the Stan sampler and
+the default per-chain initial values, so repeated fits are reproducible.}
 
 \item{cores}{Number of parallel chains.}
 
@@ -101,8 +105,9 @@ parameterization for the random Phi coefficients.
 }
 \details{
 \strong{Experimental extension.} This multilevel variant supports
-\code{fitted()} and \code{predict()}. PSIS-LOO is available for exponential-margin
-multilevel fits. PIT diagnostics are not yet implemented.
+\code{fitted()} and \code{predict()}. PSIS-LOO is available for all multilevel
+fits; the stored \code{log_lik} values are conditional one-step-ahead
+densities given the unit-level random effects. PIT diagnostics are not yet implemented.
 
 \code{adapt_delta} defaults to 0.90 and \code{max_treedepth} to 14 because the
 hierarchical structure with random effects benefits from deeper trees but

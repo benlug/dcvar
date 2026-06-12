@@ -173,14 +173,34 @@ rho_trajectory.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9,
 #' @rdname dependence_summary
 #' @export
 dependence_summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
-  rho_draws <- posterior::as_draws_matrix(.fit_draws(
-    object$fit, "rho_hmm", backend = object$backend,
-    required = .stan_output_group_pattern("rho_hmm"),
+  # The HMM dependence at time t is a state mixture, so Kendall's tau must be
+  # averaged on the tau scale: sum_k gamma[t, k] * (2/pi) asin(rho_state[k]).
+  # Applying asin to the gamma-weighted average rho (rho_hmm) understates tau
+  # whenever the smoothed state probabilities are mixed.
+  gamma_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "gamma", backend = object$backend,
+    required = .stan_output_group_pattern("gamma"),
     required_type = "pattern",
     context = "dependence_summary.dcvar_hmm_fit()",
     output_type = "generated quantity"
   ))
-  tau_draws <- 2 / pi * asin(rho_draws)
+  rho_state_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho_state", backend = object$backend,
+    required = .stan_output_group_pattern("rho_state"),
+    required_type = "pattern",
+    context = "dependence_summary.dcvar_hmm_fit()",
+    output_type = "transformed parameter group"
+  ))
+
+  n_time_eff <- object$stan_data$n_time - 1L
+  K <- ncol(rho_state_draws)
+  tau_state <- 2 / pi * asin(rho_state_draws)
+
+  tau_draws <- matrix(0, nrow(gamma_draws), n_time_eff)
+  for (k in seq_len(K)) {
+    gamma_cols <- paste0("gamma[", seq_len(n_time_eff), ",", k, "]")
+    tau_draws <- tau_draws + as.matrix(gamma_draws[, gamma_cols, drop = FALSE]) * as.numeric(tau_state[, k])
+  }
   .summarise_rho_draws(tau_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
 }
 
@@ -486,13 +506,46 @@ covariate_effects.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.5, 
 #'
 #' @return A named list with:
 #'   - `gamma`: T_eff x K matrix of posterior state probabilities
-#'   - `viterbi`: integer vector of MAP state sequence
+#'   - `viterbi`: integer vector, the Viterbi (MAP) state path decoded from
+#'     the posterior-mean emission log-likelihoods, transition matrix, and
+#'     initial state probabilities (a plug-in estimator, not a full posterior
+#'     summary of the path)
 #'   - `rho_state`: list with `mean`, `lower`, `upper` for each state
 #'   - `A`: K x K posterior mean transition matrix
 #'   - `rho_hmm`: posterior-averaged rho trajectory
 #' @export
 hmm_states <- function(object, ...) {
   UseMethod("hmm_states")
+}
+
+#' Internal: Viterbi decoding for fixed log-scale HMM quantities
+#' @noRd
+.viterbi_path <- function(obs_ll, log_A, log_pi0) {
+  n_time <- nrow(obs_ll)
+  K <- ncol(obs_ll)
+
+  log_delta <- matrix(-Inf, n_time, K)
+  back_ptr <- matrix(NA_integer_, n_time, K)
+  log_delta[1, ] <- log_pi0 + obs_ll[1, ]
+  if (n_time >= 2) {
+    for (t in 2:n_time) {
+      for (k in seq_len(K)) {
+        cand <- log_delta[t - 1, ] + log_A[, k]
+        j <- which.max(cand)
+        back_ptr[t, k] <- j
+        log_delta[t, k] <- cand[j] + obs_ll[t, k]
+      }
+    }
+  }
+
+  path <- integer(n_time)
+  path[n_time] <- which.max(log_delta[n_time, ])
+  if (n_time >= 2) {
+    for (t in seq(n_time - 1L, 1L)) {
+      path[t] <- back_ptr[t + 1L, path[t + 1L]]
+    }
+  }
+  path
 }
 
 #' @rdname hmm_states
@@ -538,12 +591,6 @@ hmm_states.dcvar_hmm_fit <- function(object, ...) {
     gamma_mean[, k] <- colMeans(gamma_draws[, cols, drop = FALSE])
   }
 
-  # Use the most frequent complete Viterbi path across draws so the returned
-  # sequence is always a valid joint path.
-  viterbi_draws <- .safe_draws("viterbi_state")
-  viterbi_paths <- apply(viterbi_draws, 1, paste, collapse = ",")
-  viterbi_mode <- as.integer(strsplit(names(sort(table(viterbi_paths), decreasing = TRUE))[1], ",", fixed = TRUE)[[1]])
-
   # State-specific rho
   rho_state_draws <- .safe_draws("rho_state")
   rho_state_mean <- colMeans(rho_state_draws)
@@ -568,13 +615,27 @@ hmm_states.dcvar_hmm_fit <- function(object, ...) {
     }
   }
 
+  # MAP state sequence: Viterbi decoding on posterior-mean log quantities.
+  # (The previous most-frequent-sampled-path estimator degenerates to an
+  # arbitrary single draw's path when parameter uncertainty makes nearly all
+  # sampled paths unique.)
+  obs_ll_draws <- .safe_draws("obs_ll")
+  obs_ll_mean <- matrix(NA_real_, n_time_eff, K)
+  for (k in 1:K) {
+    cols <- paste0("obs_ll[", seq_len(n_time_eff), ",", k, "]")
+    obs_ll_mean[, k] <- colMeans(obs_ll_draws[, cols, drop = FALSE])
+  }
+  pi0_draws <- .safe_draws("pi0")
+  pi0_mean <- colMeans(pi0_draws[, paste0("pi0[", seq_len(K), "]"), drop = FALSE])
+  viterbi_map <- .viterbi_path(obs_ll_mean, log(A_mean), log(pi0_mean))
+
   # Posterior-averaged rho
   rho_hmm_draws <- .safe_draws("rho_hmm")
   rho_hmm_mean <- colMeans(rho_hmm_draws)
 
   list(
     gamma = gamma_mean,
-    viterbi = viterbi_mode,
+    viterbi = viterbi_map,
     rho_state = list(
       mean = rho_state_mean,
       lower = rho_state_lower,
@@ -937,5 +998,6 @@ draws.default <- function(object, ...) {
 #' @rdname draws
 #' @export
 draws.dcvar_model_fit <- function(object, variable = NULL, format = "draws_array", ...) {
+  format <- match.arg(format, c("draws_array", "draws_matrix", "draws_df"))
   .fit_draws(object$fit, variables = variable, format = format, backend = object$backend)
 }

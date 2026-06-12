@@ -140,7 +140,10 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
     } else {
       u <- stats::pnorm(w)
       for (i in seq_len(2L)) {
-        x_raw <- stats::qexp(u[i], rate = 1 / sigma_exp[i])
+        # sem_EG.stan uses u = 1 - F(x_shifted) for left-skewed dimensions, so
+        # flip the uniform before the quantile to keep zeta comonotone with w.
+        u_i <- if (skew_direction[i] < 0) 1 - u[i] else u[i]
+        x_raw <- stats::qexp(u_i, rate = 1 / sigma_exp[i])
         zeta[time_index, i] <- skew_direction[i] * (x_raw - sigma_exp[i])
       }
     }
@@ -149,7 +152,7 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   # Latent VAR(1) recursion matching the SEM Stan model, which conditions on x_0 = 0.
   state <- matrix(0, n_time, 2)
   state[1, ] <- mu + zeta[1, ]
-  for (time_index in 2:n_time) {
+  for (time_index in seq_len(n_time - 1L) + 1L) {
     state[time_index, ] <- mu + as.vector(Phi %*% state[time_index - 1L, ]) + zeta[time_index, ]
   }
 

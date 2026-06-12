@@ -140,8 +140,10 @@ dcvar_compare(dcvar = fit_dc, hmm = fit_hmm, constant = fit_con)
 
 All fit objects support `as.data.frame()` for exporting tidy parameter
 summaries. All five fit families also support `fitted()`/`predict()` for
-one-step-ahead values (for SEM and multilevel fits as well), with prediction
-intervals restricted to normal margins:
+one-step-ahead values (for SEM and multilevel fits as well). Prediction
+intervals are restricted to normal margins for single-level, multilevel, and
+naive-SEM fits; indicator-SEM predictions are available for all supported SEM
+margins:
 
 ```{r tidy}
 # Full parameter summary as a data frame

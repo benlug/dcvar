@@ -13,7 +13,7 @@ functions {
 
 data {
   int<lower=2> n_time;                    // Number of time points
-  int<lower=2> D;                    // Number of variables (typically 2)
+  int<lower=2, upper=2> D;  // copula code is hard-wired bivariate
   matrix[n_time, D] Y;                    // Observed data (n_time x D)
   int<lower=2> K;                    // Number of hidden states
 
@@ -200,10 +200,16 @@ generated quantities {
   // This avoids the double-counting bug of using smoothed gamma (which conditions on y_t).
   log_lik = hmm_log_lik(log_alpha, n_time_eff, K);
 
-  // Generate replicated residuals using posterior-averaged rho
+  // Generate replicated residuals from the regime mixture: draw a state from
+  // the smoothed probabilities, then use that state's rho. Simulating from the
+  // gamma-weighted mean rho instead would understate the dependence dispersion
+  // whenever the states are mixed.
   for (t in 1:n_time_eff) {
+    vector[K] gt = to_vector(gamma[t, ]);
+    int k_rep = categorical_rng(gt / sum(gt));
+    real rho_rep = rho_state[k_rep];
     real z1_rep = std_normal_rng();
-    real z2_rep = rho_hmm[t] * z1_rep + sqrt(1 - square(rho_hmm[t])) * std_normal_rng();
+    real z2_rep = rho_rep * z1_rep + sqrt(1 - square(rho_rep)) * std_normal_rng();
     eps_rep[t, 1] = z1_rep * sigma_eps[1];
     eps_rep[t, 2] = z2_rep * sigma_eps[2];
   }

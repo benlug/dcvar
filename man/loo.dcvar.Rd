@@ -35,8 +35,16 @@ Compute LOO-CV for a fitted model
 }
 \details{
 PSIS-LOO is available for Gaussian and Clayton single-level fits,
-covariate fits, exponential-margin multilevel fits, and naive SEM score
-fits. Indicator SEM fits and normal-margin multilevel fits are not
-supported because their stored \code{log_lik} quantities are not comparable
-pointwise predictive densities.
+covariate fits, multilevel fits, and naive SEM score fits. Indicator SEM
+fits are not supported because their stored \code{log_lik} conditions on
+latent innovations rather than being an observation-level predictive
+density. Multilevel \code{log_lik} values are conditional one-step-ahead
+densities given the unit-level random effects.
+
+Note that the pointwise \code{log_lik} estimands differ across model families:
+HMM fits store the state-marginalized one-step-ahead predictive density,
+while dynamic (DC-VAR and covariate) fits condition on the smoothed
+latent \code{rho} trajectory, which is itself informed by the observation.
+Comparisons across these families can systematically favor the
+latent-conditioned models; see \code{\link[=dcvar_compare]{dcvar_compare()}}.
 }

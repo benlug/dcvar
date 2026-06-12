@@ -95,6 +95,9 @@ summary.dcvar_constant_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...
 print.dcvar_constant_summary <- function(x, ...) {
   dep <- if (identical(x$copula %||% "gaussian", "gaussian")) x$rho else x$dependence
   quantile_cols <- grep("^q", names(dep), value = TRUE)
+  # Column order follows the probs argument, which need not be ascending;
+  # sort by the numeric suffix so lower/upper are not swapped.
+  quantile_cols <- quantile_cols[order(as.numeric(sub("^q", "", quantile_cols)))]
   lower_col <- quantile_cols[1]
   upper_col <- quantile_cols[length(quantile_cols)]
 

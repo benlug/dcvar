@@ -1,6 +1,6 @@
 Package: dcvar
 Title: Dynamic Copula VAR Models for Time-Varying Dependence
-Version: 0.3.1
+Version: 0.4.0
 Authors@R:
     person("Benedikt", "Lugauer", , "benedikt.lugauer@uni-leipzig.de",
            role = c("aut", "cre"))
@@ -41,7 +41,7 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown,
-    withr,
+    tibble,
     sn
 Additional_repositories: https://stan-dev.r-universe.dev
 VignetteBuilder: knitr

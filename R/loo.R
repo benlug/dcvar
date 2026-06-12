@@ -10,10 +10,18 @@
 #' @return A `loo` object from the loo package.
 #'
 #' @details PSIS-LOO is available for Gaussian and Clayton single-level fits,
-#'   covariate fits, exponential-margin multilevel fits, and naive SEM score
-#'   fits. Indicator SEM fits and normal-margin multilevel fits are not
-#'   supported because their stored `log_lik` quantities are not comparable
-#'   pointwise predictive densities.
+#'   covariate fits, multilevel fits, and naive SEM score fits. Indicator SEM
+#'   fits are not supported because their stored `log_lik` conditions on
+#'   latent innovations rather than being an observation-level predictive
+#'   density. Multilevel `log_lik` values are conditional one-step-ahead
+#'   densities given the unit-level random effects.
+#'
+#'   Note that the pointwise `log_lik` estimands differ across model families:
+#'   HMM fits store the state-marginalized one-step-ahead predictive density,
+#'   while dynamic (DC-VAR and covariate) fits condition on the smoothed
+#'   latent `rho` trajectory, which is itself informed by the observation.
+#'   Comparisons across these families can systematically favor the
+#'   latent-conditioned models; see [dcvar_compare()].
 #' @importFrom loo loo
 #' @name loo.dcvar
 NULL
@@ -34,7 +42,6 @@ NULL
 
 .abort_unsupported_loo <- function(x, reason) {
   model_label <- switch(class(x)[[1]],
-    dcvar_multilevel_fit = "multilevel",
     dcvar_sem_fit = "SEM",
     x$model %||% class(x)[[1]]
   )
@@ -46,9 +53,6 @@ NULL
 }
 
 .is_supported_loo_fit <- function(x) {
-  if (inherits(x, "dcvar_multilevel_fit")) {
-    return(identical(x$margins %||% "normal", "exponential"))
-  }
   if (inherits(x, "dcvar_sem_fit")) {
     return(identical(x$method %||% "indicator", "naive"))
   }
@@ -78,18 +82,7 @@ loo.dcvar_constant_fit <- function(x, ...) .loo_dcvar(x, ...)
 #' @rdname loo.dcvar
 #' @method loo dcvar_multilevel_fit
 #' @export
-loo.dcvar_multilevel_fit <- function(x, ...) {
-  if (.is_supported_loo_fit(x)) {
-    return(.loo_dcvar(x, ...))
-  }
-  .abort_unsupported_loo(
-    x,
-    paste(
-      "The stored {.code log_lik} is per-unit and conditional on unit-level random effects,",
-      "so it is not a valid pointwise predictive density for PSIS-LOO."
-    )
-  )
-}
+loo.dcvar_multilevel_fit <- function(x, ...) .loo_dcvar(x, ...)
 
 #' @rdname loo.dcvar
 #' @method loo dcvar_sem_fit
@@ -116,6 +109,15 @@ loo.dcvar_sem_fit <- function(x, ...) {
 #' @param ... Named fitted model objects (e.g., `dcvar = fit1, hmm = fit2`).
 #'
 #' @return A `loo_compare` matrix.
+#'
+#' @details The pointwise `log_lik` estimands are not identical across model
+#'   families: HMM fits marginalize the discrete states out of each one-step
+#'   predictive density, while dynamic (DC-VAR and covariate) fits condition
+#'   on the smoothed latent `rho` trajectory, which is informed by the
+#'   observation itself. Comparing an HMM fit against a dynamic fit can
+#'   therefore systematically favor the dynamic model; a warning is emitted
+#'   for such comparisons and the resulting elpd differences should be
+#'   interpreted with caution.
 #'
 #' @seealso [loo::loo_compare()] for details on the comparison method,
 #'   [dcvar()], [dcvar_hmm()], [dcvar_constant()] for fitting models.
@@ -171,9 +173,26 @@ dcvar_compare <- function(...) {
       "{.fun dcvar_compare} does not support one or more supplied fits.",
       "i" = "Unsupported argument{?s}: {.val {unsupported}}.",
       "i" = paste(
-        "Unsupported models store {.code log_lik} targets that are not valid, comparable",
-        "pointwise predictive densities for PSIS-LOO."
+        "Indicator SEM fits store {.code log_lik} conditional on latent innovations,",
+        "which is not a valid pointwise predictive density for PSIS-LOO."
       )
+    ))
+  }
+
+  has_hmm <- vapply(fits, inherits, logical(1), what = "dcvar_hmm_fit")
+  has_latent_conditioned <- vapply(
+    fits,
+    function(f) inherits(f, "dcvar_fit") || inherits(f, "dcvar_covariate_fit"),
+    logical(1)
+  )
+  if (any(has_hmm) && any(has_latent_conditioned)) {
+    cli_warn(c(
+      "Comparing HMM and dynamic (DC-VAR/covariate) fits mixes two {.code log_lik} estimands.",
+      "i" = paste(
+        "HMM fits store the state-marginalized one-step predictive density, while dynamic",
+        "fits condition on the smoothed latent rho trajectory (informed by the observation itself)."
+      ),
+      "!" = "elpd differences can systematically favor the dynamic model; interpret with caution."
     ))
   }
 

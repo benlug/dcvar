@@ -348,3 +348,32 @@ test_that("prepare_sem_data rejects irregular or duplicate time values", {
     "Duplicate"
   )
 })
+
+test_that("prepare_multilevel_data accepts tibble input and validates its time grid", {
+  skip_if_not_installed("tibble")
+  sim <- simulate_dcvar_multilevel(N = 4, n_time = 12, rho = 0.4, seed = 5)
+
+  out_df <- prepare_multilevel_data(sim$data, vars = c("y1", "y2"), id_var = "id")
+  out_tbl <- prepare_multilevel_data(tibble::as_tibble(sim$data),
+                                     vars = c("y1", "y2"), id_var = "id")
+  expect_equal(out_tbl$y, out_df$y)
+  expect_equal(attr(out_tbl, "time_values"), attr(out_df, "time_values"))
+  expect_true(is.atomic(attr(out_tbl, "time_values")))
+
+  # Per-unit time validation must fire for tibbles too
+  bad <- tibble::as_tibble(sim$data)
+  bad$time[2] <- bad$time[1] # duplicate time within unit 1
+  expect_error(
+    prepare_multilevel_data(bad, vars = c("y1", "y2"), id_var = "id"),
+    "Duplicate"
+  )
+})
+
+test_that("prepare_multilevel_data requires at least 3 occasions per unit", {
+  sim <- simulate_dcvar_multilevel(N = 4, n_time = 6, rho = 0.4, seed = 6)
+  short <- sim$data[sim$data$time <= 2, ]
+  expect_error(
+    prepare_multilevel_data(short, vars = c("y1", "y2"), id_var = "id"),
+    "At least 3 observations per unit"
+  )
+})

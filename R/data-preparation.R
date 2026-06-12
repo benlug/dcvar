@@ -50,6 +50,13 @@
 #' Internal: validate ordered time values for VAR-style models
 #' @noRd
 .validate_time_values <- function(time_values, allow_gaps = FALSE, context = "data") {
+  if (is.character(time_values) || (is.factor(time_values) && !is.ordered(time_values))) {
+    cli_abort(c(
+      "{.arg time_var} in {context} is a {.cls {class(time_values)[1]}} column.",
+      "!" = "Character and unordered-factor time indexes sort lexicographically (e.g. \"T10\" before \"T2\"), which can silently scramble the time ordering.",
+      "i" = "Use a numeric, Date, POSIXct, difftime, or ordered-factor time column."
+    ))
+  }
   if (anyNA(time_values)) {
     cli_abort("{.arg time_var} contains missing values in {context}.")
   }
@@ -100,7 +107,10 @@
   time_grid <- NULL
 
   for (id in ids) {
-    unit_times <- data[data[[id_var]] == id, time_var]
+    # Double-bracket extraction keeps this a plain vector for data.frame
+    # subclasses (a tibble would return a 1-column tibble of length 1 and
+    # silently skip every per-unit check below).
+    unit_times <- data[[time_var]][data[[id_var]] == id]
     .validate_time_values(unit_times, allow_gaps = FALSE, context = paste0("unit ", id))
 
     if (is.null(time_grid)) {
@@ -136,6 +146,10 @@
   if (!is.data.frame(data)) {
     cli_abort("{.arg data} must be a data frame.")
   }
+  # Plain-data.frame semantics throughout: single-bracket column subsetting on
+  # a tibble returns a tibble, not a vector, which breaks the time-axis
+  # bookkeeping downstream.
+  data <- as.data.frame(data)
   if (nrow(data) == 0) {
     cli_abort("{.arg data} must not be empty.")
   }
@@ -171,9 +185,15 @@
   # Handle missing values
   cc <- complete.cases(Y)
   if (sum(!cc) > 0) {
+    if (!any(cc)) {
+      cli_abort("{.arg data} contains no complete rows for the selected variables.")
+    }
     n_missing <- sum(!cc)
     missing_idx <- which(!cc)
-    interior <- missing_idx[missing_idx > 1 & missing_idx < nrow(Y)]
+    # Only NA rows strictly inside the first..last complete-case range break
+    # adjacency; contiguous NA runs at either edge can be trimmed safely.
+    keep_range <- range(which(cc))
+    interior <- missing_idx[missing_idx > keep_range[1] & missing_idx < keep_range[2]]
 
     if (length(interior) > 0) {
       if (!allow_gaps) {
@@ -192,7 +212,7 @@
     } else {
       cli_warn("Removing {n_missing} row{?s} with missing values (edges only).")
     }
-    Y <- Y[cc, ]
+    Y <- Y[cc, , drop = FALSE]
     data <- data[cc, , drop = FALSE]
     time_values <- time_values[cc]
   }
@@ -489,6 +509,10 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
                                     margins = "normal",
                                     skew_direction = NULL) {
   if (!is.data.frame(data)) cli_abort("{.arg data} must be a data frame.")
+  # Plain-data.frame semantics throughout: single-bracket subsetting on a
+  # tibble returns a tibble, not a vector, which silently skips the per-unit
+  # time-grid validation and corrupts the stored time axis.
+  data <- as.data.frame(data)
   .prep_validate_scalar_logical(center, "center")
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
@@ -543,6 +567,9 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
     cli_abort("Unbalanced panels not yet supported. All units must have the same number of observations.")
   }
   T_obs <- as.integer(unique(counts))
+  if (T_obs < 3) {
+    cli_abort("At least 3 observations per unit required for a VAR(1) model, got {.val {T_obs}}.")
+  }
   time_grid <- .validate_panel_time_grid(data, ids, id_var, time_var)
 
   # Build 3D array

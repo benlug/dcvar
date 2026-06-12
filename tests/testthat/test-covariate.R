@@ -168,3 +168,20 @@ test_that("loo works for covariate fits with log_lik", {
 
   expect_s3_class(out, "loo")
 })
+
+test_that("dcvar_covariate fits end to end (drift and no-drift)", {
+  skip_if_no_rstan()
+
+  fit <- get_covariate_fit(drift = TRUE)
+  expect_s3_class(fit, "dcvar_covariate_fit")
+  eff <- covariate_effects(fit)
+  expect_true(is.data.frame(eff))
+  traj <- rho_trajectory(fit)
+  expect_true(all(is.finite(traj$mean)))
+  expect_true(all(traj$mean > -1 & traj$mean < 1))
+
+  fit_nodrift <- get_covariate_fit(drift = FALSE)
+  expect_s3_class(fit_nodrift, "dcvar_covariate_fit")
+  traj_nodrift <- rho_trajectory(fit_nodrift)
+  expect_true(all(is.finite(traj_nodrift$mean)))
+})

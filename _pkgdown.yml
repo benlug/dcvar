@@ -10,6 +10,7 @@ reference:
       - dcvar
       - dcvar_hmm
       - dcvar_constant
+      - dcvar_covariate
       - dcvar_multilevel
       - dcvar_sem
 
@@ -17,7 +18,9 @@ reference:
     desc: Extract parameters, trajectories, and draws from fitted models.
     contents:
       - rho_trajectory
+      - dependence_summary
       - var_params
+      - covariate_effects
       - hmm_states
       - random_effects
       - latent_states
@@ -86,6 +89,7 @@ reference:
       - prepare_dcvar_data
       - prepare_hmm_data
       - prepare_constant_data
+      - prepare_dcvar_covariate_data
       - prepare_multilevel_data
       - prepare_sem_data
 
@@ -95,6 +99,7 @@ reference:
       - dcvar_fit-methods
       - dcvar_hmm_fit-methods
       - dcvar_constant_fit-methods
+      - dcvar_covariate_fit-methods
       - dcvar_multilevel_fit-methods
       - dcvar_sem_fit-methods
 

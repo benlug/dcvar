@@ -1,3 +1,117 @@
+# dcvar 0.4.0
+
+## Breaking / scientifically relevant fixes
+
+- **Simulators no longer negate the dependence for left-skewed margins.**
+  The Stan likelihoods treat the copula uniform on a `skew_direction = -1`
+  exponential/gamma dimension as `u = 1 - F(x_shifted)`, but `simulate_dcvar()`
+  (and the shared mixed-margin helper used by `simulate_dcvar_multilevel()` and
+  `simulate_dcvar_sem()`, plus the homogeneous exponential SEM path) negated
+  the quantile-transformed variable *after* applying the copula. Data simulated
+  with exactly one negative `skew_direction` therefore implied copula
+  correlation `-rho` while `true_params` recorded `+rho`, so simulate-then-fit
+  studies silently recovered the negated dependence trajectory. Simulations
+  that used `c(1, 1)` or `c(-1, -1)` are unaffected (the flips cancel); any
+  results generated with asymmetric skew directions should be re-run.
+- The `eps_rep` posterior-predictive blocks in seven Stan models had the
+  mirror-image inversion bug and replicated negated dependence on left-skewed
+  dimensions; they now invert at the flipped uniform.
+- `dependence_summary()` for HMM fits now averages Kendall's tau over states
+  per draw (`sum_k gamma[t,k] * (2/pi) asin(rho_state[k])`) instead of applying
+  `asin` to the gamma-weighted mean rho, which understated tau during regime
+  transitions.
+- `hmm_states()$viterbi` is now a genuine Viterbi (MAP) decoding on
+  posterior-mean emission/transition log-probabilities. The previous
+  most-frequent-sampled-path estimator degenerated to an arbitrary
+  (lexicographically first) single draw's path whenever parameter uncertainty
+  made nearly all sampled paths unique.
+- HMM posterior predictive replicates (`eps_rep`) are now drawn from the
+  regime mixture (a state sampled from the smoothed probabilities, then that
+  state's rho) instead of the gamma-weighted mean rho.
+- `.relative_bias()` (used by `compute_rho_metrics()` /
+  `compute_param_metrics()`) now normalizes the mean error by the mean
+  absolute true value. The previous pointwise form exploded to ~1e12 % when
+  any true value was near zero (e.g. null-dependence conditions), silently
+  corrupting aggregated summaries. It returns `NA` with a warning when all
+  true values are near zero.
+
+## Bug fixes
+
+- `hmm_EG.stan` now exposes `sigma_exp` (plus `b_gq` and `rate_exp`) as
+  saved generated quantities. Previously they were brace-local, so
+  `summary()`, `var_params()`, `coef()`, and `plot_diagnostics()` errored and
+  `pit_values()` silently returned all-NA for exponential-margin HMM fits.
+- Tibble input no longer breaks multilevel fits: per-unit time-grid
+  validation was silently skipped and the stored time axis corrupted, crashing
+  `rho_trajectory()`, `fitted()`, and `predict()` downstream. All preparation
+  functions now coerce to a plain data frame up front.
+- Character and unordered-factor time columns are now rejected: they sort
+  lexicographically ("T10" before "T2"), silently scrambling the VAR(1)
+  ordering while making the spacing checks vacuous.
+- Leading/trailing runs of two or more missing rows are now treated as edge
+  trims rather than adjacency-breaking interior gaps, so they no longer abort
+  (or warn misleadingly) when removing them preserves adjacency.
+- `loo()` and `dcvar_compare()` now support all multilevel fits:
+  `multilevel_copula_var.stan` stores per-observation `log_lik` like its EG
+  and mixed siblings, and the margin-based whitelist was removed.
+  `dcvar_compare()` warns when an HMM fit (state-marginalized predictive
+  density) is compared against a dynamic fit (conditioned on the smoothed
+  latent rho trajectory), which can systematically favor the dynamic model.
+- The `seed` argument now makes fits reproducible: default per-chain initial
+  values are generated under a deterministic RNG (previously they came from
+  the unseeded global R RNG, so two fits with the same seed differed).
+- cmdstanr fits now survive `saveRDS()` and an R restart: posterior draws are
+  eagerly read into the fit object after sampling instead of being lazily
+  re-read from CSVs in the session tempdir.
+- `interpret_rho_trajectory()` no longer errors on Clayton constant fits; it
+  interprets the dependence via Kendall's tau.
+- The Clayton copula log-density is computed in log space, avoiding overflow
+  to `-Inf` (with NaN gradients) for `theta` greater than about 34 during
+  warmup.
+- PIT helpers abort with a clear message when a margin parameter group is
+  missing from the Stan output instead of silently returning all-NA values.
+- `simulate_dcvar_sem(n_time = 1)` no longer crashes with a subscript error;
+  `prepare_multilevel_data()` requires at least 3 occasions per unit;
+  `.safe_cor()` handles length-1 inputs; `Y[cc, ]` row removal keeps the
+  matrix shape with a single remaining row.
+- `print()` for constant-fit summaries no longer swaps the CI bounds when
+  `probs` are not passed in ascending order.
+- `draws()` validates its `format` argument instead of silently returning a
+  `draws_array`.
+- Divergence/treedepth counts are reported as `NA` (unknown) rather than 0
+  for fits without sampler diagnostics.
+- `plot_hmm_states()` pins the state factor levels so Viterbi point colors
+  match the fill colors when the MAP path skips a state;
+  `plot_trajectories()` forwards `...` only to the scenario generators that
+  accept each argument.
+- Warnings are emitted for prior arguments that a configuration ignores
+  (`prior_sigma_eps_rate` with no normal margin; `prior_z_rho_sd` with the
+  Clayton copula), and the recorded `priors` list omits unused entries.
+
+## Validation
+
+- All bivariate Stan models now declare `int<lower=2, upper=2> D`, rejecting
+  D > 2 data that the hard-wired bivariate copula code would silently
+  mishandle.
+
+## Documentation
+
+- Documented the plug-in nature of `predict()` intervals, the raw-data scale
+  of simulator `true_params` (fit with `standardize = FALSE` for round-trip
+  comparisons), the lognormal scale prior for exponential/gamma multilevel
+  margins, and `prior_rho_init_sd` as the covariate-model dependence
+  intercept (`beta_0`) prior.
+- Added the covariate model family to the README table and the pkgdown
+  reference index (which previously failed to build due to missing topics).
+
+## Tests
+
+- New regression tests pin the simulator copula orientation for every
+  `skew_direction` combination, seed reproducibility, tibble input, time
+  column validation, and edge-gap handling. The Clayton-normal constant model
+  and `dcvar_covariate()` (drift and no-drift) now get real MCMC smoke fits
+  in CI.
+
 # dcvar 0.3.1
 
 ## Bug fixes

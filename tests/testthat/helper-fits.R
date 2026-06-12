@@ -1097,3 +1097,47 @@ get_constant_cmdstanr_fit <- function() {
     )
   })$fit
 }
+
+get_constant_clayton_fit <- function() {
+  .cache_fit_result("constant_fit_clayton", function() {
+    sim <- simulate_dcvar(
+      n_time = 30,
+      rho_trajectory = rho_constant(30, 0.5),
+      seed = 42
+    )
+    dcvar_constant(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      copula = "clayton",
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 123
+    )
+  })$fit
+}
+
+get_covariate_fit <- function(drift = TRUE) {
+  key <- paste0("covariate_fit_", if (drift) "drift" else "nodrift")
+  .cache_fit_result(key, function() {
+    sim <- simulate_dcvar(
+      n_time = 30,
+      rho_trajectory = rho_step(30, rho_before = 0.6, rho_after = 0.2, breakpoint = 0.5),
+      seed = 42
+    )
+    df <- sim$Y_df
+    df$phase <- as.numeric(df$time > 15)
+    dcvar_covariate(
+      df,
+      vars = c("y1", "y2"),
+      covariates = "phase",
+      drift = drift,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 123
+    )
+  })$fit
+}

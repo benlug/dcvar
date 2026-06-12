@@ -20,7 +20,7 @@ functions {
 
 data {
   int<lower=2> n_time;                         // Number of time points
-  int<lower=2> D;                              // Number of variables (= 2)
+  int<lower=2, upper=2> D;  // copula code is hard-wired bivariate
   matrix[n_time, D] Y;                         // Observed data (n_time x D)
   array[D] int<lower=1, upper=4> family;       // Per-dimension margin family code
   vector[D] skew_direction;                    // Consulted only for exp/gamma dims

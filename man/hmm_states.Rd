@@ -21,7 +21,10 @@ hmm_states(object, ...)
 A named list with:
 \itemize{
 \item \code{gamma}: T_eff x K matrix of posterior state probabilities
-\item \code{viterbi}: integer vector of MAP state sequence
+\item \code{viterbi}: integer vector, the Viterbi (MAP) state path decoded from
+the posterior-mean emission log-likelihoods, transition matrix, and
+initial state probabilities (a plug-in estimator, not a full posterior
+summary of the path)
 \item \code{rho_state}: list with \code{mean}, \code{lower}, \code{upper} for each state
 \item \code{A}: K x K posterior mean transition matrix
 \item \code{rho_hmm}: posterior-averaged rho trajectory

@@ -403,17 +403,19 @@ plot_hmm_states <- function(object, show_viterbi = TRUE, ...) {
   T_eff <- nrow(states$gamma)
   time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
 
-  # Build long-format data for gamma
+  # Build long-format data for gamma. Pin the state levels so the fill and
+  # Viterbi color scales stay aligned even when the MAP path skips a state.
+  state_levels <- paste0("State ", 1:K)
   gamma_df <- data.frame(
     time = rep(time_values, K),
-    state = rep(paste0("State ", 1:K), each = T_eff),
+    state = factor(rep(state_levels, each = T_eff), levels = state_levels),
     probability = as.vector(states$gamma)
   )
 
   p <- ggplot2::ggplot(gamma_df, ggplot2::aes(x = .data$time, y = .data$probability,
                                                 fill = .data$state)) +
     ggplot2::geom_area(alpha = 0.7, position = "stack") +
-    ggplot2::scale_fill_brewer(palette = "Set2") +
+    ggplot2::scale_fill_brewer(palette = "Set2", limits = state_levels) +
     ggplot2::labs(
       x = "Time", y = "State Probability",
       title = "HMM State Posteriors",
@@ -428,7 +430,7 @@ plot_hmm_states <- function(object, show_viterbi = TRUE, ...) {
   if (show_viterbi) {
     viterbi_df <- data.frame(
       time = time_values,
-      state = paste0("State ", states$viterbi),
+      state = factor(paste0("State ", states$viterbi), levels = state_levels),
       y = 0.5
     )
     p <- p + ggplot2::geom_point(
@@ -436,7 +438,7 @@ plot_hmm_states <- function(object, show_viterbi = TRUE, ...) {
       ggplot2::aes(x = .data$time, y = .data$y, color = .data$state),
       size = 0.5, alpha = 0.5, inherit.aes = FALSE
     ) +
-      ggplot2::scale_color_brewer(palette = "Set2", guide = "none")
+      ggplot2::scale_color_brewer(palette = "Set2", limits = state_levels, guide = "none")
   }
 
   p

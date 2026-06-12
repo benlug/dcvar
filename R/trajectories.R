@@ -258,23 +258,25 @@ rho_double_step <- function(n_time, rho_levels = c(0.7, 0.3, 0.7),
 #' rho_scenario("decreasing", n_time = 100)
 #' rho_scenario("double_relapse", n_time = 150)
 rho_scenario <- function(scenario, n_time, ...) {
-  scenarios <- list(
-    constant = list(fn = rho_constant, defaults = list(rho = 0.5)),
-    decreasing = list(fn = rho_decreasing, defaults = list(rho_start = 0.7, rho_end = 0.3)),
-    increasing = list(fn = rho_increasing, defaults = list(rho_start = 0.3, rho_end = 0.7)),
-    random_walk = list(fn = rho_random_walk, defaults = list(z_init = 0.5, sigma_omega = 0.05)),
-    single_middle = list(fn = rho_step, defaults = list(rho_before = 0.7, rho_after = 0.3, breakpoint = 0.5)),
-    large_change = list(fn = rho_step, defaults = list(rho_before = 0.8, rho_after = 0.2, breakpoint = 0.5)),
-    small_change = list(fn = rho_step, defaults = list(rho_before = 0.6, rho_after = 0.4, breakpoint = 0.5)),
-    increase = list(fn = rho_step, defaults = list(rho_before = 0.3, rho_after = 0.7, breakpoint = 0.5)),
-    double_relapse = list(fn = rho_double_step, defaults = list(rho_levels = c(0.7, 0.3, 0.7)))
-  )
-
-  if (!scenario %in% names(scenarios)) {
-    cli_abort("Unknown scenario: {.val {scenario}}. Available: {.val {names(scenarios)}}")
+  if (!scenario %in% names(.rho_scenarios)) {
+    cli_abort("Unknown scenario: {.val {scenario}}. Available: {.val {names(.rho_scenarios)}}")
   }
 
-  scenario_spec <- scenarios[[scenario]]
+  scenario_spec <- .rho_scenarios[[scenario]]
   args <- utils::modifyList(scenario_spec$defaults, list(...))
   do.call(scenario_spec$fn, c(list(n_time = n_time), args))
 }
+
+#' Registry of named trajectory scenarios (shared with plot_trajectories)
+#' @noRd
+.rho_scenarios <- list(
+  constant = list(fn = rho_constant, defaults = list(rho = 0.5)),
+  decreasing = list(fn = rho_decreasing, defaults = list(rho_start = 0.7, rho_end = 0.3)),
+  increasing = list(fn = rho_increasing, defaults = list(rho_start = 0.3, rho_end = 0.7)),
+  random_walk = list(fn = rho_random_walk, defaults = list(z_init = 0.5, sigma_omega = 0.05)),
+  single_middle = list(fn = rho_step, defaults = list(rho_before = 0.7, rho_after = 0.3, breakpoint = 0.5)),
+  large_change = list(fn = rho_step, defaults = list(rho_before = 0.8, rho_after = 0.2, breakpoint = 0.5)),
+  small_change = list(fn = rho_step, defaults = list(rho_before = 0.6, rho_after = 0.4, breakpoint = 0.5)),
+  increase = list(fn = rho_step, defaults = list(rho_before = 0.3, rho_after = 0.7, breakpoint = 0.5)),
+  double_relapse = list(fn = rho_double_step, defaults = list(rho_levels = c(0.7, 0.3, 0.7)))
+)

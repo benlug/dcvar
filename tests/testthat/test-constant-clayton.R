@@ -73,3 +73,22 @@ test_that("Clayton constant summary, print, and loo work on stubs", {
   out <- suppressWarnings(loo::loo(fit))
   expect_s3_class(out, "loo")
 })
+
+test_that("dcvar_constant fits the Clayton-normal model end to end", {
+  skip_if_no_rstan()
+
+  fit <- get_constant_clayton_fit()
+  expect_s3_class(fit, "dcvar_constant_fit")
+  expect_identical(fit$copula, "clayton")
+
+  dep <- dependence_summary(fit)
+  expect_true(all(is.finite(dep$mean)))
+  expect_true(all(dep$mean > -1 & dep$mean < 1))
+
+  ll <- loo(fit)
+  expect_s3_class(ll, "loo")
+
+  # Regression: interpret_rho_trajectory() previously errored on Clayton fits
+  out <- capture.output(msg <- interpret_rho_trajectory(fit))
+  expect_match(msg, "Kendall")
+})

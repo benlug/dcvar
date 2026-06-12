@@ -49,7 +49,13 @@
 #'   - `Y`: `n_time x 2` observation matrix
 #'   - `Y_df`: data frame with columns `time`, `y1`, `y2` (ready for
 #'     [dcvar()])
-#'   - `true_params`: list of true parameter values
+#'   - `true_params`: list of true parameter values. These are on the raw
+#'     data scale; the fitting functions standardize by default, so round-trip
+#'     comparisons of `mu`, `Phi`, and `sigma_eps` require fitting with
+#'     `standardize = FALSE` (the `rho` trajectory is scale-invariant).
+#'     Exponential and gamma dimensions are simulated with unit-SD
+#'     standardized innovations, so their implied true scale
+#'     (`sigma_exp`/`sigma_gam`) is 1.
 #' @export
 #'
 #' @examples

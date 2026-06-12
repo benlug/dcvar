@@ -10,13 +10,14 @@ test_that("loo() works for supported model types", {
   expect_s3_class(loo_con, "loo")
 })
 
-test_that("loo() rejects multilevel and SEM fits with informative errors", {
+test_that("loo() supports multilevel fits and rejects indicator SEM fits", {
   skip_if_no_rstan()
 
-  expect_error(
-    loo(get_multilevel_fit()),
-    "not supported.*multilevel|multilevel.*not supported"
-  )
+  # multilevel_copula_var.stan now stores per-observation log_lik like the EG
+  # and mixed variants, so all multilevel fits are valid PSIS-LOO targets.
+  loo_ml <- loo(get_multilevel_fit())
+  expect_s3_class(loo_ml, "loo")
+
   expect_error(
     loo(get_sem_fit()),
     "not supported.*SEM|SEM.*not supported"
@@ -62,12 +63,17 @@ test_that("dcvar_compare() rejects unsupported LOO targets", {
   skip_if_no_rstan()
 
   expect_error(
-    dcvar_compare(dcvar = get_dcvar_fit(), multilevel = get_multilevel_fit()),
-    "does not support one or more supplied fits"
-  )
-  expect_error(
     dcvar_compare(dcvar = get_dcvar_fit(), sem = get_sem_fit()),
     "does not support one or more supplied fits"
+  )
+})
+
+test_that("dcvar_compare() warns when mixing HMM and latent-conditioned fits", {
+  skip_if_no_rstan()
+
+  expect_warning(
+    dcvar_compare(dcvar = get_dcvar_fit(), hmm = get_hmm_fit()),
+    "mixes two"
   )
 })
 

@@ -13,7 +13,9 @@
 #'
 #' @return A named list with:
 #'   - `bias`: mean bias
-#'   - `relative_bias`: mean relative bias (%)
+#'   - `relative_bias`: relative bias (%), the mean error normalized by the
+#'     mean absolute true value (`NA` with a warning when all true values are
+#'     near zero)
 #'   - `coverage`: proportion of intervals containing true value
 #'   - `interval_width`: mean interval width
 #'   - `correlation`: Pearson correlation between true and estimated
@@ -149,10 +151,22 @@ aggregate_metrics <- function(metrics_list) {
 
 
 #' Internal: compute relative bias (%)
+#'
+#' Normalized form: mean error relative to the mean absolute true value.
+#' Averaging pointwise ratios instead would explode (or flip sign) whenever a
+#' true value is at or near zero -- e.g. a null-dependence rho trajectory --
+#' silently dominating any aggregated summaries.
 #' @noRd
 .relative_bias <- function(estimated, true, epsilon = 1e-10) {
-  denom <- ifelse(abs(true) < epsilon, epsilon, true)
-  mean((estimated - true) / denom) * 100
+  denom <- mean(abs(true))
+  if (denom < epsilon) {
+    cli_warn(c(
+      "Relative bias is undefined when all true values are (near) zero; returning {.val NA}.",
+      "i" = "Use the absolute {.val bias} metric for null conditions."
+    ))
+    return(NA_real_)
+  }
+  mean(estimated - true) / denom * 100
 }
 
 #' Internal: validate a numeric vector for metric calculations

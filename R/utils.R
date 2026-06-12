@@ -2,13 +2,17 @@
 # Internal Utility Functions
 # ============================================================================
 
-#' Safe correlation that returns NA for constant vectors
+#' Safe correlation that returns NA for constant or too-short vectors
 #'
 #' @param x,y Numeric vectors.
 #' @return Correlation coefficient, or `NA_real_` if either vector has zero
-#'   variance.
+#'   variance or fewer than two observations (where `sd()` returns `NA` and
+#'   `cor()` errors).
 #' @noRd
 .safe_cor <- function(x, y) {
+  if (length(x) < 2L || length(y) < 2L) {
+    return(NA_real_)
+  }
   if (sd(x) < 1e-10 || sd(y) < 1e-10) {
     return(NA_real_)
   }

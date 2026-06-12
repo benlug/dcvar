@@ -13,6 +13,9 @@
 #'   their original scale.
 #' @param prior_beta_sd Prior SD for the covariate effects:
 #'   `beta ~ normal(0, prior_beta_sd)`.
+#' @param prior_rho_init_sd Prior SD for the dependence intercept `beta_0` on
+#'   the Fisher-z scale (the covariate model has no separate initial-rho
+#'   parameter; `beta_0` plays that role).
 #' @param zero_init_eta Logical; if `TRUE` (default), fixes the first residual
 #'   drift state at zero (`eta[1] = 0`). If `FALSE`, the first transition can
 #'   receive an immediate residual random-walk shock.
@@ -126,6 +129,9 @@ prepare_dcvar_covariate_data <- function(data, vars, covariates,
 #' @param zero_init_eta Logical; if `TRUE` (default), fixes `eta[1] = 0` in the
 #'   residual-drift model.
 #' @param prior_beta_sd Prior SD for covariate effects.
+#' @param prior_rho_init_sd Prior SD for the dependence intercept `beta_0` on
+#'   the Fisher-z scale (the covariate model has no separate initial-rho
+#'   parameter; `beta_0` plays that role).
 #'
 #' @return A `dcvar_covariate_fit` object.
 #'

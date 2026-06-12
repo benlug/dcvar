@@ -364,7 +364,10 @@ fitted.dcvar_sem_fit <- function(object, type = c("link", "response"), ...) {
 #' Returns point predictions and **marginal** prediction intervals by combining
 #' the VAR(1) fitted values with the estimated innovation SDs. Intervals are
 #' computed per-variable using a normal approximation and do not account for
-#' the copula dependence structure between variables.
+#' the copula dependence structure between variables. They are plug-in
+#' intervals built from posterior-mean parameters: posterior parameter
+#' uncertainty is not propagated, so coverage is understated on short series
+#' where that uncertainty is non-negligible.
 #'
 #' `predict()` is implemented for the public fit classes. For multilevel fits,
 #' the methods return unit-specific trajectories. For SEM fits, `type = "link"`

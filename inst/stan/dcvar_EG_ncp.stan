@@ -9,7 +9,7 @@ functions {
 
 data {
   int<lower=2> n_time;
-  int<lower=2> D;
+  int<lower=2, upper=2> D;  // copula code is hard-wired bivariate
   matrix[n_time, D] Y;
   vector[D] skew_direction;
 

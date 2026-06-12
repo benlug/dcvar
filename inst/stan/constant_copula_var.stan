@@ -11,7 +11,7 @@ functions {
 
 data {
   int<lower=2> n_time;                    // Number of time points
-  int<lower=2> D;                    // Number of variables (typically 2)
+  int<lower=2, upper=2> D;  // copula code is hard-wired bivariate
   matrix[n_time, D] Y;                    // Observed data (n_time x D)
 
   // Prior hyperparameters

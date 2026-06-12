@@ -80,15 +80,30 @@ test_that("hmm_states() returns correct structure", {
   expect_equal(dim(states$A), c(fit$K, fit$K))
 })
 
-test_that("hmm_states() returns a Viterbi path observed in the posterior draws", {
+test_that("hmm_states() returns a valid Viterbi path on posterior-mean quantities", {
   skip_if_no_rstan()
 
   fit <- get_hmm_fit()
   states <- hmm_states(fit)
-  viterbi_draws <- draws(fit, variable = "viterbi_state", format = "draws_matrix")
-  draw_paths <- apply(viterbi_draws, 1, paste, collapse = ",")
+  n_time_eff <- fit$stan_data$n_time - 1L
 
-  expect_true(paste(states$viterbi, collapse = ",") %in% draw_paths)
+  expect_length(states$viterbi, n_time_eff)
+  expect_true(all(states$viterbi %in% seq_len(fit$K)))
+  # Decoding is deterministic given the fit
+  expect_identical(states$viterbi, hmm_states(fit)$viterbi)
+})
+
+test_that(".viterbi_path decodes the MAP sequence for a known HMM", {
+  # Two states; state 2 strongly favored by emissions except at t = 2, where
+  # a sticky transition matrix keeps the path in state 2 anyway.
+  obs_ll <- rbind(c(-5, -1), c(-1.5, -2), c(-5, -1))
+  log_A <- log(matrix(c(0.9, 0.1, 0.1, 0.9), 2, 2, byrow = TRUE))
+  log_pi0 <- log(c(0.5, 0.5))
+  expect_identical(.viterbi_path(obs_ll, log_A, log_pi0), c(2L, 2L, 2L))
+
+  # With a flat transition matrix, the emission at t = 2 wins instead.
+  log_A_flat <- log(matrix(0.5, 2, 2))
+  expect_identical(.viterbi_path(obs_ll, log_A_flat, log_pi0), c(2L, 1L, 2L))
 })
 
 test_that("draws() returns posterior draws", {

@@ -107,6 +107,14 @@ dcvar_constant <- function(data, vars,
     allow_gaps = allow_gaps
   )
   if (identical(copula, "clayton")) {
+    # Clayton models parameterize dependence via theta (fixed lognormal
+    # prior), so the Gaussian-copula z_rho prior does not apply.
+    if (!isTRUE(all.equal(prior_z_rho_sd, 1))) {
+      cli_warn(c(
+        "{.arg prior_z_rho_sd} is ignored for {.val clayton} copula fits.",
+        "i" = "Clayton dependence uses {.code theta ~ lognormal(0, 1)}; there is no z-scale rho parameter."
+      ))
+    }
     stan_data$z_rho_prior_sd <- NULL
   }
   attr(stan_data, "copula") <- copula
@@ -160,12 +168,16 @@ dcvar_constant <- function(data, vars,
     copula = copula,
     skew_direction = skew_direction,
     backend = backend,
-    priors = list(
-      mu_sd = prior_mu_sd,
-      phi_sd = prior_phi_sd,
-      sigma_eps_rate = prior_sigma_eps_rate,
-      z_rho_sd = prior_z_rho_sd,
-      copula = copula
+    priors = c(
+      list(
+        mu_sd = prior_mu_sd,
+        phi_sd = prior_phi_sd,
+        sigma_eps_rate = prior_sigma_eps_rate
+      ),
+      # z_rho_sd does not apply to Clayton fits; recording it would suggest
+      # the prior was used.
+      if (identical(copula, "gaussian")) list(z_rho_sd = prior_z_rho_sd),
+      list(copula = copula)
     ),
     meta = list(
       chains = chains,

@@ -16,6 +16,16 @@ A \code{loo_compare} matrix.
 Convenience wrapper around \code{\link[loo:loo_compare]{loo::loo_compare()}} that accepts named
 dcvar model fits.
 }
+\details{
+The pointwise \code{log_lik} estimands are not identical across model
+families: HMM fits marginalize the discrete states out of each one-step
+predictive density, while dynamic (DC-VAR and covariate) fits condition
+on the smoothed latent \code{rho} trajectory, which is informed by the
+observation itself. Comparing an HMM fit against a dynamic fit can
+therefore systematically favor the dynamic model; a warning is emitted
+for such comparisons and the resulting elpd differences should be
+interpreted with caution.
+}
 \examples{
 \donttest{
 sim <- simulate_dcvar(

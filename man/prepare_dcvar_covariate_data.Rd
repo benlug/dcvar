@@ -51,7 +51,9 @@ cause an error. If \code{TRUE}, they produce a warning and are removed.}
 \code{sigma_omega ~ exponential(1/prior_sigma_omega_rate)}. Default \code{0.1} gives
 \code{exponential(10)} with prior mean 0.1.}
 
-\item{prior_rho_init_sd}{Prior SD for initial rho on Fisher-z scale.}
+\item{prior_rho_init_sd}{Prior SD for the dependence intercept \code{beta_0} on
+the Fisher-z scale (the covariate model has no separate initial-rho
+parameter; \code{beta_0} plays that role).}
 
 \item{prior_beta_sd}{Prior SD for the covariate effects:
 \code{beta ~ normal(0, prior_beta_sd)}.}

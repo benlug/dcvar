@@ -53,7 +53,7 @@ jobs:
             any::testthat
             any::knitr
             any::rmarkdown
-            any::withr
+            any::tibble
             any::sn
             any::rcmdcheck
 

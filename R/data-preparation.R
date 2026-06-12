@@ -288,6 +288,16 @@
     cli_abort("{.arg margins} must have length 1 or {.val {D}}, got {.val {length(margins)}}.")
   }
 
+  # sigma_eps (and its prior) only exists for normal dimensions; a non-default
+  # prior_sigma_eps_rate with no normal dimension would be silently ignored.
+  margins_all <- if (length(margins) == 1L) rep(margins, D) else margins
+  if (!any(margins_all == "normal") && !isTRUE(all.equal(prior_sigma_eps_rate, 1))) {
+    cli_warn(c(
+      "{.arg prior_sigma_eps_rate} is ignored: no dimension uses a {.val normal} margin.",
+      "i" = "The {.val {unique(margins_all)}} margin scale priors are fixed in the Stan models."
+    ))
+  }
+
   if (.is_mixed_margins(margins)) {
     margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
     stan_data$family <- unname(as.integer(.family_codes[margins_vec]))

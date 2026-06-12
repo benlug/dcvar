@@ -9,7 +9,7 @@ functions {
 
 data {
   int<lower=2> n_time;
-  int<lower=2> D;
+  int<lower=2, upper=2> D;  // copula code is hard-wired bivariate
   matrix[n_time, D] Y;
   int<lower=2> K;
   vector[D] skew_direction;
@@ -152,8 +152,13 @@ generated quantities {
     }
 
     for (t in 1:n_time_eff) {
+      // Replicate from the regime mixture (state drawn from smoothed gamma),
+      // not from the gamma-weighted mean rho.
+      vector[K] gt = to_vector(gamma[t, ]);
+      int k_rep = categorical_rng(gt / sum(gt));
+      real rho_rep = rho_state[k_rep];
       real z1_rep = std_normal_rng();
-      real z2_rep = rho_hmm[t] * z1_rep + sqrt(1 - square(rho_hmm[t])) * std_normal_rng();
+      real z2_rep = rho_rep * z1_rep + sqrt(1 - square(rho_rep)) * std_normal_rng();
       real u1 = Phi(z1_rep);
       real u2 = Phi(z2_rep);
       // The likelihood uses u = 1 - F(x_shifted) on left-skewed dimensions,

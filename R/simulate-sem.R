@@ -152,7 +152,7 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   # Latent VAR(1) recursion matching the SEM Stan model, which conditions on x_0 = 0.
   state <- matrix(0, n_time, 2)
   state[1, ] <- mu + zeta[1, ]
-  for (time_index in 2:n_time) {
+  for (time_index in seq_len(n_time - 1L) + 1L) {
     state[time_index, ] <- mu + as.vector(Phi %*% state[time_index - 1L, ]) + zeta[time_index, ]
   }
 

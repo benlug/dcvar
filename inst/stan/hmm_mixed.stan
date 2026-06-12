@@ -21,7 +21,7 @@ functions {
 
 data {
   int<lower=2> n_time;                         // Number of time points
-  int<lower=2> D;                              // Number of variables (= 2)
+  int<lower=2, upper=2> D;  // copula code is hard-wired bivariate
   matrix[n_time, D] Y;                         // Observed data (n_time x D)
   int<lower=2> K;                              // Number of hidden states
   array[D] int<lower=1, upper=4> family;       // Per-dimension margin family code
@@ -188,12 +188,16 @@ generated quantities {
   rho_hmm = hmm_rho_average(gamma, rho_state, n_time_eff, K);
   log_lik = hmm_log_lik(log_alpha, n_time_eff, K);
 
-  // Posterior predictive using the posterior-averaged rho; invert per dimension
-  // where an inverse CDF exists (normal, exponential). skew_normal / gamma dims
-  // carry copula-level z-scores (plot_ppc guards fits containing such a dim).
+  // Posterior predictive from the regime mixture (state drawn from smoothed
+  // gamma, then that state's rho); invert per dimension where an inverse CDF
+  // exists (normal, exponential). skew_normal / gamma dims carry copula-level
+  // z-scores (plot_ppc guards fits containing such a dim).
   for (t in 1:n_time_eff) {
+    vector[K] gt = to_vector(gamma[t, ]);
+    int k_rep = categorical_rng(gt / sum(gt));
+    real rho_rep = rho_state[k_rep];
     real z1_rep = std_normal_rng();
-    real z2_rep = rho_hmm[t] * z1_rep + sqrt(1 - square(rho_hmm[t])) * std_normal_rng();
+    real z2_rep = rho_rep * z1_rep + sqrt(1 - square(rho_rep)) * std_normal_rng();
     array[2] real z_rep = {z1_rep, z2_rep};
     for (i in 1:D) {
       real u_i = Phi(z_rep[i]);

@@ -18,6 +18,10 @@ data {
   real<lower=0> prior_rho_sd;
 }
 
+transformed data {
+  int n_time_eff = n_time - 1;
+}
+
 parameters {
   // Population-level
   vector[4] phi_bar;                 // Population mean: (phi11, phi12, phi21, phi22)
@@ -83,8 +87,9 @@ generated quantities {
   vector[N] spectral_radius;
   int<lower=0> n_nonstationary = 0;
 
-  // Per-unit log-likelihood (for LOO)
-  vector[N] log_lik;
+  // Per-observation log-likelihood (for LOO), matching the EG and mixed
+  // multilevel models: one conditional density per unit and time step.
+  matrix[N, n_time_eff] log_lik;
 
   for (i in 1:N) {
     Phi[i] = Phi_T[i]';
@@ -106,15 +111,14 @@ generated quantities {
     if (spectral_radius[i] >= 1.0) n_nonstationary += 1;
 
     // Log-likelihood for this unit
-    log_lik[i] = 0;
     {
       real log_sigma_sum = log(sigma[1]) + log(sigma[2]);
       for (t in 2:n_time) {
         row_vector[2] pred = y[i][t - 1] * Phi_T[i];
         row_vector[2] res = y[i][t] - pred;
         row_vector[2] z = res ./ sigma';
-        log_lik[i] += std_normal_lpdf(z[1]) + std_normal_lpdf(z[2]) - log_sigma_sum;
-        log_lik[i] += gaussian_copula_z_lpdf(to_vector(z) | rho);
+        log_lik[i, t - 1] = std_normal_lpdf(z[1]) + std_normal_lpdf(z[2]) - log_sigma_sum;
+        log_lik[i, t - 1] += gaussian_copula_z_lpdf(to_vector(z) | rho);
       }
     }
   }

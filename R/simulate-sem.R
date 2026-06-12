@@ -140,7 +140,10 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
     } else {
       u <- stats::pnorm(w)
       for (i in seq_len(2L)) {
-        x_raw <- stats::qexp(u[i], rate = 1 / sigma_exp[i])
+        # sem_EG.stan uses u = 1 - F(x_shifted) for left-skewed dimensions, so
+        # flip the uniform before the quantile to keep zeta comonotone with w.
+        u_i <- if (skew_direction[i] < 0) 1 - u[i] else u[i]
+        x_raw <- stats::qexp(u_i, rate = 1 / sigma_exp[i])
         zeta[time_index, i] <- skew_direction[i] * (x_raw - sigma_exp[i])
       }
     }

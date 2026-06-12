@@ -202,7 +202,10 @@ generated quantities {
           if (family[i] == 1) {
             eps_rep[t, i] = z_rep[i] * sigma_eps[i];
           } else if (family[i] == 2) {
-            eps_rep[t, i] = skew_direction[i] * (-log1m(u_i) / rate_exp[i] - sigma_exp[i]);
+            // The likelihood uses u = 1 - F(x_shifted) on left-skewed dims,
+            // so invert at the flipped uniform.
+            real u_eff = skew_direction[i] < 0 ? 1 - u_i : u_i;
+            eps_rep[t, i] = skew_direction[i] * (-log1m(u_eff) / rate_exp[i] - sigma_exp[i]);
           } else {
             eps_rep[t, i] = z_rep[i];  // skew_normal / gamma: copula-level z-score
           }

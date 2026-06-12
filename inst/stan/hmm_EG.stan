@@ -126,6 +126,9 @@ generated quantities {
   vector[n_time_eff] rho_hmm;
   vector[n_time_eff] log_lik;
   matrix[n_time_eff, D] eps_rep;
+  vector[D] sigma_exp;
+  vector[D] b_gq;
+  vector[D] rate_exp;
 
   // Forward-backward
   gamma = hmm_state_posteriors(log_alpha, obs_ll, log_A, n_time_eff, K);
@@ -140,13 +143,12 @@ generated quantities {
   // PPC: sample from bivariate normal copula, then invert through exponential margins
   {
     real sigma_eps = 1e-9;
-    vector[D] sigma_exp_gq;
-    vector[D] rate_exp_gq;
     for (i in 1:D) {
       real m = -skew_direction[i] * eps[1, i];
       for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-      sigma_exp_gq[i] = fmax(m, 0) + exp(eta[i]) + sigma_eps;
-      rate_exp_gq[i] = 1.0 / sigma_exp_gq[i];
+      b_gq[i] = fmax(m, 0);
+      sigma_exp[i] = b_gq[i] + exp(eta[i]) + sigma_eps;
+      rate_exp[i] = 1.0 / sigma_exp[i];
     }
 
     for (t in 1:n_time_eff) {
@@ -154,8 +156,13 @@ generated quantities {
       real z2_rep = rho_hmm[t] * z1_rep + sqrt(1 - square(rho_hmm[t])) * std_normal_rng();
       real u1 = Phi(z1_rep);
       real u2 = Phi(z2_rep);
-      eps_rep[t, 1] = skew_direction[1] * (-log1m(u1) / rate_exp_gq[1] - sigma_exp_gq[1]);
-      eps_rep[t, 2] = skew_direction[2] * (-log1m(u2) / rate_exp_gq[2] - sigma_exp_gq[2]);
+      // The likelihood uses u = 1 - F(x_shifted) on left-skewed dimensions,
+      // so invert at the flipped uniform to keep eps_rep's dependence
+      // orientation consistent with rho.
+      if (skew_direction[1] < 0) u1 = 1 - u1;
+      if (skew_direction[2] < 0) u2 = 1 - u2;
+      eps_rep[t, 1] = skew_direction[1] * (-log1m(u1) / rate_exp[1] - sigma_exp[1]);
+      eps_rep[t, 2] = skew_direction[2] * (-log1m(u2) / rate_exp[2] - sigma_exp[2]);
     }
   }
 }

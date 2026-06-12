@@ -130,6 +130,7 @@ test_that("hmm exponential fit has usable diagnostics", {
   expect_equal(diag$n_max_treedepth, 0)
   expect_true(is.finite(diag$max_rhat))
   expect_true(diag$max_rhat < 1.30)
+  expect_length(co$sigma_exp, 2)
   expect_true(all(co$sigma_exp > 0))
 })
 

@@ -18,6 +18,8 @@ reference:
     desc: Extract parameters, trajectories, and draws from fitted models.
     contents:
       - rho_trajectory
+      - phi_trajectory
+      - sigma_trajectory
       - dependence_summary
       - var_params
       - covariate_effects
@@ -49,6 +51,8 @@ reference:
     contents:
       - plot_rho
       - plot_phi
+      - plot_phi_trajectory
+      - plot_sigma_trajectory
       - plot_diagnostics
       - plot_ppc
       - plot_pit
@@ -97,12 +101,14 @@ reference:
     desc: Print, summary, and plot methods for fit objects.
     contents:
       - dcvar_fit-methods
+      - dcvar_tv_fit-methods
       - dcvar_hmm_fit-methods
       - dcvar_constant_fit-methods
       - dcvar_covariate_fit-methods
       - dcvar_multilevel_fit-methods
       - dcvar_sem_fit-methods
       - print.dcvar_summary
+      - print.dcvar_tv_summary
       - print.dcvar_hmm_summary
       - print.dcvar_constant_summary
       - print.dcvar_covariate_summary

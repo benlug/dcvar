@@ -83,7 +83,7 @@ dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 
 | Model | Function | Dependence Structure | Status |
 | --- | --- | --- | --- |
-| **DC-VAR** | `dcvar()` | Continuous random-walk on Fisher-z scale | Core |
+| **DC-VAR** | `dcvar()` | Continuous random-walk on Fisher-z scale; optionally time-varying VAR coefficients (`tv_phi`) and residual scales (`tv_sigma`) | Core |
 | **HMM Copula** | `dcvar_hmm()` | Discrete regime-switching with K states | Core |
 | **Constant Copula** | `dcvar_constant()` | Time-invariant Gaussian or Clayton baseline | Core |
 | **Covariate DC-VAR** | `dcvar_covariate()` | Dependence driven by observed covariates on the Fisher-z scale | Core |

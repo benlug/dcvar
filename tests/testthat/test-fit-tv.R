@@ -1,0 +1,242 @@
+# ============================================================================
+# Routing, data preparation, and fit-object tests for the time-varying DC-VAR
+# ============================================================================
+
+test_that("dcvar_tv routes to the single generic Stan file for all margins", {
+  expect_identical(.margin_stan_file("dcvar_tv", "normal"), "dcvar_tv_mixed.stan")
+  expect_identical(.margin_stan_file("dcvar_tv", c("normal", "exponential")), "dcvar_tv_mixed.stan")
+  # Homogeneous non-normal also routes to the generic file (no specialised zoo)
+  expect_identical(.margin_stan_file("dcvar_tv", c("gamma", "gamma")), "dcvar_tv_mixed.stan")
+  expect_error(.margin_stan_file("dcvar_tv", "normal", copula = "clayton"), "Gaussian")
+
+  expect_identical(
+    .margin_cache_key("dcvar_tv", c("normal", "exponential")),
+    "dcvar_tv_mixed12_model"
+  )
+  expect_identical(.margin_cache_key("dcvar_tv", "normal"), "dcvar_tv_mixed11_model")
+
+  path <- dcvar_stan_path("dcvar_tv")
+  expect_true(file.exists(path))
+  expect_match(path, "dcvar_tv_mixed\\.stan$")
+})
+
+test_that("prepare_dcvar_data with flags off is byte-identical to before", {
+  df <- data.frame(time = 1:30, y1 = rnorm(30), y2 = rnorm(30))
+  plain <- prepare_dcvar_data(df, vars = c("y1", "y2"))
+  flagged_off <- prepare_dcvar_data(df, vars = c("y1", "y2"),
+                                    tv_phi = FALSE, tv_sigma = FALSE)
+  expect_identical(plain, flagged_off)
+  expect_null(plain$tv_phi)
+  expect_null(plain$family)
+})
+
+test_that("prepare_dcvar_data adds the TV fields when a flag is set", {
+  df <- data.frame(time = 1:30, y1 = rnorm(30), y2 = rnorm(30))
+  out <- prepare_dcvar_data(df, vars = c("y1", "y2"), tv_phi = TRUE, tv_sigma = TRUE)
+
+  expect_identical(out$tv_phi, 1L)
+  expect_identical(out$tv_sigma, 1L)
+  expect_identical(out$family, c(1L, 1L))
+  expect_identical(out$skew_direction, c(1, 1))
+  expect_identical(out$tau_phi_prior, 0.025)
+  expect_identical(out$tau_sigma_prior, 0.05)
+  expect_true(attr(out, "tv_phi"))
+  expect_true(attr(out, "tv_sigma"))
+
+  mixed <- prepare_dcvar_data(df, vars = c("y1", "y2"),
+                              margins = c("normal", "exponential"),
+                              skew_direction = c(1, -1),
+                              tv_phi = TRUE)
+  expect_identical(mixed$family, c(1L, 2L))
+  expect_identical(mixed$skew_direction, c(1, -1))
+})
+
+test_that("prepare_dcvar_data validates the TV flags", {
+  df <- data.frame(time = 1:30, y1 = rnorm(30), y2 = rnorm(30))
+  expect_error(prepare_dcvar_data(df, c("y1", "y2"), tv_phi = NA), "tv_phi")
+  expect_error(prepare_dcvar_data(df, c("y1", "y2"), tv_phi = c(TRUE, TRUE)), "tv_phi")
+  expect_error(prepare_dcvar_data(df, c("y1", "y2"), tv_phi = TRUE,
+                                  prior_tau_phi_rate = -1), "prior_tau_phi_rate")
+})
+
+test_that(".init_dcvar_tv_params sizes the walk containers by flag", {
+  i_both <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = TRUE, tv_sigma = TRUE)
+  expect_length(i_both$tau_phi, 4)
+  expect_identical(dim(i_both$phi_raw), c(39L, 4L))
+  expect_length(i_both$tau_sigma, 2)
+  expect_identical(dim(i_both$sigma_raw), c(39L, 2L))
+  # Full union initialised regardless of margins
+  expect_length(i_both$shape_gam, 2)
+  expect_length(i_both$omega_raw, 39)
+
+  i_phi <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = TRUE, tv_sigma = FALSE)
+  expect_length(i_phi$tau_sigma, 0)
+  expect_identical(dim(i_phi$sigma_raw), c(0L, 2L))
+
+  i_sig <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = FALSE, tv_sigma = TRUE)
+  expect_length(i_sig$tau_phi, 0)
+  expect_identical(dim(i_sig$phi_raw), c(0L, 4L))
+})
+
+# --- Smoke fit: structure, extractors, diagnostics name pin -----------------
+
+test_that("dcvar(tv_phi, tv_sigma) fits and returns the subclass", {
+  skip_if_no_rstan()
+
+  fit <- get_dcvar_tv_fit()
+  expect_s3_class(fit, "dcvar_tv_fit")
+  expect_identical(class(fit), c("dcvar_tv_fit", "dcvar_fit", "dcvar_model_fit"))
+  expect_identical(fit$model, "dcvar_tv")
+  expect_true(fit$tv_phi)
+  expect_true(fit$tv_sigma)
+  expect_named(fit$priors, c("mu_sd", "phi_sd", "sigma_eps_rate", "sigma_omega_rate",
+                             "rho_init_sd", "tau_phi_rate", "tau_sigma_rate"))
+})
+
+test_that("TV trajectory extractors return the documented structure", {
+  skip_if_no_rstan()
+
+  fit <- get_dcvar_tv_fit()
+  n_eff <- fit$stan_data$n_time - 1L
+
+  phi_df <- phi_trajectory(fit)
+  expect_s3_class(phi_df, "data.frame")
+  expect_equal(nrow(phi_df), 4 * n_eff)
+  expect_true(all(c("time", "coefficient", "mean", "sd", "q2.5", "q97.5") %in% names(phi_df)))
+  expect_identical(sort(unique(phi_df$coefficient)), c("phi11", "phi12", "phi21", "phi22"))
+
+  sigma_df <- sigma_trajectory(fit)
+  expect_equal(nrow(sigma_df), 2 * n_eff)
+  expect_identical(sort(unique(sigma_df$variable)), sort(fit$vars))
+  expect_true(all(sigma_df$mean > 0))
+
+  rho_df <- rho_trajectory(fit)
+  expect_equal(nrow(rho_df), n_eff)
+  expect_true(all(abs(rho_df$mean) <= 1))
+})
+
+test_that("TV fit methods run and report the time-varying components", {
+  skip_if_no_rstan()
+
+  fit <- get_dcvar_tv_fit()
+
+  out <- capture.output(print(fit))
+  expect_true(any(grepl("Phi\\(t\\)", out)))
+
+  s <- summary(fit)
+  expect_s3_class(s, "dcvar_tv_summary")
+  expect_false(is.null(s$phi_summary))
+  expect_false(is.null(s$sigma_summary))
+  expect_silent(invisible(capture.output(print(s))))
+
+  co <- coef(fit)
+  expect_true(all(c("mu", "Phi", "tau_phi", "tau_sigma", "sigma_omega") %in% names(co)))
+  expect_length(co$tau_phi, 4)
+
+  vp <- var_params(fit)
+  expect_true(all(c("mu", "Phi", "tau_phi", "tau_sigma", "sigma_omega") %in% names(vp)))
+
+  expect_s3_class(plot(fit, type = "phi"), "ggplot")
+  expect_s3_class(plot(fit, type = "sigma"), "ggplot")
+  expect_s3_class(plot(fit, type = "rho"), "ggplot")
+
+  pit_df <- pit_values(fit)
+  expect_true(all(pit_df$pit >= 0 & pit_df$pit <= 1, na.rm = TRUE))
+
+  pred <- predict(fit)
+  expect_true(all(pred$lower <= pred$upper))
+
+  ll <- loo(fit)
+  expect_s3_class(ll, "loo")
+})
+
+test_that("diagnostics monitoring list matches the sampled Stan parameters", {
+  skip_if_no_rstan()
+
+  fit <- get_dcvar_tv_fit()
+  monitored <- .diagnostic_parameter_variables(fit)
+  available <- posterior::variables(draws(fit))
+  missing <- setdiff(monitored, available)
+  expect_identical(missing, character(0))
+
+  diag <- dcvar_diagnostics(fit)
+  expect_true(is.finite(diag$max_rhat))
+})
+
+test_that("phi/sigma trajectories tile constants when a flag is off", {
+  skip_if_no_rstan()
+
+  fit <- get_dcvar_tv_sigma_only_fit()
+  expect_false(fit$tv_phi)
+  n_eff <- fit$stan_data$n_time - 1L
+
+  phi_df <- phi_trajectory(fit)
+  expect_equal(nrow(phi_df), 4 * n_eff)
+  # Constant baseline tiled: one unique mean per coefficient
+  per_coef <- tapply(phi_df$mean, phi_df$coefficient, function(x) length(unique(x)))
+  expect_true(all(per_coef == 1L))
+
+  sigma_df <- sigma_trajectory(fit)
+  expect_equal(nrow(sigma_df), 2 * n_eff)
+})
+
+test_that("dcvar() warns about ignored TV prior args and exp/gamma scales", {
+  df <- data.frame(time = 1:25, y1 = rnorm(25), y2 = rnorm(25))
+  expect_warning(
+    tryCatch(
+      dcvar(df, c("y1", "y2"), tv_phi = FALSE, prior_tau_phi_rate = 0.5,
+            chains = 1, iter_warmup = 2, iter_sampling = 2, refresh = 0,
+            stan_file = NA_character_),
+      error = function(e) NULL
+    ),
+    "prior_tau_phi_rate"
+  )
+})
+
+test_that("dcvar_compare warns when mixing TV and non-TV fits", {
+  skip_if_no_rstan()
+
+  # The cached fits use different data lengths, so loo_compare() itself errors
+  # after the warning under test has fired; swallow the error.
+  w <- testthat::capture_warnings(
+    try(dcvar_compare(tv = get_dcvar_tv_fit(), constant = get_constant_fit()),
+        silent = TRUE)
+  )
+  expect_true(any(grepl("latent paths", w)))
+})
+
+# --- Gated recovery tests (DCVAR_SLOW_TESTS) ---------------------------------
+
+test_that("TV fit recovers a phi12 step and a sigma ramp directionally", {
+  skip_if_no_rstan()
+  skip_if_not_slow()
+
+  n <- 200
+  sim <- simulate_dcvar(
+    n, rho_constant(n, 0.4),
+    phi_trajectory = list(
+      rho_constant(n, 0.3),
+      rho_step(n, rho_before = 0.5, rho_after = 0.0, breakpoint = 0.5),
+      rho_constant(n, 0.1),
+      rho_constant(n, 0.3)
+    ),
+    sigma_trajectory = cbind(seq(0.7, 1.8, length.out = n - 1), rep(1, n - 1)),
+    seed = 7
+  )
+  fit <- dcvar(sim$Y_df, vars = c("y1", "y2"),
+               tv_phi = TRUE, tv_sigma = TRUE,
+               standardize = FALSE,
+               chains = 2,
+               iter_warmup = margin_iter_warmup,
+               iter_sampling = margin_iter_sampling,
+               refresh = 0, seed = 11)
+
+  phi_df <- phi_trajectory(fit)
+  phi12 <- phi_df[phi_df$coefficient == "phi12", ]
+  n_eff <- nrow(phi12)
+  expect_gt(mean(phi12$mean[1:50]), mean(phi12$mean[(n_eff - 49):n_eff]))
+
+  sigma_df <- sigma_trajectory(fit)
+  s1 <- sigma_df[sigma_df$variable == "y1", ]
+  expect_gt(mean(s1$mean[(n_eff - 49):n_eff]), mean(s1$mean[1:50]))
+})

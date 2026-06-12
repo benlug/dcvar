@@ -372,6 +372,22 @@
 #'   `sigma_omega ~ exponential(1/prior_sigma_omega_rate)`. Default `0.1` gives
 #'   `exponential(10)` with prior mean 0.1.
 #' @param prior_rho_init_sd Prior SD for initial rho on Fisher-z scale.
+#' @param tv_phi Logical; if `TRUE`, the four VAR(1) coefficients evolve as
+#'   random walks around the constant baseline `Phi` (default: `FALSE`).
+#' @param tv_sigma Logical; if `TRUE`, the residual scales of normal and
+#'   skew-normal dimensions evolve as log-scale random walks around their
+#'   constant baselines (default: `FALSE`). Exponential and gamma dimensions
+#'   keep a constant scale (with a warning); see [dcvar()] for the rationale.
+#' @param prior_tau_phi_rate Prior mean for the four Phi random-walk
+#'   innovation SDs: `tau_phi ~ exponential(1/prior_tau_phi_rate)`. Only used
+#'   when `tv_phi = TRUE`. The default `0.025` allows a total drift SD of
+#'   about 0.3 over 150 time points while shrinking toward constant
+#'   coefficients.
+#' @param prior_tau_sigma_rate Prior mean for the per-dimension log-scale
+#'   random-walk innovation SDs:
+#'   `tau_sigma ~ exponential(1/prior_tau_sigma_rate)`. Only used when
+#'   `tv_sigma = TRUE`. The default `0.05` allows scale factors of roughly
+#'   0.5--2 over 150 time points.
 #' @param allow_gaps Logical; if `FALSE` (default), interior missing values
 #'   cause an error. If `TRUE`, they produce a warning and are removed.
 #'
@@ -386,6 +402,10 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
                                prior_sigma_eps_rate = 1,
                                prior_sigma_omega_rate = 0.1,
                                prior_rho_init_sd = 1,
+                               tv_phi = FALSE,
+                               tv_sigma = FALSE,
+                               prior_tau_phi_rate = 0.025,
+                               prior_tau_sigma_rate = 0.05,
                                allow_gaps = FALSE) {
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
@@ -394,6 +414,10 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
   .prep_validate_positive_scalar(prior_sigma_eps_rate, "prior_sigma_eps_rate")
   .prep_validate_positive_scalar(prior_sigma_omega_rate, "prior_sigma_omega_rate")
   .prep_validate_positive_scalar(prior_rho_init_sd, "prior_rho_init_sd")
+  .prep_validate_scalar_logical(tv_phi, "tv_phi")
+  .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
+  .prep_validate_positive_scalar(prior_tau_phi_rate, "prior_tau_phi_rate")
+  .prep_validate_positive_scalar(prior_tau_sigma_rate, "prior_tau_sigma_rate")
   prep <- .prepare_var_data(data, vars, time_var, standardize, allow_gaps)
 
   stan_data <- list(
@@ -408,6 +432,21 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
 
   stan_data <- .add_margin_stan_data(stan_data, margins, prep$D, skew_direction,
                                      prior_sigma_eps_rate)
+
+  if (tv_phi || tv_sigma) {
+    # The generic TV model dispatches on per-dimension family codes and always
+    # expects the full margin data, including for homogeneous specifications.
+    margins_vec <- rep(margins, length.out = prep$D)
+    stan_data$family <- unname(as.integer(.family_codes[margins_vec]))
+    stan_data$sigma_eps_prior <- stan_data$sigma_eps_prior %||% prior_sigma_eps_rate
+    stan_data$skew_direction <- stan_data$skew_direction %||% rep(1, prep$D)
+    stan_data$tv_phi <- as.integer(tv_phi)
+    stan_data$tv_sigma <- as.integer(tv_sigma)
+    stan_data$tau_phi_prior <- prior_tau_phi_rate
+    stan_data$tau_sigma_prior <- prior_tau_sigma_rate
+    attr(stan_data, "tv_phi") <- tv_phi
+    attr(stan_data, "tv_sigma") <- tv_sigma
+  }
 
   attr(stan_data, "vars") <- prep$vars
   attr(stan_data, "standardized") <- prep$standardized

@@ -1001,3 +1001,234 @@ draws.dcvar_model_fit <- function(object, variable = NULL, format = "draws_array
   format <- match.arg(format, c("draws_array", "draws_matrix", "draws_df"))
   .fit_draws(object$fit, variables = variable, format = format, backend = object$backend)
 }
+
+
+# ============================================================================
+# Time-varying trajectory extractors (dcvar_tv_fit)
+# ============================================================================
+
+#' Extract the time-varying VAR coefficient trajectories
+#'
+#' Returns posterior summaries of the four VAR(1) coefficient paths
+#' phi11(t), phi12(t), phi21(t), phi22(t) from a time-varying DC-VAR fit.
+#' For fits with `tv_phi = FALSE` the constant baseline coefficients are
+#' tiled over time so the return shape does not depend on the flag.
+#'
+#' @param object A fitted model object.
+#' @param probs Numeric vector of quantile probabilities
+#'   (default: `c(0.025, 0.1, 0.5, 0.9, 0.975)`).
+#' @param ... Additional arguments (unused).
+#'
+#' @return A data frame with columns `time`, `coefficient` (one of
+#'   `"phi11"`, `"phi12"`, `"phi21"`, `"phi22"`), `mean`, `sd`, and one
+#'   column per requested quantile.
+#' @seealso [sigma_trajectory()], [rho_trajectory()], [plot_phi_trajectory()]
+#' @export
+phi_trajectory <- function(object, ...) {
+  UseMethod("phi_trajectory")
+}
+
+#' @rdname phi_trajectory
+#' @export
+phi_trajectory.default <- function(object, ...) {
+  cli_abort("{.fun phi_trajectory} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' Internal: coefficient labels in the row-major Stan column order
+#' @noRd
+.phi_tv_labels <- c("phi11", "phi12", "phi21", "phi22")
+
+#' Internal: matching baseline Phi draw column for each phi_t column
+#' @noRd
+.phi_tv_baseline_cols <- c("Phi[1,1]", "Phi[1,2]", "Phi[2,1]", "Phi[2,2]")
+
+#' @rdname phi_trajectory
+#' @export
+phi_trajectory.dcvar_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  n_time_eff <- object$stan_data$n_time - 1L
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+
+  if (isTRUE(object$tv_phi)) {
+    phi_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "phi_t", backend = object$backend,
+      required = .stan_output_group_pattern("phi_t"),
+      required_type = "pattern",
+      context = "phi_trajectory.dcvar_tv_fit()",
+      output_type = "generated quantity"
+    ))
+    out <- lapply(1:4, function(k) {
+      cols <- paste0("phi_t[", seq_len(n_time_eff), ",", k, "]")
+      df <- .summarise_rho_draws(as.matrix(phi_draws[, cols, drop = FALSE]), probs, time_values)
+      df$coefficient <- .phi_tv_labels[k]
+      df
+    })
+  } else {
+    # Constant Phi: tile the baseline so the contract is flag-agnostic.
+    base_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "Phi", backend = object$backend,
+      required = .stan_output_group_pattern("Phi"),
+      required_type = "pattern",
+      context = "phi_trajectory.dcvar_tv_fit()",
+      output_type = "parameter group"
+    ))
+    out <- lapply(1:4, function(k) {
+      one <- .summarise_rho_draws(
+        as.matrix(base_draws[, .phi_tv_baseline_cols[k], drop = FALSE]),
+        probs, time_values[1]
+      )
+      df <- one[rep(1L, n_time_eff), , drop = FALSE]
+      df$time <- time_values
+      rownames(df) <- NULL
+      df$coefficient <- .phi_tv_labels[k]
+      df
+    })
+  }
+
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
+  out[, c("time", "coefficient", setdiff(names(out), c("time", "coefficient")))]
+}
+
+
+#' Extract the time-varying residual scale trajectories
+#'
+#' Returns posterior summaries of the per-variable residual scale paths from
+#' a time-varying DC-VAR fit. The reported value is each margin family's
+#' natural scale: the innovation SD for normal dimensions, the direct
+#' parameterization scale `omega` for skew-normal dimensions, and the
+#' (time-constant) `sigma_exp` / `sigma_gam` for exponential and gamma
+#' dimensions. For fits with `tv_sigma = FALSE` the constant baselines are
+#' tiled over time so the return shape does not depend on the flag.
+#'
+#' @param object A fitted model object.
+#' @param probs Numeric vector of quantile probabilities
+#'   (default: `c(0.025, 0.1, 0.5, 0.9, 0.975)`).
+#' @param ... Additional arguments (unused).
+#'
+#' @return A data frame with columns `time`, `variable`, `mean`, `sd`, and
+#'   one column per requested quantile.
+#' @seealso [phi_trajectory()], [rho_trajectory()], [plot_sigma_trajectory()]
+#' @export
+sigma_trajectory <- function(object, ...) {
+  UseMethod("sigma_trajectory")
+}
+
+#' @rdname sigma_trajectory
+#' @export
+sigma_trajectory.default <- function(object, ...) {
+  cli_abort("{.fun sigma_trajectory} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' Internal: baseline scale draw column for one dimension of a TV fit
+#' @noRd
+.sigma_tv_baseline_col <- function(family, d) {
+  switch(family,
+    normal = paste0("sigma_eps[", d, "]"),
+    exponential = paste0("sigma_exp[", d, "]"),
+    skew_normal = paste0("omega[", d, "]"),
+    gamma = paste0("sigma_gam[", d, "]")
+  )
+}
+
+#' @rdname sigma_trajectory
+#' @export
+sigma_trajectory.dcvar_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  D <- object$stan_data$D
+  n_time_eff <- object$stan_data$n_time - 1L
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+  margins_vec <- rep(object$margins %||% "normal", length.out = D)
+
+  if (isTRUE(object$tv_sigma)) {
+    sigma_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "sigma_t", backend = object$backend,
+      required = .stan_output_group_pattern("sigma_t"),
+      required_type = "pattern",
+      context = "sigma_trajectory.dcvar_tv_fit()",
+      output_type = "generated quantity"
+    ))
+    out <- lapply(seq_len(D), function(d) {
+      cols <- paste0("sigma_t[", seq_len(n_time_eff), ",", d, "]")
+      df <- .summarise_rho_draws(as.matrix(sigma_draws[, cols, drop = FALSE]), probs, time_values)
+      df$variable <- object$vars[d]
+      df
+    })
+  } else {
+    out <- lapply(seq_len(D), function(d) {
+      col <- .sigma_tv_baseline_col(margins_vec[d], d)
+      base_draws <- posterior::as_draws_matrix(.fit_draws(
+        object$fit, sub("\\[.*$", "", col), backend = object$backend,
+        required = paste0("^", sub("\\[.*$", "\\\\[", col)),
+        required_type = "pattern",
+        context = "sigma_trajectory.dcvar_tv_fit()",
+        output_type = "parameter group"
+      ))
+      one <- .summarise_rho_draws(
+        as.matrix(base_draws[, col, drop = FALSE]),
+        probs, time_values[1]
+      )
+      df <- one[rep(1L, n_time_eff), , drop = FALSE]
+      df$time <- time_values
+      rownames(df) <- NULL
+      df$variable <- object$vars[d]
+      df
+    })
+  }
+
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
+  out[, c("time", "variable", setdiff(names(out), c("time", "variable")))]
+}
+
+
+#' @rdname var_params
+#' @export
+var_params.dcvar_tv_fit <- function(object, ...) {
+  D <- object$stan_data$D
+  margins_vec <- rep(object$margins %||% "normal", length.out = D)
+  margin_groups <- names(.mixed_margin_report_vars(margins_vec))
+
+  required_patterns <- c("^mu\\[", "^Phi\\[", "^sigma_omega$",
+                         paste0("^", margin_groups, "\\["))
+  if (isTRUE(object$tv_phi)) {
+    required_patterns <- c(required_patterns, "^tau_phi\\[")
+  }
+  if (isTRUE(object$tv_sigma)) {
+    required_patterns <- c(required_patterns, "^tau_sigma\\[")
+  }
+
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "var_params.dcvar_tv_fit()",
+    output_type = "parameter group",
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+  extract_param <- function(pattern) {
+    rows <- grep(pattern, summ$variable)
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+
+  result <- list(
+    mu = extract_param("^mu\\["),
+    Phi = extract_param("^Phi\\[")
+  )
+  for (group in margin_groups) {
+    result[[group]] <- extract_param(paste0("^", group, "\\["))
+  }
+  if (isTRUE(object$tv_phi)) {
+    result$tau_phi <- extract_param("^tau_phi\\[")
+  }
+  if (isTRUE(object$tv_sigma)) {
+    result$tau_sigma <- extract_param("^tau_sigma\\[")
+  }
+  result$sigma_omega <- extract_param("^sigma_omega$")
+  result
+}

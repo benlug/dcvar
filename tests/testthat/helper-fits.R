@@ -1141,3 +1141,51 @@ get_covariate_fit <- function(drift = TRUE) {
     )
   })$fit
 }
+
+get_dcvar_tv_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_both", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_decreasing(40, 0.6, 0.2),
+      phi_trajectory = list(
+        rho_constant(40, 0.3), rho_decreasing(40, 0.3, 0.0),
+        rho_constant(40, 0.1), rho_constant(40, 0.3)
+      ),
+      sigma_trajectory = cbind(seq(0.8, 1.4, length.out = 39), rep(1, 39)),
+      seed = 42
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      tv_phi = TRUE,
+      tv_sigma = TRUE,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 123
+    )
+  })$fit
+}
+
+get_dcvar_tv_sigma_only_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_sigma_only", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_constant(40, 0.4),
+      sigma_trajectory = cbind(seq(0.8, 1.4, length.out = 39), rep(1, 39)),
+      seed = 43
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      tv_phi = FALSE,
+      tv_sigma = TRUE,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 124
+    )
+  })$fit
+}

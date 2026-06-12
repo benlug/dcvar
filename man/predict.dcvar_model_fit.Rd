@@ -4,6 +4,7 @@
 \alias{predict.dcvar_model_fit}
 \alias{predict.dcvar_multilevel_fit}
 \alias{predict.dcvar_sem_fit}
+\alias{predict.dcvar_tv_fit}
 \title{One-step-ahead predictions from a copula VAR model}
 \usage{
 \method{predict}{dcvar_model_fit}(object, type = c("link", "response"), ci_level = 0.95, ...)
@@ -11,6 +12,8 @@
 \method{predict}{dcvar_multilevel_fit}(object, type = c("link", "response"), ci_level = 0.95, ...)
 
 \method{predict}{dcvar_sem_fit}(object, type = c("link", "response"), ci_level = 0.95, ...)
+
+\method{predict}{dcvar_tv_fit}(object, type = c("link", "response"), ci_level = 0.95, ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

@@ -180,6 +180,56 @@
 }
 
 
+#' Generate default TV-VAR initialization values
+#'
+#' The generic time-varying model declares the full mixed-margin parameter
+#' union plus conditionally sized random-walk containers. rstan requires every
+#' supplied init entry to match the declared dimensions exactly, so the
+#' deviation entries are zero-length when their flag is off.
+#'
+#' @param D Number of variables.
+#' @param T_obs Number of time points.
+#' @param margins Margin type (any spec; the union is always initialised).
+#' @param tv_phi,tv_sigma Component flags.
+#' @return A named list of initial values.
+#' @noRd
+.init_dcvar_tv_params <- function(D, T_obs, margins = "normal",
+                                  tv_phi = FALSE, tv_sigma = FALSE) {
+  n_eff <- T_obs - 1L
+  base <- list(
+    mu = rnorm(D, 0, 0.1),
+    Phi = diag(0.25, D) + matrix(rnorm(D^2, 0, 0.05), D, D),
+    # Full mixed-margin union (the generic model declares every family's
+    # parameters regardless of the requested margins)
+    sigma_eps = runif(D, 0.8, 1.2),
+    eta = rnorm(D, 0, 0.3),
+    omega = runif(D, 0.5, 1.5),
+    delta = runif(D, -0.3, 0.3),
+    shape_gam = runif(D, 0.5, 2.0),
+    sigma_omega = runif(1, 0.05, 0.15),
+    z_rho_init = rnorm(1, 0, 0.1),
+    omega_raw = rnorm(n_eff, 0, 0.1)
+  )
+
+  tv <- list(
+    tau_phi = if (tv_phi) runif(4, 0.02, 0.08) else numeric(0),
+    phi_raw = if (tv_phi) {
+      matrix(rnorm(n_eff * 4, 0, 0.1), n_eff, 4)
+    } else {
+      matrix(numeric(0), 0, 4)
+    },
+    tau_sigma = if (tv_sigma) runif(D, 0.02, 0.08) else numeric(0),
+    sigma_raw = if (tv_sigma) {
+      matrix(rnorm(n_eff * D, 0, 0.1), n_eff, D)
+    } else {
+      matrix(numeric(0), 0, D)
+    }
+  )
+
+  c(base, tv)
+}
+
+
 #' Generate default covariate DC-VAR initialization values
 #'
 #' @param D Number of variables.

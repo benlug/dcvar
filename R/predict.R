@@ -508,3 +508,143 @@ predict.dcvar_sem_fit <- function(object, type = c("link", "response"),
     .sem_indicator_predictions(object, state_summaries, ci_level)
   }
 }
+
+
+# ============================================================================
+# Time-varying fits (dcvar_tv_fit)
+# ============================================================================
+
+#' @rdname fitted.dcvar_model_fit
+#' @export
+fitted.dcvar_tv_fit <- function(object, type = c("link", "response"), ...) {
+  type <- match.arg(type)
+  if (!isTRUE(object$tv_phi)) {
+    # Constant Phi: the inherited one-step-ahead computation is correct.
+    return(NextMethod())
+  }
+
+  D <- object$stan_data$D
+  n_time_obs <- object$stan_data$n_time
+  Y <- object$stan_data$Y
+  mu_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "mu", backend = object$backend,
+    required = .stan_output_group_pattern("mu"),
+    required_type = "pattern",
+    context = "fitted.dcvar_tv_fit()",
+    output_type = "parameter group"
+  ))
+  phi_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "phi_t", backend = object$backend,
+    required = .stan_output_group_pattern("phi_t"),
+    required_type = "pattern",
+    context = "fitted.dcvar_tv_fit()",
+    output_type = "generated quantity"
+  ))
+
+  mu_mat <- mu_draws[, paste0("mu[", seq_len(D), "]"), drop = FALSE]
+
+  y_hat <- matrix(NA_real_, n_time_obs - 1L, D)
+  for (time_index in 2:n_time_obs) {
+    t_eff <- time_index - 1L
+    centered_prev <- sweep(mu_mat, 2, Y[time_index - 1L, ], FUN = function(mu_val, y_prev) y_prev - mu_val)
+    y_hat_draws <- matrix(NA_real_, nrow(mu_mat), D)
+
+    for (d in seq_len(D)) {
+      eta <- mu_mat[, d]
+      for (j in seq_len(D)) {
+        k <- (d - 1L) * D + j
+        eta <- eta + phi_draws[, paste0("phi_t[", t_eff, ",", k, "]")] * centered_prev[, j]
+      }
+      y_hat_draws[, d] <- eta
+    }
+
+    y_hat[t_eff, ] <- colMeans(y_hat_draws)
+  }
+
+  if (type == "response" && isTRUE(object$standardized)) {
+    Y_means <- attr(object$stan_data, "Y_means")
+    Y_sds <- attr(object$stan_data, "Y_sds")
+    if (!is.null(Y_means) && !is.null(Y_sds)) {
+      for (d in seq_len(D)) {
+        y_hat[, d] <- y_hat[, d] * Y_sds[d] + Y_means[d]
+      }
+    }
+  }
+
+  out <- data.frame(time = .observed_time_values(object$stan_data, drop_first = TRUE), y_hat)
+  names(out) <- c("time", object$vars)
+  out
+}
+
+
+#' @rdname predict.dcvar_model_fit
+#' @export
+predict.dcvar_tv_fit <- function(object, type = c("link", "response"),
+                                 ci_level = 0.95, ...) {
+  type <- match.arg(type)
+  .validate_interval_level(ci_level, arg_name = "ci_level")
+  margins <- object$margins %||% "normal"
+  if (!all(margins == "normal")) {
+    cli_abort("Prediction intervals are currently only supported for normal margins, not {.val {margins}}.")
+  }
+
+  fit_df <- stats::fitted(object, type = "link")
+  D <- object$stan_data$D
+  n_time_eff <- object$stan_data$n_time - 1L
+  vars <- object$vars
+
+  # Per-time plug-in scales: posterior-mean sigma_t when the scales vary,
+  # otherwise the constant posterior-mean sigma_eps tiled over time.
+  sigma_mat <- if (isTRUE(object$tv_sigma)) {
+    summ <- .fit_summary(object$fit, backend = object$backend)
+    out <- matrix(NA_real_, n_time_eff, D)
+    for (d in seq_len(D)) {
+      rows <- match(paste0("sigma_t[", seq_len(n_time_eff), ",", d, "]"), summ$variable)
+      if (anyNA(rows)) {
+        cli_abort("Predictions require the Stan output {.val sigma_t}, which is missing from the fit.")
+      }
+      out[, d] <- summ$mean[rows]
+    }
+    out
+  } else {
+    sigma_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "sigma_eps", backend = object$backend,
+      required = .stan_output_group_pattern("sigma_eps"),
+      required_type = "pattern",
+      context = "predict.dcvar_tv_fit()",
+      output_type = "parameter group"
+    ))
+    sigma_eps <- colMeans(sigma_draws[, paste0("sigma_eps[", seq_len(D), "]"), drop = FALSE])
+    matrix(rep(sigma_eps, each = n_time_eff), n_time_eff, D)
+  }
+
+  z_crit <- stats::qnorm(1 - (1 - ci_level) / 2)
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+
+  rows <- list()
+  for (d in seq_len(D)) {
+    rows[[d]] <- data.frame(
+      time = time_values,
+      variable = vars[d],
+      mean = fit_df[[vars[d]]],
+      lower = fit_df[[vars[d]]] - z_crit * sigma_mat[, d],
+      upper = fit_df[[vars[d]]] + z_crit * sigma_mat[, d]
+    )
+  }
+  out <- do.call(rbind, rows)
+
+  if (type == "response" && isTRUE(object$standardized)) {
+    Y_means <- attr(object$stan_data, "Y_means")
+    Y_sds <- attr(object$stan_data, "Y_sds")
+    if (!is.null(Y_means) && !is.null(Y_sds)) {
+      for (d in seq_len(D)) {
+        idx <- out$variable == vars[d]
+        out$mean[idx] <- out$mean[idx] * Y_sds[d] + Y_means[d]
+        out$lower[idx] <- out$lower[idx] * Y_sds[d] + Y_means[d]
+        out$upper[idx] <- out$upper[idx] * Y_sds[d] + Y_means[d]
+      }
+    }
+  }
+
+  out
+}

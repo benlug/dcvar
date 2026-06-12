@@ -140,6 +140,46 @@ dcvar_diagnostics.default <- function(object, ...) {
     return(c(mu_vars, phi_vars, margin_vars, dependence_var))
   }
 
+  if (identical(model, "dcvar_tv")) {
+    n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
+    n_eff <- n_time_obs - 1L
+    # The generic TV model always uses the mixed-union parameter block, so the
+    # per-dimension sampled margin parameters follow the mixed convention even
+    # for homogeneous margin requests.
+    tv_margin_vars <- .mixed_diagnostic_margin_vars(rep(margins, length.out = D))
+    vars <- c(
+      mu_vars,
+      phi_vars,
+      tv_margin_vars,
+      "z_rho_init",
+      "sigma_omega",
+      paste0("omega_raw[", seq_len(n_eff), "]")
+    )
+    if (isTRUE(object$tv_phi)) {
+      vars <- c(
+        vars,
+        paste0("tau_phi[", seq_len(4), "]"),
+        paste0(
+          "phi_raw[",
+          rep(seq_len(n_eff), each = 4), ",", rep(seq_len(4), times = n_eff),
+          "]"
+        )
+      )
+    }
+    if (isTRUE(object$tv_sigma)) {
+      vars <- c(
+        vars,
+        paste0("tau_sigma[", seq_len(D), "]"),
+        paste0(
+          "sigma_raw[",
+          rep(seq_len(n_eff), each = D), ",", rep(seq_len(D), times = n_eff),
+          "]"
+        )
+      )
+    }
+    return(vars)
+  }
+
   if (identical(model, "dcvar")) {
     n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
     return(c(

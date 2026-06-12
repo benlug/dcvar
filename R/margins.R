@@ -232,6 +232,18 @@
   .validate_copula(copula)
   .validate_margin_families(margins)
 
+  # The TV-VAR model is a single generic file: per-dimension family codes
+  # handle homogeneous and mixed margins alike.
+  if (identical(model_type, "dcvar_tv")) {
+    if (!identical(copula, "gaussian")) {
+      cli_abort(c(
+        "Time-varying VAR components are currently implemented only for the Gaussian copula.",
+        "i" = "Use {.code copula = \"gaussian\"} (the default) with {.arg tv_phi} / {.arg tv_sigma}."
+      ))
+    }
+    return("dcvar_tv_mixed.stan")
+  }
+
   if (.is_mixed_margins(margins)) {
     if (identical(copula, "clayton")) {
       if (!identical(model_type, "constant")) {
@@ -336,6 +348,10 @@
 .margin_cache_key <- function(model_type, margins, copula = "gaussian") {
   .validate_copula(copula)
   .validate_margin_families(margins)
+  if (identical(model_type, "dcvar_tv")) {
+    margins_vec <- rep(margins, length.out = 2L)
+    return(paste0("dcvar_tv_mixed", paste(.family_codes[margins_vec], collapse = ""), "_model"))
+  }
   if (.is_mixed_margins(margins)) {
     suffix <- paste0("_mixed", paste(.family_codes[margins], collapse = ""))
     if (!identical(copula, "gaussian")) {

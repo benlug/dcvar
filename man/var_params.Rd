@@ -6,6 +6,7 @@
 \alias{var_params.dcvar_model_fit}
 \alias{var_params.dcvar_multilevel_fit}
 \alias{var_params.dcvar_sem_fit}
+\alias{var_params.dcvar_tv_fit}
 \title{Extract VAR(1) parameter summaries}
 \usage{
 var_params(object, ...)
@@ -17,6 +18,8 @@ var_params(object, ...)
 \method{var_params}{dcvar_multilevel_fit}(object, ...)
 
 \method{var_params}{dcvar_sem_fit}(object, ...)
+
+\method{var_params}{dcvar_tv_fit}(object, ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

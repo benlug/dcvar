@@ -5,14 +5,14 @@
 \title{Get path to bundled Stan model file}
 \usage{
 dcvar_stan_path(
-  model = c("dcvar", "dcvar_covariate", "dcvar_covariate_nodrift", "hmm", "constant",
-    "multilevel", "sem", "sem_naive"),
+  model = c("dcvar", "dcvar_tv", "dcvar_covariate", "dcvar_covariate_nodrift", "hmm",
+    "constant", "multilevel", "sem", "sem_naive"),
   margins = "normal",
   copula = "gaussian"
 )
 }
 \arguments{
-\item{model}{Character string: \code{"dcvar"}, \code{"dcvar_covariate"},
+\item{model}{Character string: \code{"dcvar"}, \code{"dcvar_tv"}, \code{"dcvar_covariate"},
 \code{"dcvar_covariate_nodrift"}, \code{"hmm"}, \code{"constant"}, \code{"multilevel"},
 \code{"sem"}, or \code{"sem_naive"}.}
 

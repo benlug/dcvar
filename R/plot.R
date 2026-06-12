@@ -243,6 +243,17 @@ plot_diagnostics <- function(object, ...) {
     c("mu[1]", "mu[2]")
   }
   if (object$model == "dcvar") trace_pars <- c(trace_pars, "sigma_omega")
+  if (object$model == "dcvar_tv") {
+    # The generic TV model uses the mixed-union parameter block (per-dimension
+    # margin parameters) even for homogeneous margins; add the walk SDs.
+    trace_pars <- c(
+      "mu[1]", "mu[2]",
+      .mixed_plot_margin_vars(rep(margins, length.out = 2L)),
+      "sigma_omega",
+      if (isTRUE(object$tv_phi)) paste0("tau_phi[", 1:4, "]"),
+      if (isTRUE(object$tv_sigma)) paste0("tau_sigma[", 1:2, "]")
+    )
+  }
   if (object$model %in% c("dcvar_covariate", "dcvar_covariate_nodrift")) {
     trace_pars <- c(trace_pars, "beta_0", paste0("beta[", seq_len(object$stan_data$P), "]"))
     if (object$model == "dcvar_covariate") trace_pars <- c(trace_pars, "sigma_omega")
@@ -557,4 +568,174 @@ plot_latent_states <- function(object, true_states = NULL, ...) {
     ) +
     ggplot2::theme_minimal() +
     ggplot2::coord_fixed()
+}
+
+
+# ============================================================================
+# Time-varying trajectory plots (dcvar_tv_fit)
+# ============================================================================
+
+#' Internal: faceted ribbon plot shared by the Phi(t)/sigma(t) trajectories
+#' @noRd
+.plot_tv_trajectory <- function(object, trajectory_fun, group_col,
+                                show_ci, ci_level, inner_level,
+                                true_values, true_arg_name,
+                                title, ylab, zero_line) {
+  .validate_interval_level(ci_level, arg_name = "ci_level")
+  if (!is.null(inner_level)) {
+    .validate_interval_level(inner_level, arg_name = "inner_level")
+    if (inner_level >= ci_level) {
+      cli_abort(c(
+        "{.arg inner_level} must be smaller than {.arg ci_level}.",
+        "i" = "The inner ribbon must be narrower than the outer ribbon."
+      ))
+    }
+  }
+
+  alpha_outer <- (1 - ci_level) / 2
+  probs <- c(alpha_outer, 1 - alpha_outer, 0.5)
+  if (!is.null(inner_level)) {
+    alpha_inner <- (1 - inner_level) / 2
+    probs <- c(alpha_outer, alpha_inner, 0.5, 1 - alpha_inner, 1 - alpha_outer)
+  }
+  probs <- sort(unique(probs))
+
+  df <- trajectory_fun(object, probs = probs)
+  groups <- unique(df[[group_col]])
+
+  if (!is.null(true_values)) {
+    time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+    true_values <- as.matrix(true_values)
+    if (nrow(true_values) != length(time_values) || ncol(true_values) != length(groups)) {
+      cli_abort(c(
+        "{.arg {true_arg_name}} must be a {length(time_values)} x {length(groups)} matrix.",
+        "i" = "Rows follow the observed time axis (transitions 2..n_time); columns follow {.val {groups}}."
+      ))
+    }
+    true_df <- data.frame(
+      time = rep(time_values, length(groups)),
+      value = as.vector(true_values),
+      group = rep(groups, each = length(time_values))
+    )
+    names(true_df)[names(true_df) == "group"] <- group_col
+  }
+
+  q_outer_low <- paste0("q", alpha_outer * 100)
+  q_outer_high <- paste0("q", (1 - alpha_outer) * 100)
+
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$time))
+  if (zero_line) {
+    p <- p + ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "gray50")
+  }
+
+  if (show_ci && q_outer_low %in% names(df)) {
+    p <- p + ggplot2::geom_ribbon(
+      ggplot2::aes(ymin = .data[[q_outer_low]], ymax = .data[[q_outer_high]]),
+      fill = "steelblue", alpha = 0.2
+    )
+    if (!is.null(inner_level)) {
+      q_inner_low <- paste0("q", alpha_inner * 100)
+      q_inner_high <- paste0("q", (1 - alpha_inner) * 100)
+      if (q_inner_low %in% names(df) && q_inner_high %in% names(df)) {
+        p <- p + ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = .data[[q_inner_low]], ymax = .data[[q_inner_high]]),
+          fill = "steelblue", alpha = 0.3
+        )
+      }
+    }
+  }
+
+  p <- p +
+    ggplot2::geom_line(ggplot2::aes(y = .data$mean), color = "steelblue", linewidth = 1)
+
+  if ("q50" %in% names(df)) {
+    p <- p +
+      ggplot2::geom_line(ggplot2::aes(y = .data$q50), color = "darkblue", linetype = "dashed")
+  }
+
+  if (!is.null(true_values)) {
+    p <- p + ggplot2::geom_line(
+      data = true_df,
+      ggplot2::aes(x = .data$time, y = .data$value),
+      color = "red", linewidth = 0.8
+    )
+  }
+
+  p +
+    ggplot2::facet_wrap(stats::as.formula(paste("~", group_col))) +
+    ggplot2::labs(x = "Time", y = ylab, title = title) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(face = "bold"),
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+}
+
+
+#' Plot the time-varying VAR coefficient trajectories
+#'
+#' Faceted ribbon plot of the posterior phi11(t), phi12(t), phi21(t),
+#' phi22(t) trajectories from a time-varying DC-VAR fit (see
+#' [phi_trajectory()]).
+#'
+#' @param object A `dcvar_tv_fit` object.
+#' @param show_ci Logical; draw credible ribbons (default: `TRUE`).
+#' @param ci_level Outer credible level (default: 0.95).
+#' @param inner_level Inner credible level, or `NULL` to skip the inner
+#'   ribbon (default: 0.80).
+#' @param true_phi Optional `(n_time - 1) x 4` matrix of true coefficient
+#'   paths (columns in phi11/phi12/phi21/phi22 order) overlaid in red, e.g.
+#'   from `simulate_dcvar()`'s `true_params`.
+#' @param title Plot title, or `NULL` for the default.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A ggplot object.
+#' @seealso [phi_trajectory()], [plot_rho()], [plot_sigma_trajectory()]
+#' @export
+plot_phi_trajectory <- function(object, show_ci = TRUE, ci_level = 0.95,
+                                inner_level = 0.80, true_phi = NULL,
+                                title = NULL, ...) {
+  if (is.null(title)) {
+    title <- "Time-Varying VAR(1) Coefficients"
+  }
+  .plot_tv_trajectory(
+    object, phi_trajectory, "coefficient",
+    show_ci = show_ci, ci_level = ci_level, inner_level = inner_level,
+    true_values = true_phi, true_arg_name = "true_phi",
+    title = title, ylab = "Coefficient", zero_line = TRUE
+  )
+}
+
+
+#' Plot the time-varying residual scale trajectories
+#'
+#' Faceted ribbon plot of the posterior per-variable residual scale paths
+#' from a time-varying DC-VAR fit (see [sigma_trajectory()] for the
+#' per-family scale semantics).
+#'
+#' @param object A `dcvar_tv_fit` object.
+#' @param show_ci Logical; draw credible ribbons (default: `TRUE`).
+#' @param ci_level Outer credible level (default: 0.95).
+#' @param inner_level Inner credible level, or `NULL` to skip the inner
+#'   ribbon (default: 0.80).
+#' @param true_sigma Optional `(n_time - 1) x 2` matrix of true scale paths
+#'   (columns in variable order) overlaid in red.
+#' @param title Plot title, or `NULL` for the default.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A ggplot object.
+#' @seealso [sigma_trajectory()], [plot_phi_trajectory()]
+#' @export
+plot_sigma_trajectory <- function(object, show_ci = TRUE, ci_level = 0.95,
+                                  inner_level = 0.80, true_sigma = NULL,
+                                  title = NULL, ...) {
+  if (is.null(title)) {
+    title <- "Time-Varying Residual Scales"
+  }
+  .plot_tv_trajectory(
+    object, sigma_trajectory, "variable",
+    show_ci = show_ci, ci_level = ci_level, inner_level = inner_level,
+    true_values = true_sigma, true_arg_name = "true_sigma",
+    title = title, ylab = "Scale", zero_line = FALSE
+  )
 }

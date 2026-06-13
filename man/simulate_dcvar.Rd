@@ -15,6 +15,7 @@ simulate_dcvar(
   skew_params = NULL,
   phi_trajectory = NULL,
   sigma_trajectory = NULL,
+  tv_sigma_k = NULL,
   seed = NULL
 )
 }
@@ -59,9 +60,14 @@ matching \code{dcvar(tv_sigma = TRUE)}: an \verb{(n_time - 1) x 2} positive matr
 a list of 2 length-\code{(n_time - 1)} vectors, or a constant length-2 vector.
 The scale is each family's natural scale (innovation SD for normal,
 residual SD for skew-normal, \code{sigma_exp} / \code{sigma_gam} for
-exponential / gamma). Exponential and gamma dimensions must have a
-constant path (matching the fitted model's restriction). Mutually
+exponential / gamma). A non-constant path on an exponential or gamma
+dimension requires \code{tv_sigma_k} (soft-barrier generative model). Mutually
 exclusive with \code{sigma_eps}. \code{NULL} (default) keeps constant scales.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales. Supply the same value as the intended \code{dcvar(tv_sigma = TRUE, tv_sigma_k = ...)} fit so the simulated data matches that likelihood.
+\code{NULL} (default) uses the exact affine shifted margin and requires
+constant exp/gamma scales.}
 
 \item{seed}{Random seed for reproducibility.}
 }

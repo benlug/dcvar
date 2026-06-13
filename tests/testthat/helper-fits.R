@@ -1214,3 +1214,30 @@ get_dcvar_tv_ar_fit <- function() {
     )
   })$fit
 }
+
+get_dcvar_tv_exp_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_exp", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_constant(40, 0.4),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      sigma_trajectory = cbind(rep(1, 39), seq(0.7, 1.6, length.out = 39)),
+      tv_sigma_k = 8,
+      seed = 46
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      tv_sigma = TRUE,
+      tv_sigma_k = 8,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 126
+    )
+  })$fit
+}

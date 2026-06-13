@@ -20,6 +20,7 @@ prepare_dcvar_data(
   tv_sigma = FALSE,
   prior_tau_phi_rate = 0.025,
   prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   allow_gaps = FALSE
 )
 }
@@ -67,10 +68,10 @@ autoregressive effects phi11, phi22), \code{"cross"} (the cross-lagged effects
 phi12, phi21), or specific names from
 \code{c("phi11", "phi12", "phi21", "phi22")}.}
 
-\item{tv_sigma}{Logical; if \code{TRUE}, the residual scales of normal and
-skew-normal dimensions evolve as log-scale random walks around their
-constant baselines (default: \code{FALSE}). Exponential and gamma dimensions
-keep a constant scale (with a warning); see \code{\link[=dcvar]{dcvar()}} for the rationale.}
+\item{tv_sigma}{Logical; if \code{TRUE}, the residual scales evolve as log-scale
+random walks around their constant baselines (default: \code{FALSE}). Applies
+to all margin families; exponential and gamma dimensions use a
+soft-barrier construction (see \code{\link[=dcvar]{dcvar()}}).}
 
 \item{prior_tau_phi_rate}{Prior mean for the four Phi random-walk
 innovation SDs: \code{tau_phi ~ exponential(1/prior_tau_phi_rate)}. Only used
@@ -83,6 +84,9 @@ random-walk innovation SDs:
 \code{tau_sigma ~ exponential(1/prior_tau_sigma_rate)}. Only used when
 \code{tv_sigma = TRUE}. The default \code{0.05} allows scale factors of roughly
 0.5--2 over 150 time points.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales (default \code{8}); see \code{\link[=dcvar]{dcvar()}}.}
 
 \item{allow_gaps}{Logical; if \code{FALSE} (default), interior missing values
 cause an error. If \code{TRUE}, they produce a warning and are removed.}

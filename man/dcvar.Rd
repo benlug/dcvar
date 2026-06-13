@@ -21,6 +21,7 @@ dcvar(
   tv_sigma = FALSE,
   prior_tau_phi_rate = 0.025,
   prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   chains = 4,
   iter_warmup = 2000,
   iter_sampling = 4000,
@@ -81,10 +82,10 @@ changing emotional inertia / critical slowing down), \code{"cross"} (the
 cross-lagged effects phi12, phi21), or specific names from
 \code{c("phi11", "phi12", "phi21", "phi22")}.}
 
-\item{tv_sigma}{Logical; if \code{TRUE}, the residual scales of normal and
-skew-normal dimensions evolve as log-scale random walks around their
-constant baselines (default: \code{FALSE}). See the section on shifted
-margins.}
+\item{tv_sigma}{Logical; if \code{TRUE}, the residual scales evolve as log-scale
+random walks around their constant baselines (default: \code{FALSE}). Applies
+to all margin families; see the section on shifted margins for how
+exponential and gamma dimensions are handled.}
 
 \item{prior_tau_phi_rate}{Prior mean for the Phi random-walk innovation
 SDs (\code{tau_phi ~ exponential(1/prior_tau_phi_rate)}; default \code{0.025}).
@@ -93,6 +94,11 @@ Used only when \code{tv_phi = TRUE}.}
 \item{prior_tau_sigma_rate}{Prior mean for the log-scale random-walk
 innovation SDs (\code{tau_sigma ~ exponential(1/prior_tau_sigma_rate)};
 default \code{0.05}). Used only when \code{tv_sigma = TRUE}.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales (default \code{8}). Larger values approximate the exact shifted margin
+more closely but stiffen the geometry. Used only when \code{tv_sigma = TRUE}
+and an exponential or gamma margin is present.}
 
 \item{chains}{Number of MCMC chains (default: 4).}
 
@@ -146,12 +152,16 @@ time-varying Stan model and returns a \code{dcvar_tv_fit} object (a subclass of
 }
 \section{Time-varying scales and shifted margins}{
 
-\code{tv_sigma = TRUE} applies to normal and skew-normal dimensions (log-scale
-random walks). Exponential and gamma dimensions keep a constant scale (a
-warning is emitted): their shifted-support construction ties the scale to a
-feasibility bound on the residuals, and a time-varying bound either cancels
-the data out of the likelihood (pointwise bound) or floors the scale path
-(global bound).
+\code{tv_sigma = TRUE} gives normal and skew-normal dimensions a multiplicative
+log-scale random walk. Exponential and gamma dimensions use a \strong{soft-barrier}
+construction: the shifted variate \code{x = scale + skew * eps} (which has a hard
+support boundary at 0) is replaced by \code{x = softplus_k(m_t + skew * eps)}
+with a time-varying scale \code{m_t}. This keeps \code{x} positive, matches the exact
+shifted margin in the interior, and rounds the boundary smoothly so the
+scale can vary freely. \code{tv_sigma_k} controls the sharpness; larger values
+track the exact exponential/gamma more closely at the cost of a stiffer
+posterior geometry, smaller values are numerically gentler but introduce a
+small residual-mean bias in the lower tail.
 }
 
 \section{Recommended workflow}{

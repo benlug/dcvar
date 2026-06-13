@@ -42,14 +42,20 @@
   is now scale-aware, so exponential/gamma dimensions can be simulated with
   any constant scale; regression tests pin the copula orientation under
   time-varying scales for every `skew_direction` combination.
-- Restrictions (documented): time-varying scales do not apply to the shifted
-  exponential/gamma margins (their feasibility-bound construction either
-  cancels the data out of the likelihood or floors the scale path; a
-  soft-barrier scheme is the designated future extension) — a warning is
-  emitted and those scales stay constant. In the generic TV model
-  `shape_gam` is per-dimension (mixed-model convention), unlike the shared
-  scalar in the specialised gamma models. `dcvar_compare()` warns when a TV
-  fit is compared against less heavily latent-conditioned fits.
+- Time-varying scales (`tv_sigma`) apply to **all** margin families. Normal
+  and skew-normal dimensions use a multiplicative log-scale random walk;
+  exponential and gamma dimensions use a **soft-barrier** transform
+  `x = softplus_k(m_t + skew * eps)` (sharpness `tv_sigma_k`, default 8) so
+  the scale `m_t` can vary freely without the hard support boundary coupling
+  it to the residuals. The soft-barrier matches the exact shifted margin in
+  the interior and rounds the boundary smoothly (a small residual-mean bias
+  in the lower tail; larger `tv_sigma_k` tightens it at the cost of stiffer
+  geometry). `simulate_dcvar()` gains `tv_sigma_k` to generate matching data
+  for an exp/gamma time-varying-scale fit.
+- In the generic TV model `shape_gam` is per-dimension (mixed-model
+  convention), unlike the shared scalar in the specialised gamma models.
+  `dcvar_compare()` warns when a TV fit is compared against less heavily
+  latent-conditioned fits.
 
 # dcvar 0.4.0
 

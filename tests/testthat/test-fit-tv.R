@@ -73,6 +73,7 @@ test_that("prepare_dcvar_data adds the TV fields when a flag is set", {
   expect_identical(out$skew_direction, c(1, 1))
   expect_identical(out$tau_phi_prior, 0.025)
   expect_identical(out$tau_sigma_prior, 0.05)
+  expect_identical(out$barrier_k, 8)
   expect_true(attr(out, "tv_phi"))
   expect_true(attr(out, "tv_sigma"))
 
@@ -290,6 +291,29 @@ test_that("dcvar_compare warns when mixing TV and non-TV fits", {
   expect_true(any(grepl("latent paths", w)))
 })
 
+test_that("soft-barrier exp margin with tv_sigma fits and exposes a scale path", {
+  skip_if_no_rstan()
+
+  fit <- get_dcvar_tv_exp_fit()
+  expect_s3_class(fit, "dcvar_tv_fit")
+  expect_true(fit$tv_sigma)
+  expect_identical(unname(rep(fit$margins, length.out = 2)), c("normal", "exponential"))
+
+  # sigma_t exists for both dims and is positive; the exp dim genuinely varies
+  sigma_df <- sigma_trajectory(fit)
+  expect_identical(sort(unique(sigma_df$variable)), sort(fit$vars))
+  expect_true(all(sigma_df$mean > 0))
+  exp_dim <- sigma_df[sigma_df$variable == fit$vars[2], ]
+  expect_gt(length(unique(exp_dim$mean)), 1L)
+
+  # Monitored diagnostics exist (the soft-barrier path keeps the union names)
+  monitored <- .diagnostic_parameter_variables(fit)
+  expect_identical(setdiff(monitored, posterior::variables(draws(fit))), character(0))
+
+  ll <- loo(fit)
+  expect_s3_class(ll, "loo")
+})
+
 # --- Gated recovery tests (DCVAR_SLOW_TESTS) ---------------------------------
 
 test_that("TV fit recovers a phi12 step and a sigma ramp directionally", {
@@ -362,4 +386,35 @@ test_that("tv_phi = 'ar' ties the fitted variation to the correct coefficient", 
   phi11 <- phi_df[phi_df$coefficient == "phi11", ]
   n_eff <- nrow(phi11)
   expect_gt(mean(phi11$mean[1:50]), mean(phi11$mean[(n_eff - 49):n_eff]))
+})
+
+test_that("soft-barrier recovers a time-varying exponential scale ramp", {
+  skip_if_no_rstan()
+  skip_if_not_slow()
+
+  n <- 200
+  scale_path <- seq(0.6, 1.8, length.out = n - 1)  # rising exp scale
+  sim <- simulate_dcvar(
+    n, rho_constant(n, 0.4),
+    margins = c("normal", "exponential"),
+    skew_direction = c(1, 1),
+    sigma_trajectory = cbind(rep(1, n - 1), scale_path),
+    tv_sigma_k = 8,
+    seed = 23
+  )
+  fit <- dcvar(sim$Y_df, vars = c("y1", "y2"),
+               margins = c("normal", "exponential"),
+               skew_direction = c(1, 1),
+               tv_sigma = TRUE, tv_sigma_k = 8,
+               standardize = FALSE,
+               chains = 2,
+               iter_warmup = margin_iter_warmup,
+               iter_sampling = margin_iter_sampling,
+               refresh = 0, seed = 29)
+
+  sigma_df <- sigma_trajectory(fit)
+  exp_dim <- sigma_df[sigma_df$variable == "y2", ]
+  n_eff <- nrow(exp_dim)
+  # The recovered scale path must rise (matching the simulated ramp).
+  expect_gt(mean(exp_dim$mean[(n_eff - 49):n_eff]), mean(exp_dim$mean[1:50]))
 })

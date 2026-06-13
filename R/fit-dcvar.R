@@ -15,12 +15,16 @@
 #' [sigma_trajectory()].
 #'
 #' @section Time-varying scales and shifted margins:
-#' `tv_sigma = TRUE` applies to normal and skew-normal dimensions (log-scale
-#' random walks). Exponential and gamma dimensions keep a constant scale (a
-#' warning is emitted): their shifted-support construction ties the scale to a
-#' feasibility bound on the residuals, and a time-varying bound either cancels
-#' the data out of the likelihood (pointwise bound) or floors the scale path
-#' (global bound).
+#' `tv_sigma = TRUE` gives normal and skew-normal dimensions a multiplicative
+#' log-scale random walk. Exponential and gamma dimensions use a **soft-barrier**
+#' construction: the shifted variate `x = scale + skew * eps` (which has a hard
+#' support boundary at 0) is replaced by `x = softplus_k(m_t + skew * eps)`
+#' with a time-varying scale `m_t`. This keeps `x` positive, matches the exact
+#' shifted margin in the interior, and rounds the boundary smoothly so the
+#' scale can vary freely. `tv_sigma_k` controls the sharpness; larger values
+#' track the exact exponential/gamma more closely at the cost of a stiffer
+#' posterior geometry, smaller values are numerically gentler but introduce a
+#' small residual-mean bias in the lower tail.
 #'
 #' @section Recommended workflow:
 #' For typical series lengths (T of 100--300), fit the model ladder
@@ -62,16 +66,20 @@
 #'   changing emotional inertia / critical slowing down), `"cross"` (the
 #'   cross-lagged effects phi12, phi21), or specific names from
 #'   `c("phi11", "phi12", "phi21", "phi22")`.
-#' @param tv_sigma Logical; if `TRUE`, the residual scales of normal and
-#'   skew-normal dimensions evolve as log-scale random walks around their
-#'   constant baselines (default: `FALSE`). See the section on shifted
-#'   margins.
+#' @param tv_sigma Logical; if `TRUE`, the residual scales evolve as log-scale
+#'   random walks around their constant baselines (default: `FALSE`). Applies
+#'   to all margin families; see the section on shifted margins for how
+#'   exponential and gamma dimensions are handled.
 #' @param prior_tau_phi_rate Prior mean for the Phi random-walk innovation
 #'   SDs (`tau_phi ~ exponential(1/prior_tau_phi_rate)`; default `0.025`).
 #'   Used only when `tv_phi = TRUE`.
 #' @param prior_tau_sigma_rate Prior mean for the log-scale random-walk
 #'   innovation SDs (`tau_sigma ~ exponential(1/prior_tau_sigma_rate)`;
 #'   default `0.05`). Used only when `tv_sigma = TRUE`.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales (default `8`). Larger values approximate the exact shifted margin
+#'   more closely but stiffen the geometry. Used only when `tv_sigma = TRUE`
+#'   and an exponential or gamma margin is present.
 #' @param chains Number of MCMC chains (default: 4).
 #' @param iter_warmup Warmup iterations per chain (default: 2000).
 #' @param iter_sampling Sampling iterations per chain (default: 4000).
@@ -134,6 +142,7 @@ dcvar <- function(data, vars, time_var = "time",
                   tv_sigma = FALSE,
                   prior_tau_phi_rate = 0.025,
                   prior_tau_sigma_rate = 0.05,
+                  tv_sigma_k = 8,
                   chains = 4,
                   iter_warmup = 2000,
                   iter_sampling = 4000,
@@ -165,12 +174,8 @@ dcvar <- function(data, vars, time_var = "time",
   if (!tv_sigma && !isTRUE(all.equal(prior_tau_sigma_rate, 0.05))) {
     cli_warn("{.arg prior_tau_sigma_rate} is ignored when {.code tv_sigma = FALSE}.")
   }
-  if (tv_sigma && any(margins_vec %in% c("exponential", "gamma"))) {
-    affected <- which(margins_vec %in% c("exponential", "gamma"))
-    cli_warn(c(
-      "{.arg tv_sigma} does not apply to the {.val {margins_vec[affected]}} margin{?s} (dimension{?s} {affected}); their scale stays constant.",
-      "i" = "The shifted-support construction ties these scales to a residual feasibility bound that cannot vary freely over time."
-    ))
+  if (tv_sigma) {
+    .prep_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
   }
 
   # Prepare data
@@ -181,6 +186,7 @@ dcvar <- function(data, vars, time_var = "time",
     tv_phi = tv_phi, tv_sigma = tv_sigma,
     prior_tau_phi_rate = prior_tau_phi_rate,
     prior_tau_sigma_rate = prior_tau_sigma_rate,
+    tv_sigma_k = tv_sigma_k,
     allow_gaps = allow_gaps
   )
 

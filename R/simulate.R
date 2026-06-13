@@ -115,9 +115,14 @@
 #'   a list of 2 length-`(n_time - 1)` vectors, or a constant length-2 vector.
 #'   The scale is each family's natural scale (innovation SD for normal,
 #'   residual SD for skew-normal, `sigma_exp` / `sigma_gam` for
-#'   exponential / gamma). Exponential and gamma dimensions must have a
-#'   constant path (matching the fitted model's restriction). Mutually
+#'   exponential / gamma). A non-constant path on an exponential or gamma
+#'   dimension requires `tv_sigma_k` (soft-barrier generative model). Mutually
 #'   exclusive with `sigma_eps`. `NULL` (default) keeps constant scales.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales. Supply the same value as the intended `dcvar(tv_sigma = TRUE,
+#'   tv_sigma_k = ...)` fit so the simulated data matches that likelihood.
+#'   `NULL` (default) uses the exact affine shifted margin and requires
+#'   constant exp/gamma scales.
 #' @param seed Random seed for reproducibility.
 #'
 #' @return A named list with:
@@ -149,6 +154,7 @@ simulate_dcvar <- function(n_time,
                            skew_params = NULL,
                            phi_trajectory = NULL,
                            sigma_trajectory = NULL,
+                           tv_sigma_k = NULL,
                            seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
   if (!is.numeric(n_time) || length(n_time) != 1 || n_time != as.integer(n_time) || n_time < 2) {
@@ -206,13 +212,20 @@ simulate_dcvar <- function(n_time,
     if (any(m <= 0)) {
       cli_abort("{.arg sigma_trajectory} values must be positive.")
     }
-    for (d in seq_len(D)) {
-      if (margins_vec[d] %in% c("exponential", "gamma") && length(unique(m[, d])) > 1L) {
-        cli_abort(c(
-          "{.arg sigma_trajectory} must be constant on dimension {d} ({.val {margins_vec[d]}} margin).",
-          "i" = "The fitted model holds shifted exponential/gamma scales constant; see {.fun dcvar}."
-        ))
+    # A non-constant scale path on a shifted exp/gamma dimension requires the
+    # soft-barrier generative model, which the user opts into with tv_sigma_k
+    # (matching dcvar(tv_sigma = TRUE, tv_sigma_k = ...)).
+    if (is.null(tv_sigma_k)) {
+      for (d in seq_len(D)) {
+        if (margins_vec[d] %in% c("exponential", "gamma") && length(unique(m[, d])) > 1L) {
+          cli_abort(c(
+            "{.arg sigma_trajectory} is not constant on dimension {d} ({.val {margins_vec[d]}} margin).",
+            "i" = "Set {.arg tv_sigma_k} (e.g. the value passed to {.code dcvar(tv_sigma = TRUE)}) to simulate from the soft-barrier model, or keep the scale constant."
+          ))
+        }
       }
+    } else {
+      .simulate_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
     }
     m
   }
@@ -266,9 +279,12 @@ simulate_dcvar <- function(n_time,
     z <- rnorm(D)
     w <- L %*% z  # correlated standard normals
 
-    # Transform through marginal quantiles with the per-transition scales
+    # Transform through marginal quantiles with the per-transition scales.
+    # A supplied tv_sigma_k routes exp/gamma dims through the soft-barrier
+    # generative model (matching dcvar(tv_sigma = TRUE)).
     scales_t <- if (is.null(scale_mat)) base_scales else scale_mat[t_eff, ]
-    eps <- .sim_marginal_quantile_scaled(w, margins_vec, scales_t, skew_direction, skew_params)
+    eps <- .sim_marginal_quantile_scaled(w, margins_vec, scales_t, skew_direction,
+                                         skew_params, barrier_k = tv_sigma_k)
 
     # VAR(1) update with the per-transition coefficients (byrow: the path
     # columns are row-major phi11, phi12, phi21, phi22)
@@ -338,9 +354,12 @@ simulate_dcvar <- function(n_time,
 #' the residual SD for skew-normal dims. All residuals have mean zero by
 #' construction.
 #' @noRd
-.sim_marginal_quantile_scaled <- function(w, margins_vec, scales, skew_direction, skew_params) {
+.sim_marginal_quantile_scaled <- function(w, margins_vec, scales, skew_direction, skew_params,
+                                          barrier_k = NULL) {
   D <- length(w)
   eps <- numeric(D)
+  # Inverse softplus, matching inst/stan/functions/softplus.stan
+  inv_softplus_k <- function(y, k) log(expm1(k * y)) / k
 
   for (i in seq_len(D)) {
     fam <- margins_vec[[i]]
@@ -355,8 +374,14 @@ simulate_dcvar <- function(n_time,
       # eps comonotone with the latent copula normal w.
       u <- stats::pnorm(w[i])
       if (skew_direction[i] < 0) u <- 1 - u
-      x_std <- stats::qexp(u, rate = 1 / s) - s
-      eps[i] <- skew_direction[i] * x_std
+      x_shifted <- stats::qexp(u, rate = 1 / s)        # Exp(1/s) variate, mean s
+      if (is.null(barrier_k)) {
+        eps[i] <- skew_direction[i] * (x_shifted - s)  # exact affine shift
+      } else {
+        # Soft-barrier generative model (matches the tv_sigma Stan likelihood):
+        # x_shifted = softplus_k(s + skew*eps)  =>  eps = skew*(invsoftplus(x) - s)
+        eps[i] <- skew_direction[i] * (inv_softplus_k(x_shifted, barrier_k) - s)
+      }
     } else if (identical(fam, "skew_normal")) {
       if (!requireNamespace("sn", quietly = TRUE)) {
         cli_abort("Package {.pkg sn} is required for skew-normal simulation.")
@@ -369,11 +394,17 @@ simulate_dcvar <- function(n_time,
     } else if (identical(fam, "gamma")) {
       shape <- skew_params$shape %||% 1
       # Same uniform flip as the exponential branch (see comment there).
-      # rate = sqrt(shape)/s gives SD s; the mean shift keeps E[eps] = 0.
+      # The gamma mean m = sqrt(shape) * s gives SD s; the mean shift keeps
+      # E[eps] = 0 in the exact affine case.
+      m <- sqrt(shape) * s
       u <- stats::pnorm(w[i])
       if (skew_direction[i] < 0) u <- 1 - u
-      x_std <- stats::qgamma(u, shape = shape, rate = sqrt(shape) / s) - sqrt(shape) * s
-      eps[i] <- skew_direction[i] * x_std
+      x_shifted <- stats::qgamma(u, shape = shape, rate = shape / m)  # Gamma, mean m
+      if (is.null(barrier_k)) {
+        eps[i] <- skew_direction[i] * (x_shifted - m)
+      } else {
+        eps[i] <- skew_direction[i] * (inv_softplus_k(x_shifted, barrier_k) - m)
+      }
     } else {
       cli_abort("Unknown margin type: {.val {fam}}")
     }

@@ -142,3 +142,59 @@ test_that("TV simulation with time-varying rho recovers the rho path shape", {
   expect_equal(late, mean(rho_path[(n - 5001):(n - 1)]), tolerance = 0.07)
   expect_gt(early, late)
 })
+
+# Soft-barrier generative model for time-varying exponential/gamma scales.
+
+test_that("non-constant exp/gamma scale needs tv_sigma_k, then simulates", {
+  n <- 60
+  # Without tv_sigma_k a non-constant exp scale is rejected
+  expect_error(
+    simulate_dcvar(n, rho_constant(n, 0.4),
+                   margins = c("normal", "exponential"),
+                   skew_direction = c(1, 1),
+                   sigma_trajectory = cbind(rep(1, n - 1), seq(0.6, 1.8, length.out = n - 1))),
+    "tv_sigma_k"
+  )
+  # With tv_sigma_k it is allowed
+  sim <- simulate_dcvar(n, rho_constant(n, 0.4),
+                        margins = c("normal", "exponential"),
+                        skew_direction = c(1, 1),
+                        sigma_trajectory = cbind(rep(1, n - 1), seq(0.6, 1.8, length.out = n - 1)),
+                        tv_sigma_k = 8, seed = 5)
+  expect_equal(nrow(sim$Y), n)
+  expect_equal(unname(sim$true_params$sigma[, 2]), seq(0.6, 1.8, length.out = n - 1))
+})
+
+test_that("soft-barrier simulation preserves copula orientation under a TV exp scale", {
+  n <- 20000
+  rho <- 0.6
+  k <- 8
+  softplus <- function(a) log1p(exp(k * a)) / k
+  scale_path <- seq(0.6, 1.8, length.out = n - 1)
+
+  for (skew2 in c(1, -1)) {
+    sim <- simulate_dcvar(
+      n, rho_constant(n, rho),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, skew2),
+      phi_trajectory = matrix(c(0.2, 0.4, -0.2, 0.3), 2, 2, byrow = TRUE),
+      sigma_trajectory = cbind(rep(1, n - 1), scale_path),
+      tv_sigma_k = k,
+      seed = 200 + skew2
+    )
+    tp <- sim$true_params
+    Y <- sim$Y
+    eps <- matrix(NA_real_, n - 1, 2)
+    for (t in seq_len(n - 1)) {
+      P <- matrix(tp$Phi[t, ], 2, 2, byrow = TRUE)
+      eps[t, ] <- Y[t + 1, ] - (tp$mu + P %*% (Y[t, ] - tp$mu))
+    }
+    z1 <- stats::qnorm(stats::pnorm(eps[, 1]))            # normal dim, scale 1
+    m <- scale_path                                       # exp scale path
+    u2 <- stats::pexp(softplus(m + skew2 * eps[, 2]), rate = 1 / m)
+    if (skew2 < 0) u2 <- 1 - u2
+    z2 <- stats::qnorm(u2)
+    expect_equal(cor(z1, z2), rho, tolerance = 0.05,
+                 info = sprintf("skew2=%d", skew2))
+  }
+})

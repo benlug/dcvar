@@ -2,10 +2,10 @@
 // Non-centered parameterization throughout.
 //
 // Extends dcvar_mixed_ncp.stan with optional time-varying VAR coefficients
-// (tv_phi: 4 independent random walks on phi11, phi12, phi21, phi22) and
-// optional time-varying residual scales (tv_sigma: log-scale random walks on
-// the normal / skew-normal dimensions). The copula correlation rho(t) is
-// always time-varying (the Fisher-z random walk of the dcvar family).
+// (tv_phi: random walks on the four coefficients phi11, phi12, phi21, phi22)
+// and optional time-varying residual scales (tv_sigma: log-scale random walks
+// on every dimension). The copula correlation rho(t) is always time-varying
+// (the Fisher-z random walk of the dcvar family).
 //
 // Every time-varying component is parameterized as a constant baseline plus a
 // non-centered random-walk deviation, and the deviation containers are
@@ -19,17 +19,25 @@
 // prior. The Gaussian copula is applied via the CDF (u,v) form because the
 // families can differ across dimensions.
 //
-// Exponential / gamma dimensions keep a CONSTANT scale even when tv_sigma = 1
-// (deviation forced to zero): with the shifted margins, a pointwise
-// feasibility bound makes the likelihood insensitive to all below-mean
-// residuals, and a global bound floors the scale path. The R layer warns
-// about this restriction; a soft-barrier construction is the designated
-// future extension.
+// Time-varying scales for the shifted exponential / gamma margins (tv_sigma)
+// use a SOFT-BARRIER transform: the affine shifted variate
+// x = scale + skew * eps (hard support boundary at 0) is replaced by
+// x = softplus_k(m_t + skew * eps), with m_t = exp(eta + log-scale-walk) the
+// time-varying scale and barrier_k the sharpness. This keeps x strictly
+// positive, matches the affine shift in the interior, and rounds the boundary
+// smoothly so eps has unbounded support and m_t can vary freely. The eps ->
+// x change of variables contributes a Jacobian term log_inv_logit(k * arg).
+// As barrier_k -> infinity the boundary becomes hard again; at finite k the
+// margin is a smooth approximation of the shifted exponential / gamma (a small
+// residual-mean bias in the lower tail). For the constant-scale case
+// (tv_sigma = 0) the exact affine construction of dcvar_mixed_ncp.stan is used
+// unchanged, so the model still nests the plain DC-VAR exactly.
 
 functions {
 #include functions/gaussian_copula_uv.stan
 #include functions/var_residuals.stan
 #include functions/ncp_random_walk.stan
+#include functions/softplus.stan
 }
 
 data {
@@ -51,6 +59,7 @@ data {
   real<lower=0> rho_init_prior_sd;             // Prior SD for initial rho (Fisher-z)
   real<lower=0> tau_phi_prior;                 // Prior mean for Phi random-walk SDs
   real<lower=0> tau_sigma_prior;               // Prior mean for log-scale random-walk SDs
+  real<lower=0> barrier_k;                     // Soft-barrier sharpness for tv-scale exp/gamma dims
 }
 
 transformed data {
@@ -127,13 +136,11 @@ transformed parameters {
   }
 
   if (tv_sigma == 1) {
+    // Log-scale random walk for every dimension. Normal / skew-normal dims use
+    // it as a multiplicative scale; exp / gamma dims feed it through the
+    // soft-barrier transform in the likelihood (see file header).
     for (i in 1:D) {
-      if (family[i] == 1 || family[i] == 3) {
-        sigma_dev[, i] = compute_rw_ncp(0, tau_sigma[i], sigma_raw[, i], n_time_eff);
-      } else {
-        // Shifted exp/gamma margins keep a constant scale (see file header).
-        sigma_dev[, i] = rep_vector(0, n_time_eff);
-      }
+      sigma_dev[, i] = compute_rw_ncp(0, tau_sigma[i], sigma_raw[, i], n_time_eff);
     }
   }
 }
@@ -164,21 +171,31 @@ model {
   tau_sigma ~ exponential(1.0 / tau_sigma_prior);
   to_vector(sigma_raw) ~ std_normal();
 
-  // Per-dimension feasibility bounds, induced scale priors, and eta priors
-  // (constant scales; eps already reflects Phi(t) when tv_phi = 1)
+  // Per-dimension eta priors and (constant-scale only) feasibility bounds.
+  // - normal / skew-normal dims: eta is an inert union parameter (std_normal).
+  // - exp / gamma, constant scale (tv_sigma off OR off for this dim): the
+  //   global-bound construction with an induced lognormal(0, 0.5) prior on the
+  //   scale (eps already reflects Phi(t) when tv_phi = 1).
+  // - exp / gamma, time-varying scale: eta is the baseline log-scale with a
+  //   lognormal(0, 0.5) prior (eta ~ normal(0, 0.5)); the soft-barrier and its
+  //   Jacobian are applied per time point in the likelihood loop below.
   for (i in 1:D) {
     if (family[i] == 2 || family[i] == 4) {
-      real m = -skew_direction[i] * eps[1, i];
-      for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-      real lb = fmax(m, 0);
-      if (family[i] == 2) {
-        sigma_exp[i] = lb + exp(eta[i]) + tiny;
-        rate_exp[i] = 1.0 / sigma_exp[i];
-        target += lognormal_lpdf(sigma_exp[i] | 0, 0.5) + eta[i];
+      if (tv_sigma == 1) {
+        eta[i] ~ normal(0, 0.5);
       } else {
-        mean_gam[i] = lb + exp(eta[i]) + tiny;
-        rate_gam[i] = shape_gam[i] / mean_gam[i];
-        target += lognormal_lpdf(mean_gam[i] | 0, 0.5) + eta[i];
+        real m = -skew_direction[i] * eps[1, i];
+        for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+        real lb = fmax(m, 0);
+        if (family[i] == 2) {
+          sigma_exp[i] = lb + exp(eta[i]) + tiny;
+          rate_exp[i] = 1.0 / sigma_exp[i];
+          target += lognormal_lpdf(sigma_exp[i] | 0, 0.5) + eta[i];
+        } else {
+          mean_gam[i] = lb + exp(eta[i]) + tiny;
+          rate_gam[i] = shape_gam[i] / mean_gam[i];
+          target += lognormal_lpdf(mean_gam[i] | 0, 0.5) + eta[i];
+        }
       }
     } else {
       eta[i] ~ std_normal();
@@ -198,9 +215,18 @@ model {
         target += normal_lpdf(res[i] | 0, s_t);
         u_vec[i] = Phi(res[i] / s_t);
       } else if (family[i] == 2) {
-        real x_shifted = sigma_exp[i] + skew_direction[i] * res[i];
-        target += exponential_lpdf(x_shifted | rate_exp[i]);
-        u_vec[i] = exponential_cdf(x_shifted | rate_exp[i]);
+        if (tv_sigma == 1) {
+          real m_t = exp(eta[i] + dev);
+          real arg = m_t + skew_direction[i] * res[i];
+          real x_shifted = softplus_k(arg, barrier_k);
+          target += exponential_lpdf(x_shifted | 1.0 / m_t)
+                    + log_softplus_k_jac(arg, barrier_k);
+          u_vec[i] = exponential_cdf(x_shifted | 1.0 / m_t);
+        } else {
+          real x_shifted = sigma_exp[i] + skew_direction[i] * res[i];
+          target += exponential_lpdf(x_shifted | rate_exp[i]);
+          u_vec[i] = exponential_cdf(x_shifted | rate_exp[i]);
+        }
         if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
       } else if (family[i] == 3) {
         real omega_t = omega[i] * exp(dev);
@@ -208,9 +234,18 @@ model {
         target += skew_normal_lpdf(res[i] | xi_t, omega_t, alpha[i]);
         u_vec[i] = skew_normal_cdf(res[i] | xi_t, omega_t, alpha[i]);
       } else {
-        real x_shifted = mean_gam[i] + skew_direction[i] * res[i];
-        target += gamma_lpdf(x_shifted | shape_gam[i], rate_gam[i]);
-        u_vec[i] = gamma_cdf(x_shifted | shape_gam[i], rate_gam[i]);
+        if (tv_sigma == 1) {
+          real m_t = exp(eta[i] + dev);
+          real arg = m_t + skew_direction[i] * res[i];
+          real x_shifted = softplus_k(arg, barrier_k);
+          target += gamma_lpdf(x_shifted | shape_gam[i], shape_gam[i] / m_t)
+                    + log_softplus_k_jac(arg, barrier_k);
+          u_vec[i] = gamma_cdf(x_shifted | shape_gam[i], shape_gam[i] / m_t);
+        } else {
+          real x_shifted = mean_gam[i] + skew_direction[i] * res[i];
+          target += gamma_lpdf(x_shifted | shape_gam[i], rate_gam[i]);
+          u_vec[i] = gamma_cdf(x_shifted | shape_gam[i], rate_gam[i]);
+        }
         if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
       }
     }
@@ -244,16 +279,27 @@ generated quantities {
 
     for (i in 1:D) {
       if (family[i] == 2 || family[i] == 4) {
-        real m = -skew_direction[i] * eps[1, i];
-        for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
-        real lb = fmax(m, 0);
-        if (family[i] == 2) {
-          sigma_exp[i] = lb + exp(eta[i]) + tiny;
-          rate_exp[i] = 1.0 / sigma_exp[i];
+        if (tv_sigma == 1) {
+          // Soft-barrier: report the baseline scale level (the walk varies
+          // around it); the time-varying scale path is in sigma_t.
+          real m_base = exp(eta[i]);
+          if (family[i] == 2) {
+            sigma_exp[i] = m_base;
+          } else {
+            sigma_gam[i] = m_base / sqrt(shape_gam[i]);
+          }
         } else {
-          mean_gam[i] = lb + exp(eta[i]) + tiny;
-          sigma_gam[i] = mean_gam[i] / sqrt(shape_gam[i]);
-          rate_gam[i] = shape_gam[i] / mean_gam[i];
+          real m = -skew_direction[i] * eps[1, i];
+          for (t in 2:n_time_eff) m = fmax(m, -skew_direction[i] * eps[t, i]);
+          real lb = fmax(m, 0);
+          if (family[i] == 2) {
+            sigma_exp[i] = lb + exp(eta[i]) + tiny;
+            rate_exp[i] = 1.0 / sigma_exp[i];
+          } else {
+            mean_gam[i] = lb + exp(eta[i]) + tiny;
+            sigma_gam[i] = mean_gam[i] / sqrt(shape_gam[i]);
+            rate_gam[i] = shape_gam[i] / mean_gam[i];
+          }
         }
       }
     }
@@ -298,9 +344,9 @@ generated quantities {
           } else if (family[i] == 3) {
             sigma_t[t, i] = omega[i] * exp(sigma_dev[t, i]);
           } else if (family[i] == 2) {
-            sigma_t[t, i] = sigma_exp[i];
+            sigma_t[t, i] = exp(eta[i] + sigma_dev[t, i]);
           } else {
-            sigma_t[t, i] = sigma_gam[i];
+            sigma_t[t, i] = exp(eta[i] + sigma_dev[t, i]) / sqrt(shape_gam[i]);
           }
         }
       }
@@ -319,9 +365,18 @@ generated quantities {
           log_lik[t] += normal_lpdf(eps[t, i] | 0, s_norm[i]);
           u_vec[i] = Phi(eps[t, i] / s_norm[i]);
         } else if (family[i] == 2) {
-          real x_shifted = sigma_exp[i] + skew_direction[i] * eps[t, i];
-          log_lik[t] += exponential_lpdf(x_shifted | rate_exp[i]);
-          u_vec[i] = exponential_cdf(x_shifted | rate_exp[i]);
+          if (tv_sigma == 1) {
+            real m_t = exp(eta[i] + dev);
+            real arg = m_t + skew_direction[i] * eps[t, i];
+            real x_shifted = softplus_k(arg, barrier_k);
+            log_lik[t] += exponential_lpdf(x_shifted | 1.0 / m_t)
+                          + log_softplus_k_jac(arg, barrier_k);
+            u_vec[i] = exponential_cdf(x_shifted | 1.0 / m_t);
+          } else {
+            real x_shifted = sigma_exp[i] + skew_direction[i] * eps[t, i];
+            log_lik[t] += exponential_lpdf(x_shifted | rate_exp[i]);
+            u_vec[i] = exponential_cdf(x_shifted | rate_exp[i]);
+          }
           if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
         } else if (family[i] == 3) {
           real omega_ti = omega[i] * exp(dev);
@@ -329,9 +384,18 @@ generated quantities {
           log_lik[t] += skew_normal_lpdf(eps[t, i] | xi_ti, omega_ti, alpha[i]);
           u_vec[i] = skew_normal_cdf(eps[t, i] | xi_ti, omega_ti, alpha[i]);
         } else {
-          real x_shifted = mean_gam[i] + skew_direction[i] * eps[t, i];
-          log_lik[t] += gamma_lpdf(x_shifted | shape_gam[i], rate_gam[i]);
-          u_vec[i] = gamma_cdf(x_shifted | shape_gam[i], rate_gam[i]);
+          if (tv_sigma == 1) {
+            real m_t = exp(eta[i] + dev);
+            real arg = m_t + skew_direction[i] * eps[t, i];
+            real x_shifted = softplus_k(arg, barrier_k);
+            log_lik[t] += gamma_lpdf(x_shifted | shape_gam[i], shape_gam[i] / m_t)
+                          + log_softplus_k_jac(arg, barrier_k);
+            u_vec[i] = gamma_cdf(x_shifted | shape_gam[i], shape_gam[i] / m_t);
+          } else {
+            real x_shifted = mean_gam[i] + skew_direction[i] * eps[t, i];
+            log_lik[t] += gamma_lpdf(x_shifted | shape_gam[i], rate_gam[i]);
+            u_vec[i] = gamma_cdf(x_shifted | shape_gam[i], rate_gam[i]);
+          }
           if (skew_direction[i] < 0) u_vec[i] = 1.0 - u_vec[i];
         }
       }
@@ -352,7 +416,14 @@ generated quantities {
             // The likelihood uses u = 1 - F(x_shifted) on left-skewed dims,
             // so invert at the flipped uniform.
             real u_eff = skew_direction[i] < 0 ? 1 - u_i : u_i;
-            eps_rep[t, i] = skew_direction[i] * (-log1m(u_eff) / rate_exp[i] - sigma_exp[i]);
+            if (tv_sigma == 1) {
+              real m_t = exp(eta[i] + sigma_dev[t, i]);
+              real x_shifted = -log1m(u_eff) * m_t;       // Exp(1/m_t) quantile
+              real arg = inv_softplus_k(x_shifted, barrier_k);
+              eps_rep[t, i] = skew_direction[i] * (arg - m_t);
+            } else {
+              eps_rep[t, i] = skew_direction[i] * (-log1m(u_eff) / rate_exp[i] - sigma_exp[i]);
+            }
           } else {
             eps_rep[t, i] = z_rep[i];
           }

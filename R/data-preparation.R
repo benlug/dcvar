@@ -372,8 +372,12 @@
 #'   `sigma_omega ~ exponential(1/prior_sigma_omega_rate)`. Default `0.1` gives
 #'   `exponential(10)` with prior mean 0.1.
 #' @param prior_rho_init_sd Prior SD for initial rho on Fisher-z scale.
-#' @param tv_phi Logical; if `TRUE`, the four VAR(1) coefficients evolve as
-#'   random walks around the constant baseline `Phi` (default: `FALSE`).
+#' @param tv_phi Selects which VAR(1) coefficients evolve as random walks
+#'   around the constant baseline `Phi`. Either a logical (`TRUE` = all four,
+#'   `FALSE` = none, the default) or a character selector: `"ar"` (the
+#'   autoregressive effects phi11, phi22), `"cross"` (the cross-lagged effects
+#'   phi12, phi21), or specific names from
+#'   `c("phi11", "phi12", "phi21", "phi22")`.
 #' @param tv_sigma Logical; if `TRUE`, the residual scales of normal and
 #'   skew-normal dimensions evolve as log-scale random walks around their
 #'   constant baselines (default: `FALSE`). Exponential and gamma dimensions
@@ -414,7 +418,8 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
   .prep_validate_positive_scalar(prior_sigma_eps_rate, "prior_sigma_eps_rate")
   .prep_validate_positive_scalar(prior_sigma_omega_rate, "prior_sigma_omega_rate")
   .prep_validate_positive_scalar(prior_rho_init_sd, "prior_rho_init_sd")
-  .prep_validate_scalar_logical(tv_phi, "tv_phi")
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  any_phi <- sum(phi_mask) > 0L
   .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
   .prep_validate_positive_scalar(prior_tau_phi_rate, "prior_tau_phi_rate")
   .prep_validate_positive_scalar(prior_tau_sigma_rate, "prior_tau_sigma_rate")
@@ -433,18 +438,20 @@ prepare_dcvar_data <- function(data, vars, time_var = "time",
   stan_data <- .add_margin_stan_data(stan_data, margins, prep$D, skew_direction,
                                      prior_sigma_eps_rate)
 
-  if (tv_phi || tv_sigma) {
+  if (any_phi || tv_sigma) {
     # The generic TV model dispatches on per-dimension family codes and always
     # expects the full margin data, including for homogeneous specifications.
     margins_vec <- rep(margins, length.out = prep$D)
     stan_data$family <- unname(as.integer(.family_codes[margins_vec]))
     stan_data$sigma_eps_prior <- stan_data$sigma_eps_prior %||% prior_sigma_eps_rate
     stan_data$skew_direction <- stan_data$skew_direction %||% rep(1, prep$D)
-    stan_data$tv_phi <- as.integer(tv_phi)
+    stan_data$tv_phi <- as.integer(any_phi)
+    stan_data$phi_tv_mask <- unname(phi_mask)
     stan_data$tv_sigma <- as.integer(tv_sigma)
     stan_data$tau_phi_prior <- prior_tau_phi_rate
     stan_data$tau_sigma_prior <- prior_tau_sigma_rate
-    attr(stan_data, "tv_phi") <- tv_phi
+    attr(stan_data, "tv_phi") <- any_phi
+    attr(stan_data, "phi_tv_mask") <- phi_mask
     attr(stan_data, "tv_sigma") <- tv_sigma
   }
 

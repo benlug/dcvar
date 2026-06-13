@@ -11,6 +11,16 @@
   rho(t) and per-variable (mixed) margins, every model component except the
   intercepts can now vary over time. Both flags default to `FALSE`, which
   reproduces the previous behavior exactly (same Stan models, same draws).
+- `tv_phi` also accepts a character selector so that only a subset of the
+  VAR coefficients varies: `"ar"` (the autoregressive effects phi11, phi22 --
+  e.g. for changing emotional inertia / critical slowing down), `"cross"`
+  (the cross-lagged effects phi12, phi21), or specific names such as
+  `c("phi11", "phi22")`. Only the selected coefficients get random-walk
+  parameters (the others stay at their constant baseline), which improves
+  identifiability on short series and lets you test a sharp hypothesis.
+  `phi_trajectory()` still returns all four coefficients (the fixed ones as
+  constant paths); `coef()`/`var_params()` label `tau_phi` by coefficient
+  name.
 - Flag-on fits use one generic Stan model (`dcvar_tv_mixed.stan`) for all
   margin specifications, dispatching on per-dimension family codes; with both
   flags off in that model the target density is identical term-by-term to

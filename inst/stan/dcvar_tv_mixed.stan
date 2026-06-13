@@ -39,7 +39,8 @@ data {
   array[D] int<lower=1, upper=4> family;       // Per-dimension margin family code
   vector[D] skew_direction;                    // Consulted only for exp/gamma dims
 
-  int<lower=0, upper=1> tv_phi;                // time-varying Phi(t)
+  int<lower=0, upper=1> tv_phi;                // any VAR coefficient is time-varying
+  array[4] int<lower=0, upper=1> phi_tv_mask;  // which coefficients vary (row-major: 11,12,21,22)
   int<lower=0, upper=1> tv_sigma;              // time-varying scales (normal/skew-normal dims)
 
   // Prior hyperparameters
@@ -55,6 +56,8 @@ data {
 transformed data {
   int n_time_eff = n_time - 1;
   real SQRT_2_OVER_PI = sqrt(2.0 / pi());
+  int n_phi_tv = 0;                            // number of time-varying coefficients
+  for (k in 1:4) n_phi_tv += phi_tv_mask[k];
   int n_phi = tv_phi ? n_time_eff : 0;
   int n_sig = tv_sigma ? n_time_eff : 0;
 }
@@ -76,9 +79,9 @@ parameters {
   vector<lower=-1, upper=1>[D] delta;          // skew_normal CP skewness (constant in time)
   vector<lower=0>[D] shape_gam;                // gamma shape (per dimension)
 
-  // ---- time-varying deviations (zero-sized when the flag is off) ----
-  vector<lower=0>[tv_phi ? 4 : 0] tau_phi;     // per-coefficient walk innovation SDs
-  matrix[n_phi, 4] phi_raw;                    // std-normal innovations, cols row-major (11,12,21,22)
+  // ---- time-varying deviations (sized to the active components only) ----
+  vector<lower=0>[n_phi_tv] tau_phi;           // walk innovation SDs for the active coefficients
+  matrix[n_phi, n_phi_tv] phi_raw;             // std-normal innovations, one column per active coefficient
   vector<lower=0>[tv_sigma ? D : 0] tau_sigma; // per-dimension log-scale walk SDs
   matrix[n_sig, D] sigma_raw;                  // std-normal innovations (inert on exp/gamma dims)
 }
@@ -102,8 +105,17 @@ transformed parameters {
 
   if (tv_phi == 1) {
     matrix[n_time_eff, 4] phi_t_local;
+    int idx = 0;
+    // Only the masked-in coefficients get a random walk; the others stay at
+    // their constant baseline (deviation 0), exactly like the inert union
+    // parameters elsewhere in the model.
     for (k in 1:4) {
-      phi_dev[, k] = compute_rw_ncp(0, tau_phi[k], phi_raw[, k], n_time_eff);
+      if (phi_tv_mask[k] == 1) {
+        idx += 1;
+        phi_dev[, k] = compute_rw_ncp(0, tau_phi[idx], phi_raw[, idx], n_time_eff);
+      } else {
+        phi_dev[, k] = rep_vector(0, n_time_eff);
+      }
     }
     phi_t_local[, 1] = phi_dev[, 1] + Phi[1, 1];
     phi_t_local[, 2] = phi_dev[, 2] + Phi[1, 2];

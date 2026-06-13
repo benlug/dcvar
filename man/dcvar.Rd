@@ -73,9 +73,13 @@ cause an error because they break VAR(1) time series adjacency. Set to
 
 \item{prior_rho_init_sd}{Prior SD for initial rho on Fisher-z scale.}
 
-\item{tv_phi}{Logical; if \code{TRUE}, the four VAR(1) coefficients (phi11,
-phi12, phi21, phi22) evolve as independent random walks around the
-constant baseline \code{Phi} (default: \code{FALSE}).}
+\item{tv_phi}{Selects which VAR(1) coefficients evolve as independent
+random walks around the constant baseline \code{Phi}. Either a logical
+(\code{TRUE} = all four, \code{FALSE} = none, the default) or a character selector:
+\code{"ar"} (the autoregressive effects phi11, phi22 -- e.g. for modelling
+changing emotional inertia / critical slowing down), \code{"cross"} (the
+cross-lagged effects phi12, phi21), or specific names from
+\code{c("phi11", "phi12", "phi21", "phi22")}.}
 
 \item{tv_sigma}{Logical; if \code{TRUE}, the residual scales of normal and
 skew-normal dimensions evolve as log-scale random walks around their

@@ -60,8 +60,12 @@ for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1
 
 \item{prior_rho_init_sd}{Prior SD for initial rho on Fisher-z scale.}
 
-\item{tv_phi}{Logical; if \code{TRUE}, the four VAR(1) coefficients evolve as
-random walks around the constant baseline \code{Phi} (default: \code{FALSE}).}
+\item{tv_phi}{Selects which VAR(1) coefficients evolve as random walks
+around the constant baseline \code{Phi}. Either a logical (\code{TRUE} = all four,
+\code{FALSE} = none, the default) or a character selector: \code{"ar"} (the
+autoregressive effects phi11, phi22), \code{"cross"} (the cross-lagged effects
+phi12, phi21), or specific names from
+\code{c("phi11", "phi12", "phi21", "phi22")}.}
 
 \item{tv_sigma}{Logical; if \code{TRUE}, the residual scales of normal and
 skew-normal dimensions evolve as log-scale random walks around their

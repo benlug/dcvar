@@ -20,6 +20,39 @@ test_that("dcvar_tv routes to the single generic Stan file for all margins", {
   expect_match(path, "dcvar_tv_mixed\\.stan$")
 })
 
+test_that(".resolve_phi_tv_mask maps logicals and selectors to a row-major mask", {
+  expect_identical(unname(.resolve_phi_tv_mask(TRUE)), c(1L, 1L, 1L, 1L))
+  expect_identical(unname(.resolve_phi_tv_mask(FALSE)), c(0L, 0L, 0L, 0L))
+  # AR = phi11, phi22 (positions 1, 4); cross = phi12, phi21 (positions 2, 3)
+  expect_identical(unname(.resolve_phi_tv_mask("ar")), c(1L, 0L, 0L, 1L))
+  expect_identical(unname(.resolve_phi_tv_mask("cross")), c(0L, 1L, 1L, 0L))
+  expect_identical(unname(.resolve_phi_tv_mask("crosslag")), c(0L, 1L, 1L, 0L))
+  expect_identical(unname(.resolve_phi_tv_mask(c("phi11", "phi21"))), c(1L, 0L, 1L, 0L))
+  expect_identical(names(.resolve_phi_tv_mask(TRUE)),
+                   c("phi11", "phi12", "phi21", "phi22"))
+
+  expect_error(.resolve_phi_tv_mask("nonsense"), "Invalid")
+  expect_error(.resolve_phi_tv_mask(NA), "logical")
+  expect_error(.resolve_phi_tv_mask(c(TRUE, FALSE)), "logical")
+  expect_error(.resolve_phi_tv_mask(character(0)), "empty")
+})
+
+test_that("prepare_dcvar_data resolves a tv_phi selector to a coefficient mask", {
+  df <- data.frame(time = 1:30, y1 = rnorm(30), y2 = rnorm(30))
+
+  ar <- prepare_dcvar_data(df, vars = c("y1", "y2"), tv_phi = "ar")
+  expect_identical(ar$tv_phi, 1L)
+  expect_identical(ar$phi_tv_mask, c(1L, 0L, 0L, 1L))
+  expect_identical(ar$tv_sigma, 0L)
+  expect_identical(attr(ar, "phi_tv_mask"), .resolve_phi_tv_mask("ar"))
+
+  cross <- prepare_dcvar_data(df, vars = c("y1", "y2"), tv_phi = "cross")
+  expect_identical(cross$phi_tv_mask, c(0L, 1L, 1L, 0L))
+
+  full <- prepare_dcvar_data(df, vars = c("y1", "y2"), tv_phi = TRUE)
+  expect_identical(full$phi_tv_mask, c(1L, 1L, 1L, 1L))
+})
+
 test_that("prepare_dcvar_data with flags off is byte-identical to before", {
   df <- data.frame(time = 1:30, y1 = rnorm(30), y2 = rnorm(30))
   plain <- prepare_dcvar_data(df, vars = c("y1", "y2"))
@@ -75,7 +108,13 @@ test_that(".init_dcvar_tv_params sizes the walk containers by flag", {
 
   i_sig <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = FALSE, tv_sigma = TRUE)
   expect_length(i_sig$tau_phi, 0)
-  expect_identical(dim(i_sig$phi_raw), c(0L, 4L))
+  # phi_raw has zero active columns when no coefficient varies
+  expect_identical(dim(i_sig$phi_raw), c(0L, 0L))
+
+  # AR selector: 2 active coefficients -> 2 walk columns
+  i_ar <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = "ar", tv_sigma = FALSE)
+  expect_length(i_ar$tau_phi, 2)
+  expect_identical(dim(i_ar$phi_raw), c(39L, 2L))
 })
 
 # --- Smoke fit: structure, extractors, diagnostics name pin -----------------
@@ -178,6 +217,44 @@ test_that("phi/sigma trajectories tile constants when a flag is off", {
 
   sigma_df <- sigma_trajectory(fit)
   expect_equal(nrow(sigma_df), 2 * n_eff)
+})
+
+test_that("AR-only tv_phi fits, sizes tau_phi compactly, and pins diagnostics", {
+  skip_if_no_rstan()
+
+  fit <- get_dcvar_tv_ar_fit()
+  expect_s3_class(fit, "dcvar_tv_fit")
+  expect_true(fit$tv_phi)
+  expect_false(fit$tv_sigma)
+  expect_identical(unname(fit$phi_tv_mask), c(1L, 0L, 0L, 1L))
+  expect_identical(names(fit$phi_tv_mask), c("phi11", "phi12", "phi21", "phi22"))
+
+  # tau_phi is sized to the 2 active coefficients and labelled by name
+  co <- coef(fit)
+  expect_length(co$tau_phi, 2)
+  expect_identical(names(co$tau_phi), c("tau_phi[phi11]", "tau_phi[phi22]"))
+
+  vp <- var_params(fit)
+  expect_identical(vp$tau_phi$variable, c("tau_phi[phi11]", "tau_phi[phi22]"))
+
+  # The monitored diagnostic parameters must exist in the draws (catches a
+  # tau_phi / phi_raw size mismatch for the masked subset).
+  monitored <- .diagnostic_parameter_variables(fit)
+  available <- posterior::variables(draws(fit))
+  expect_identical(setdiff(monitored, available), character(0))
+
+  # phi_trajectory still returns all four coefficients; the cross-lagged ones
+  # are constant (deviation forced to zero), the AR ones vary.
+  phi_df <- phi_trajectory(fit)
+  expect_identical(sort(unique(phi_df$coefficient)), c("phi11", "phi12", "phi21", "phi22"))
+  uniq <- tapply(phi_df$mean, phi_df$coefficient, function(x) length(unique(x)))
+  expect_equal(unname(uniq[["phi12"]]), 1L)
+  expect_equal(unname(uniq[["phi21"]]), 1L)
+
+  out <- capture.output(print(fit))
+  expect_true(any(grepl("phi11", out)))
+
+  expect_s3_class(plot(fit, type = "diagnostics"), "ggplot")
 })
 
 test_that("dcvar() warns about ignored TV prior args and exp/gamma scales", {

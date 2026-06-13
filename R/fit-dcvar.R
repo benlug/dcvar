@@ -55,9 +55,13 @@
 #' @param prior_sigma_omega_rate Prior mean for rho process SD (see
 #'   [prepare_dcvar_data()]).
 #' @param prior_rho_init_sd Prior SD for initial rho on Fisher-z scale.
-#' @param tv_phi Logical; if `TRUE`, the four VAR(1) coefficients (phi11,
-#'   phi12, phi21, phi22) evolve as independent random walks around the
-#'   constant baseline `Phi` (default: `FALSE`).
+#' @param tv_phi Selects which VAR(1) coefficients evolve as independent
+#'   random walks around the constant baseline `Phi`. Either a logical
+#'   (`TRUE` = all four, `FALSE` = none, the default) or a character selector:
+#'   `"ar"` (the autoregressive effects phi11, phi22 -- e.g. for modelling
+#'   changing emotional inertia / critical slowing down), `"cross"` (the
+#'   cross-lagged effects phi12, phi21), or specific names from
+#'   `c("phi11", "phi12", "phi21", "phi22")`.
 #' @param tv_sigma Logical; if `TRUE`, the residual scales of normal and
 #'   skew-normal dimensions evolve as log-scale random walks around their
 #'   constant baselines (default: `FALSE`). See the section on shifted
@@ -147,15 +151,16 @@ dcvar <- function(data, vars, time_var = "time",
                           adapt_delta, max_treedepth)
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
-  .prep_validate_scalar_logical(tv_phi, "tv_phi")
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  any_phi <- sum(phi_mask) > 0L
   .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
 
-  is_tv <- tv_phi || tv_sigma
+  is_tv <- any_phi || tv_sigma
   model_type <- if (is_tv) "dcvar_tv" else "dcvar"
   margins_vec <- rep(margins, length.out = 2L)
 
-  if (!tv_phi && !isTRUE(all.equal(prior_tau_phi_rate, 0.025))) {
-    cli_warn("{.arg prior_tau_phi_rate} is ignored when {.code tv_phi = FALSE}.")
+  if (!any_phi && !isTRUE(all.equal(prior_tau_phi_rate, 0.025))) {
+    cli_warn("{.arg prior_tau_phi_rate} is ignored when no VAR coefficient is time-varying.")
   }
   if (!tv_sigma && !isTRUE(all.equal(prior_tau_sigma_rate, 0.05))) {
     cli_warn("{.arg prior_tau_sigma_rate} is ignored when {.code tv_sigma = FALSE}.")
@@ -185,9 +190,10 @@ dcvar <- function(data, vars, time_var = "time",
     paste0(" [", paste(margins, collapse = ", "), "]")
   }
   if (is_tv) {
-    components <- c("rho(t)",
-                    if (tv_phi) "Phi(t)",
-                    if (tv_sigma) "sigma(t)")
+    phi_label <- if (any_phi) {
+      if (all(phi_mask == 1L)) "Phi(t)" else paste0("Phi(t):", paste(names(phi_mask)[phi_mask == 1L], collapse = "/"))
+    }
+    components <- c("rho(t)", phi_label, if (tv_sigma) "sigma(t)")
     cli_inform("Fitting TV DC-VAR model{margins_label} [{paste(components, collapse = ', ')}] (n_time = {stan_data$n_time}, D = {stan_data$D})...")
   } else {
     cli_inform("Fitting DC-VAR model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
@@ -202,7 +208,7 @@ dcvar <- function(data, vars, time_var = "time",
     D <- stan_data$D
     n_time_obs <- stan_data$n_time
     init <- if (is_tv) {
-      function() .init_dcvar_tv_params(D, n_time_obs, margins, tv_phi, tv_sigma)
+      function() .init_dcvar_tv_params(D, n_time_obs, margins, phi_mask, tv_sigma)
     } else {
       function() .init_dcvar_params(D, n_time_obs, margins)
     }
@@ -240,7 +246,7 @@ dcvar <- function(data, vars, time_var = "time",
     ),
     # tau priors only act on enabled components; recording them otherwise
     # would suggest they were used.
-    if (tv_phi) list(tau_phi_rate = prior_tau_phi_rate),
+    if (any_phi) list(tau_phi_rate = prior_tau_phi_rate),
     if (tv_sigma) list(tau_sigma_rate = prior_tau_sigma_rate)
   )
   meta <- list(
@@ -261,7 +267,8 @@ dcvar <- function(data, vars, time_var = "time",
       standardized = standardize,
       margins = margins,
       skew_direction = skew_direction,
-      tv_phi = tv_phi,
+      tv_phi = any_phi,
+      phi_tv_mask = phi_mask,
       tv_sigma = tv_sigma,
       backend = backend,
       priors = priors,

@@ -156,12 +156,14 @@ dcvar_diagnostics.default <- function(object, ...) {
       paste0("omega_raw[", seq_len(n_eff), "]")
     )
     if (isTRUE(object$tv_phi)) {
+      # tau_phi / phi_raw are sized to the number of active coefficients.
+      n_phi_tv <- sum(object$phi_tv_mask %||% .resolve_phi_tv_mask(TRUE))
       vars <- c(
         vars,
-        paste0("tau_phi[", seq_len(4), "]"),
+        paste0("tau_phi[", seq_len(n_phi_tv), "]"),
         paste0(
           "phi_raw[",
-          rep(seq_len(n_eff), each = 4), ",", rep(seq_len(4), times = n_eff),
+          rep(seq_len(n_eff), each = n_phi_tv), ",", rep(seq_len(n_phi_tv), times = n_eff),
           "]"
         )
       )

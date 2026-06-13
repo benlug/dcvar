@@ -10,8 +10,11 @@
 #' @noRd
 new_dcvar_tv_fit <- function(fit, stan_data, vars, standardized,
                              margins = "normal", skew_direction = NULL,
-                             tv_phi = FALSE, tv_sigma = FALSE,
+                             tv_phi = FALSE, phi_tv_mask = NULL, tv_sigma = FALSE,
                              backend = "rstan", priors, meta) {
+  if (is.null(phi_tv_mask)) {
+    phi_tv_mask <- .resolve_phi_tv_mask(tv_phi)
+  }
   structure(
     list(
       fit = fit,
@@ -22,6 +25,7 @@ new_dcvar_tv_fit <- function(fit, stan_data, vars, standardized,
       margins = margins,
       skew_direction = skew_direction,
       tv_phi = tv_phi,
+      phi_tv_mask = phi_tv_mask,
       tv_sigma = tv_sigma,
       backend = backend,
       priors = priors,
@@ -29,6 +33,13 @@ new_dcvar_tv_fit <- function(fit, stan_data, vars, standardized,
     ),
     class = c("dcvar_tv_fit", "dcvar_fit", "dcvar_model_fit")
   )
+}
+
+#' Internal: active (time-varying) coefficient names of a TV fit
+#' @noRd
+.tv_active_phi_coefs <- function(object) {
+  mask <- object$phi_tv_mask %||% .resolve_phi_tv_mask(isTRUE(object$tv_phi))
+  names(mask)[mask == 1L]
 }
 
 
@@ -46,8 +57,12 @@ NULL
 #' Internal: human-readable list of time-varying components
 #' @noRd
 .tv_components_label <- function(x) {
+  phi_label <- if (isTRUE(x$tv_phi)) {
+    active <- .tv_active_phi_coefs(x)
+    if (length(active) == 4L) "Phi(t)" else paste0("Phi(t): ", paste(active, collapse = ", "))
+  }
   paste(
-    c("rho(t)", if (isTRUE(x$tv_phi)) "Phi(t)", if (isTRUE(x$tv_sigma)) "sigma(t)"),
+    c("rho(t)", phi_label, if (isTRUE(x$tv_sigma)) "sigma(t)"),
     collapse = ", "
   )
 }
@@ -216,7 +231,10 @@ coef.dcvar_tv_fit <- function(object, ...) {
   result <- c(result, Filter(Negate(is.null), margin_coefs))
 
   if (isTRUE(object$tv_phi)) {
-    result$tau_phi <- .extract_required_coef(summ, "^tau_phi\\[", "tau_phi", "coef.dcvar_tv_fit()")
+    tau_phi <- .extract_required_coef(summ, "^tau_phi\\[", "tau_phi", "coef.dcvar_tv_fit()")
+    # Stan indexes tau_phi by active position; relabel by coefficient name.
+    names(tau_phi) <- paste0("tau_phi[", .tv_active_phi_coefs(object), "]")
+    result$tau_phi <- tau_phi
   }
   if (isTRUE(object$tv_sigma)) {
     result$tau_sigma <- .extract_required_coef(summ, "^tau_sigma\\[", "tau_sigma", "coef.dcvar_tv_fit()")

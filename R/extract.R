@@ -1224,7 +1224,10 @@ var_params.dcvar_tv_fit <- function(object, ...) {
     result[[group]] <- extract_param(paste0("^", group, "\\["))
   }
   if (isTRUE(object$tv_phi)) {
-    result$tau_phi <- extract_param("^tau_phi\\[")
+    tau_phi <- extract_param("^tau_phi\\[")
+    # Stan indexes tau_phi by active position; relabel by coefficient name.
+    tau_phi$variable <- paste0("tau_phi[", .tv_active_phi_coefs(object), "]")
+    result$tau_phi <- tau_phi
   }
   if (isTRUE(object$tv_sigma)) {
     result$tau_sigma <- extract_param("^tau_sigma\\[")

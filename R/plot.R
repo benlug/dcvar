@@ -246,11 +246,12 @@ plot_diagnostics <- function(object, ...) {
   if (object$model == "dcvar_tv") {
     # The generic TV model uses the mixed-union parameter block (per-dimension
     # margin parameters) even for homogeneous margins; add the walk SDs.
+    n_phi_tv <- sum(object$phi_tv_mask %||% .resolve_phi_tv_mask(isTRUE(object$tv_phi)))
     trace_pars <- c(
       "mu[1]", "mu[2]",
       .mixed_plot_margin_vars(rep(margins, length.out = 2L)),
       "sigma_omega",
-      if (isTRUE(object$tv_phi)) paste0("tau_phi[", 1:4, "]"),
+      if (isTRUE(object$tv_phi)) paste0("tau_phi[", seq_len(n_phi_tv), "]"),
       if (isTRUE(object$tv_sigma)) paste0("tau_sigma[", 1:2, "]")
     )
   }

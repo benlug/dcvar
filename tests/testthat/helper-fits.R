@@ -1189,3 +1189,28 @@ get_dcvar_tv_sigma_only_fit <- function() {
     )
   })$fit
 }
+
+get_dcvar_tv_ar_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_ar", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_constant(40, 0.4),
+      phi_trajectory = list(
+        rho_decreasing(40, 0.4, 0.1), rho_constant(40, 0.1),
+        rho_constant(40, 0.1), rho_constant(40, 0.3)
+      ),
+      seed = 44
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      tv_phi = "ar",
+      tv_sigma = FALSE,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 125
+    )
+  })$fit
+}

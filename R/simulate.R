@@ -169,6 +169,9 @@ simulate_dcvar <- function(n_time,
   if (any(abs(rho_trajectory) > 1)) {
     cli_abort("{.arg rho_trajectory} values must be in [-1, 1].")
   }
+  if (!is.null(tv_sigma_k)) {
+    .simulate_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
+  }
 
   D <- length(mu)
   if (D != 2) {
@@ -224,8 +227,6 @@ simulate_dcvar <- function(n_time,
           ))
         }
       }
-    } else {
-      .simulate_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
     }
     m
   }
@@ -379,8 +380,10 @@ simulate_dcvar <- function(n_time,
         eps[i] <- skew_direction[i] * (x_shifted - s)  # exact affine shift
       } else {
         # Soft-barrier generative model (matches the tv_sigma Stan likelihood):
-        # x_shifted = softplus_k(s + skew*eps)  =>  eps = skew*(invsoftplus(x) - s)
-        eps[i] <- skew_direction[i] * (inv_softplus_k(x_shifted, barrier_k) - s)
+        # x_shifted = softplus_k(s + skew*eps)  =>  eps = skew*(invsoftplus(x) - s).
+        # Floor away from 0 (matches the Stan eps_rep guard) so inv_softplus_k
+        # stays in its y > 0 domain for an extreme lower-tail draw.
+        eps[i] <- skew_direction[i] * (inv_softplus_k(max(x_shifted, 1e-12), barrier_k) - s)
       }
     } else if (identical(fam, "skew_normal")) {
       if (!requireNamespace("sn", quietly = TRUE)) {
@@ -403,7 +406,7 @@ simulate_dcvar <- function(n_time,
       if (is.null(barrier_k)) {
         eps[i] <- skew_direction[i] * (x_shifted - m)
       } else {
-        eps[i] <- skew_direction[i] * (inv_softplus_k(x_shifted, barrier_k) - m)
+        eps[i] <- skew_direction[i] * (inv_softplus_k(max(x_shifted, 1e-12), barrier_k) - m)
       }
     } else {
       cli_abort("Unknown margin type: {.val {fam}}")

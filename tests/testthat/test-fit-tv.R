@@ -314,6 +314,59 @@ test_that("soft-barrier exp margin with tv_sigma fits and exposes a scale path",
   expect_s3_class(ll, "loo")
 })
 
+test_that("Stan log_lik matches an independent R recomputation (soft-barrier Jacobian is used)", {
+  skip_if_no_rstan()
+
+  # Recompute log_lik[t] in R for one posterior draw of the normal+exponential
+  # soft-barrier fit (skew_direction = c(1, 1), barrier_k = 8) and compare to
+  # the Stan-emitted log_lik. A dropped, doubled, or sign-flipped Jacobian in
+  # the Stan model/GQ would make these disagree, which the orientation tests
+  # cannot detect.
+  fit <- get_dcvar_tv_exp_fit()
+  k <- 8
+  dm <- posterior::as_draws_matrix(draws(fit))
+  s <- 1L  # a single draw suffices; the formula is deterministic given it
+  g <- function(name) as.numeric(dm[s, name])
+
+  n_eff <- fit$stan_data$n_time - 1L
+  sigma_eps1 <- g("sigma_eps[1]")
+  eta2 <- g("eta[2]")
+
+  softplus <- function(a) log1p(exp(k * a)) / k
+  log_jac <- function(a) stats::plogis(k * a, log.p = TRUE)
+  cop_uv <- function(u1, u2, rho) {
+    uu <- min(max(u1, 1e-9), 1 - 1e-9)
+    vv <- min(max(u2, 1e-9), 1 - 1e-9)
+    z1 <- stats::qnorm(uu); z2 <- stats::qnorm(vv)
+    -0.5 * log1p(-rho^2) -
+      0.5 / (1 - rho^2) * (z1^2 - 2 * rho * z1 * z2 + z2^2) +
+      0.5 * (z1^2 + z2^2)
+  }
+
+  for (t in c(1L, 5L, 10L)) {
+    e1 <- g(paste0("eps[", t, ",1]"))
+    e2 <- g(paste0("eps[", t, ",2]"))
+    sd1 <- g(paste0("sigma_dev[", t, ",1]"))
+    sd2 <- g(paste0("sigma_dev[", t, ",2]"))
+    rho_t <- g(paste0("rho[", t, "]"))
+
+    # normal dim (multiplicative log-scale walk)
+    s1 <- sigma_eps1 * exp(sd1)
+    ll1 <- stats::dnorm(e1, 0, s1, log = TRUE)
+    u1 <- stats::pnorm(e1 / s1)
+    # exponential dim (soft-barrier, skew = +1): includes the eps->x Jacobian
+    m_t <- exp(eta2 + sd2)
+    arg <- m_t + e2
+    x <- softplus(arg)
+    ll2 <- stats::dexp(x, rate = 1 / m_t, log = TRUE) + log_jac(arg)
+    u2 <- stats::pexp(x, rate = 1 / m_t)
+
+    ll_r <- ll1 + ll2 + cop_uv(u1, u2, rho_t)
+    expect_equal(g(paste0("log_lik[", t, "]")), ll_r, tolerance = 1e-5,
+                 info = sprintf("t=%d", t))
+  }
+})
+
 # --- Gated recovery tests (DCVAR_SLOW_TESTS) ---------------------------------
 
 test_that("TV fit recovers a phi12 step and a sigma ramp directionally", {

@@ -198,3 +198,48 @@ test_that("soft-barrier simulation preserves copula orientation under a TV exp s
                  info = sprintf("skew2=%d", skew2))
   }
 })
+
+test_that("soft-barrier exp/gamma change-of-variables density is normalized (Jacobian present and correct)", {
+  # The eps-density of the soft-barrier margin is
+  #   exp/gamma_lpdf(softplus_k(m + skew*eps) | rate) + log_inv_logit(k*(m + skew*eps)).
+  # A missing, doubled, or sign-flipped Jacobian would make this integrate to
+  # something other than 1. This is the falsifiable guard the orientation
+  # round-trips (which only check the copula rank correlation) cannot provide.
+  k <- 8
+  softplus <- function(a) log1p(exp(k * a)) / k
+  log_jac <- function(a) stats::plogis(k * a, log.p = TRUE)   # log_inv_logit(k*a)
+
+  exp_eps_density <- function(eps, m, skew) {
+    arg <- m + skew * eps
+    exp(stats::dexp(softplus(arg), rate = 1 / m, log = TRUE) + log_jac(arg))
+  }
+  gam_eps_density <- function(eps, m, skew, shape) {
+    arg <- m + skew * eps
+    exp(stats::dgamma(softplus(arg), shape = shape, rate = shape / m, log = TRUE) + log_jac(arg))
+  }
+
+  for (skew in c(1, -1)) {
+    for (m in c(0.7, 1.3)) {
+      area_exp <- stats::integrate(exp_eps_density, -Inf, Inf, m = m, skew = skew,
+                                   rel.tol = 1e-8)$value
+      expect_equal(area_exp, 1, tolerance = 1e-4,
+                   info = sprintf("exp m=%.1f skew=%d", m, skew))
+      area_gam <- stats::integrate(gam_eps_density, -Inf, Inf, m = m, skew = skew,
+                                   shape = 2, rel.tol = 1e-8)$value
+      expect_equal(area_gam, 1, tolerance = 1e-4,
+                   info = sprintf("gamma m=%.1f skew=%d", m, skew))
+    }
+  }
+})
+
+test_that("the soft-barrier log-Jacobian is the exact transform Jacobian", {
+  # log_inv_logit(k*a) must equal log|d softplus_k(a)/da|; a sign flip or a
+  # constant offset (the easy regressions) would break this finite-difference
+  # identity that the Stan model relies on.
+  k <- 8
+  softplus <- function(a) log1p(exp(k * a)) / k
+  a <- c(-2, -0.5, 0, 0.5, 2, 5)
+  num <- (softplus(a + 1e-6) - softplus(a - 1e-6)) / 2e-6
+  ana <- exp(stats::plogis(k * a, log.p = TRUE))
+  expect_equal(ana, num, tolerance = 1e-5)
+})

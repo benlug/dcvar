@@ -418,7 +418,10 @@ generated quantities {
             real u_eff = skew_direction[i] < 0 ? 1 - u_i : u_i;
             if (tv_sigma == 1) {
               real m_t = exp(eta[i] + sigma_dev[t, i]);
-              real x_shifted = -log1m(u_eff) * m_t;       // Exp(1/m_t) quantile
+              // Floor the quantile away from 0 so inv_softplus_k stays in its
+              // y > 0 domain even for an extreme lower-tail copula draw
+              // (where Phi(z_rep) underflows); keeps eps_rep finite.
+              real x_shifted = fmax(-log1m(u_eff) * m_t, 1e-12);
               real arg = inv_softplus_k(x_shifted, barrier_k);
               eps_rep[t, i] = skew_direction[i] * (arg - m_t);
             } else {

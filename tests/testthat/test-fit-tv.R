@@ -237,19 +237,27 @@ test_that("AR-only tv_phi fits, sizes tau_phi compactly, and pins diagnostics", 
   vp <- var_params(fit)
   expect_identical(vp$tau_phi$variable, c("tau_phi[phi11]", "tau_phi[phi22]"))
 
-  # The monitored diagnostic parameters must exist in the draws (catches a
-  # tau_phi / phi_raw size mismatch for the masked subset).
+  # The monitored diagnostic parameters must exist in the draws AND the draws
+  # must not contain a tau_phi index beyond the active count -- pins the masked
+  # tau_phi sizing in both directions (over- and under-counting).
   monitored <- .diagnostic_parameter_variables(fit)
   available <- posterior::variables(draws(fit))
   expect_identical(setdiff(monitored, available), character(0))
+  expect_true(all(c("tau_phi[1]", "tau_phi[2]") %in% available))
+  expect_false("tau_phi[3]" %in% available)
 
   # phi_trajectory still returns all four coefficients; the cross-lagged ones
-  # are constant (deviation forced to zero), the AR ones vary.
+  # are constant (deviation forced to zero), while the active AR coefficients
+  # genuinely vary -- the latter ties the masked-in coefficients to actual
+  # time variation (catches a mask that only leaves phi12/phi21 off).
   phi_df <- phi_trajectory(fit)
   expect_identical(sort(unique(phi_df$coefficient)), c("phi11", "phi12", "phi21", "phi22"))
   uniq <- tapply(phi_df$mean, phi_df$coefficient, function(x) length(unique(x)))
   expect_equal(unname(uniq[["phi12"]]), 1L)
   expect_equal(unname(uniq[["phi21"]]), 1L)
+  # phi11 is simulated as a decreasing path, so its posterior-mean trajectory
+  # must not collapse to a constant.
+  expect_gt(unname(uniq[["phi11"]]), 1L)
 
   out <- capture.output(print(fit))
   expect_true(any(grepl("phi11", out)))
@@ -316,4 +324,42 @@ test_that("TV fit recovers a phi12 step and a sigma ramp directionally", {
   sigma_df <- sigma_trajectory(fit)
   s1 <- sigma_df[sigma_df$variable == "y1", ]
   expect_gt(mean(s1$mean[(n_eff - 49):n_eff]), mean(s1$mean[1:50]))
+})
+
+test_that("tv_phi = 'ar' ties the fitted variation to the correct coefficient", {
+  skip_if_no_rstan()
+  skip_if_not_slow()
+
+  # Only phi11 genuinely varies (a clear ramp); phi22 is constant. Under
+  # tv_phi = "ar" both phi11 and phi22 carry a walk, so this test confirms the
+  # FITTED phi11(t) path moves substantially more than phi22(t) -- i.e. the
+  # active tau_phi/phi_dev columns map to the coefficient they are labelled
+  # with. A Stan-idx vs R-name transposition (phi11 <-> phi22) would fail here.
+  n <- 200
+  sim <- simulate_dcvar(
+    n, rho_constant(n, 0.4),
+    phi_trajectory = list(
+      rho_decreasing(n, 0.5, 0.05),  # phi11: strong ramp
+      rho_constant(n, 0.1),          # phi12: constant (fixed by the mask)
+      rho_constant(n, 0.1),          # phi21: constant (fixed by the mask)
+      rho_constant(n, 0.3)           # phi22: constant
+    ),
+    seed = 13
+  )
+  fit <- dcvar(sim$Y_df, vars = c("y1", "y2"),
+               tv_phi = "ar",
+               standardize = FALSE,
+               chains = 2,
+               iter_warmup = margin_iter_warmup,
+               iter_sampling = margin_iter_sampling,
+               refresh = 0, seed = 17)
+
+  phi_df <- phi_trajectory(fit)
+  rng <- tapply(phi_df$mean, phi_df$coefficient, function(x) diff(range(x)))
+  # phi11 (the truly varying coefficient) must move far more than phi22.
+  expect_gt(rng[["phi11"]], rng[["phi22"]])
+  # And phi11's recovered path must decrease (it was simulated decreasing).
+  phi11 <- phi_df[phi_df$coefficient == "phi11", ]
+  n_eff <- nrow(phi11)
+  expect_gt(mean(phi11$mean[1:50]), mean(phi11$mean[(n_eff - 49):n_eff]))
 })

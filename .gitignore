@@ -20,3 +20,11 @@ inst/stan/*
 !inst/stan/*.stan
 !inst/stan/functions
 inst/stan/*.hpp
+
+# pkgdown site build (generated locally / by CI)
+docs/
+pkgdown/
+
+# knitr/quarto vignette build artifacts
+vignettes/*_cache/
+vignettes/*_files/

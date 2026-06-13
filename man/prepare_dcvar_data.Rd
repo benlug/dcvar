@@ -16,6 +16,11 @@ prepare_dcvar_data(
   prior_sigma_eps_rate = 1,
   prior_sigma_omega_rate = 0.1,
   prior_rho_init_sd = 1,
+  tv_phi = FALSE,
+  tv_sigma = FALSE,
+  prior_tau_phi_rate = 0.025,
+  prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   allow_gaps = FALSE
 )
 }
@@ -55,6 +60,33 @@ for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1
 \code{exponential(10)} with prior mean 0.1.}
 
 \item{prior_rho_init_sd}{Prior SD for initial rho on Fisher-z scale.}
+
+\item{tv_phi}{Selects which VAR(1) coefficients evolve as random walks
+around the constant baseline \code{Phi}. Either a logical (\code{TRUE} = all four,
+\code{FALSE} = none, the default) or a character selector: \code{"ar"} (the
+autoregressive effects phi11, phi22), \code{"cross"} (the cross-lagged effects
+phi12, phi21), or specific names from
+\code{c("phi11", "phi12", "phi21", "phi22")}.}
+
+\item{tv_sigma}{Logical; if \code{TRUE}, the residual scales evolve as log-scale
+random walks around their constant baselines (default: \code{FALSE}). Applies
+to all margin families; exponential and gamma dimensions use a
+soft-barrier construction (see \code{\link[=dcvar]{dcvar()}}).}
+
+\item{prior_tau_phi_rate}{Prior mean for the four Phi random-walk
+innovation SDs: \code{tau_phi ~ exponential(1/prior_tau_phi_rate)}. Only used
+when \code{tv_phi = TRUE}. The default \code{0.025} allows a total drift SD of
+about 0.3 over 150 time points while shrinking toward constant
+coefficients.}
+
+\item{prior_tau_sigma_rate}{Prior mean for the per-dimension log-scale
+random-walk innovation SDs:
+\code{tau_sigma ~ exponential(1/prior_tau_sigma_rate)}. Only used when
+\code{tv_sigma = TRUE}. The default \code{0.05} allows scale factors of roughly
+0.5--2 over 150 time points.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales (default \code{8}); see \code{\link[=dcvar]{dcvar()}}.}
 
 \item{allow_gaps}{Logical; if \code{FALSE} (default), interior missing values
 cause an error. If \code{TRUE}, they produce a warning and are removed.}

@@ -18,6 +18,67 @@
   }
 }
 
+#' Internal: normalise a (possibly time-varying) trajectory specification
+#'
+#' Accepts an `(n_time - 1) x k` matrix, a list of `k` length-`(n_time - 1)`
+#' vectors (so the `rho_*` generators can be reused per column), or a constant
+#' specification (`k`-vector, or `2 x 2` matrix when `k = 4`, expanded over
+#' time). Returns an `(n_time - 1) x k` matrix. For `k = 4` the column order
+#' is row-major: phi11, phi12, phi21, phi22.
+#' @noRd
+.tv_resolve_trajectory <- function(x, n_time, k, arg_name) {
+  n_eff <- n_time - 1L
+
+  if (is.list(x)) {
+    if (length(x) != k) {
+      cli_abort("{.arg {arg_name}} as a list must have {.val {k}} elements, got {.val {length(x)}}.")
+    }
+    lens <- lengths(x)
+    if (!all(lens == n_eff)) {
+      cli_abort("Each element of {.arg {arg_name}} must have length {.val {n_eff}} (n_time - 1).")
+    }
+    x <- do.call(cbind, x)
+  } else if (is.matrix(x)) {
+    if (k == 4L && all(dim(x) == c(2L, 2L))) {
+      # Constant 2x2 Phi, expanded row-major over time
+      x <- matrix(rep(c(t(x)), each = n_eff), n_eff, k)
+    } else if (!all(dim(x) == c(n_eff, k))) {
+      cli_abort(c(
+        "{.arg {arg_name}} must be a {.val {n_eff}} x {.val {k}} matrix.",
+        "i" = "Rows follow the transitions 2..n_time; for Phi the columns are phi11, phi12, phi21, phi22."
+      ))
+    }
+  } else if (is.numeric(x) && length(x) == k) {
+    x <- matrix(rep(x, each = n_eff), n_eff, k)
+  } else {
+    cli_abort(c(
+      "{.arg {arg_name}} must be a {.val {n_eff}} x {.val {k}} matrix, a list of {.val {k}} length-{.val {n_eff}} vectors, or a constant length-{.val {k}} specification.",
+      "i" = "For Phi a constant {.val 2 x 2} matrix is also accepted."
+    ))
+  }
+
+  x <- unname(as.matrix(x))
+  if (!is.numeric(x) || any(!is.finite(x))) {
+    cli_abort("{.arg {arg_name}} must contain only finite numeric values.")
+  }
+  x
+}
+
+#' Internal: per-t spectral radius of a row-major (phi11, phi12, phi21, phi22) path
+#' @noRd
+.tv_spectral_radius <- function(phi_mat) {
+  apply(phi_mat, 1, function(p) {
+    tr <- p[1] + p[4]
+    det_phi <- p[1] * p[4] - p[2] * p[3]
+    disc <- tr^2 - 4 * det_phi
+    if (disc >= 0) {
+      max(abs(0.5 * (tr + sqrt(disc))), abs(0.5 * (tr - sqrt(disc))))
+    } else {
+      sqrt(abs(det_phi))
+    }
+  })
+}
+
 #' Simulate data from a copula VAR(1) model
 #'
 #' Generates bivariate time series data with correlated innovations
@@ -43,6 +104,25 @@
 #'   (length-2 vector of skew-normal shape params) is used by skew-normal
 #'   dimensions; `shape` (scalar gamma shape parameter) is used by gamma
 #'   dimensions. Both may be supplied together for mixed margins.
+#' @param phi_trajectory Optional time-varying VAR coefficient paths for data
+#'   matching `dcvar(tv_phi = TRUE)`: an `(n_time - 1) x 4` matrix with
+#'   columns in row-major order (phi11, phi12, phi21, phi22), a list of 4
+#'   length-`(n_time - 1)` vectors (the `rho_*` trajectory generators can be
+#'   reused per coefficient), or a constant `2 x 2` matrix. Mutually exclusive
+#'   with `Phi`. `NULL` (default) keeps the constant `Phi`.
+#' @param sigma_trajectory Optional time-varying residual scale paths for data
+#'   matching `dcvar(tv_sigma = TRUE)`: an `(n_time - 1) x 2` positive matrix,
+#'   a list of 2 length-`(n_time - 1)` vectors, or a constant length-2 vector.
+#'   The scale is each family's natural scale (innovation SD for normal,
+#'   residual SD for skew-normal, `sigma_exp` / `sigma_gam` for
+#'   exponential / gamma). A non-constant path on an exponential or gamma
+#'   dimension requires `tv_sigma_k` (soft-barrier generative model). Mutually
+#'   exclusive with `sigma_eps`. `NULL` (default) keeps constant scales.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales. Supply the same value as the intended `dcvar(tv_sigma = TRUE,
+#'   tv_sigma_k = ...)` fit so the simulated data matches that likelihood.
+#'   `NULL` (default) uses the exact affine shifted margin and requires
+#'   constant exp/gamma scales.
 #' @param seed Random seed for reproducibility.
 #'
 #' @return A named list with:
@@ -53,9 +133,11 @@
 #'     data scale; the fitting functions standardize by default, so round-trip
 #'     comparisons of `mu`, `Phi`, and `sigma_eps` require fitting with
 #'     `standardize = FALSE` (the `rho` trajectory is scale-invariant).
-#'     Exponential and gamma dimensions are simulated with unit-SD
-#'     standardized innovations, so their implied true scale
-#'     (`sigma_exp`/`sigma_gam`) is 1.
+#'     Without `sigma_trajectory`, exponential and gamma dimensions are
+#'     simulated with unit-SD standardized innovations, so their implied true
+#'     scale (`sigma_exp`/`sigma_gam`) is 1. With trajectories supplied,
+#'     `Phi` is the `(n_time - 1) x 4` coefficient path and `sigma` the
+#'     `(n_time - 1) x 2` scale path.
 #' @export
 #'
 #' @examples
@@ -70,6 +152,9 @@ simulate_dcvar <- function(n_time,
                            margins = "normal",
                            skew_direction = NULL,
                            skew_params = NULL,
+                           phi_trajectory = NULL,
+                           sigma_trajectory = NULL,
+                           tv_sigma_k = NULL,
                            seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
   if (!is.numeric(n_time) || length(n_time) != 1 || n_time != as.integer(n_time) || n_time < 2) {
@@ -84,12 +169,21 @@ simulate_dcvar <- function(n_time,
   if (any(abs(rho_trajectory) > 1)) {
     cli_abort("{.arg rho_trajectory} values must be in [-1, 1].")
   }
+  if (!is.null(tv_sigma_k)) {
+    .simulate_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
+  }
 
   D <- length(mu)
   if (D != 2) {
     cli_abort(
       "{.fun simulate_dcvar} currently supports bivariate (D = 2) models only, got D = {D}."
     )
+  }
+  if (!is.null(phi_trajectory) && !missing(Phi)) {
+    cli_abort("Supply either {.arg Phi} (constant) or {.arg phi_trajectory} (time-varying), not both.")
+  }
+  if (!is.null(sigma_trajectory) && !missing(sigma_eps)) {
+    cli_abort("Supply either {.arg sigma_eps} (constant) or {.arg sigma_trajectory} (time-varying), not both.")
   }
   if (!is.matrix(Phi) || !all(dim(Phi) == c(D, D))) {
     cli_abort("{.arg Phi} must be a {D}x{D} matrix.")
@@ -98,6 +192,44 @@ simulate_dcvar <- function(n_time,
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
   margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
+
+  # Resolve the (possibly constant) per-transition parameter paths. Row t
+  # governs the transition Y[t] -> Y[t+1], matching the Stan models' eps[t].
+  phi_mat <- if (is.null(phi_trajectory)) {
+    .tv_resolve_trajectory(Phi, n_time, 4L, "Phi")
+  } else {
+    .tv_resolve_trajectory(phi_trajectory, n_time, 4L, "phi_trajectory")
+  }
+  sr <- .tv_spectral_radius(phi_mat)
+  if (any(sr >= 1)) {
+    cli_warn(c(
+      "{sum(sr >= 1)} time point{?s} of the VAR coefficient path {?is/are} nonstationary (spectral radius >= 1).",
+      "i" = "Brief excursions are fine; persistent ones make the series explode."
+    ))
+  }
+
+  scale_mat <- if (is.null(sigma_trajectory)) {
+    NULL
+  } else {
+    m <- .tv_resolve_trajectory(sigma_trajectory, n_time, D, "sigma_trajectory")
+    if (any(m <= 0)) {
+      cli_abort("{.arg sigma_trajectory} values must be positive.")
+    }
+    # A non-constant scale path on a shifted exp/gamma dimension requires the
+    # soft-barrier generative model, which the user opts into with tv_sigma_k
+    # (matching dcvar(tv_sigma = TRUE, tv_sigma_k = ...)).
+    if (is.null(tv_sigma_k)) {
+      for (d in seq_len(D)) {
+        if (margins_vec[d] %in% c("exponential", "gamma") && length(unique(m[, d])) > 1L) {
+          cli_abort(c(
+            "{.arg sigma_trajectory} is not constant on dimension {d} ({.val {margins_vec[d]}} margin).",
+            "i" = "Set {.arg tv_sigma_k} (e.g. the value passed to {.code dcvar(tv_sigma = TRUE)}) to simulate from the soft-barrier model, or keep the scale constant."
+          ))
+        }
+      }
+    }
+    m
+  }
 
   if (!is.null(skew_params) && !is.list(skew_params)) {
     cli_abort("{.arg skew_params} must be a list.")
@@ -130,22 +262,35 @@ simulate_dcvar <- function(n_time,
     skew_params$shape <- gamma_shape
   }
 
+  # Constant per-dimension scales used when no sigma_trajectory is supplied:
+  # the innovation SD for normal dims, unit scale otherwise.
+  base_scales <- rep(1, D)
+  is_normal <- margins_vec == "normal"
+  if (any(is_normal)) base_scales[is_normal] <- sigma_eps[is_normal]
+
   Y <- matrix(0, n_time, D)
   Y[1, ] <- mu
 
   for (time_index in 2:n_time) {
-    rho_t <- rho_trajectory[time_index - 1L]
+    t_eff <- time_index - 1L
+    rho_t <- rho_trajectory[t_eff]
 
     # Generate copula uniforms via Gaussian copula
     L <- matrix(c(1, rho_t, 0, sqrt(1 - rho_t^2)), 2, 2)
     z <- rnorm(D)
     w <- L %*% z  # correlated standard normals
 
-    # Transform through marginal quantiles
-    eps <- .sim_marginal_quantile(w, margins, sigma_eps, skew_direction, skew_params)
+    # Transform through marginal quantiles with the per-transition scales.
+    # A supplied tv_sigma_k routes exp/gamma dims through the soft-barrier
+    # generative model (matching dcvar(tv_sigma = TRUE)).
+    scales_t <- if (is.null(scale_mat)) base_scales else scale_mat[t_eff, ]
+    eps <- .sim_marginal_quantile_scaled(w, margins_vec, scales_t, skew_direction,
+                                         skew_params, barrier_k = tv_sigma_k)
 
-    # VAR(1) update
-    Y[time_index, ] <- mu + Phi %*% (Y[time_index - 1L, ] - mu) + eps
+    # VAR(1) update with the per-transition coefficients (byrow: the path
+    # columns are row-major phi11, phi12, phi21, phi22)
+    Phi_t <- matrix(phi_mat[t_eff, ], 2, 2, byrow = TRUE)
+    Y[time_index, ] <- mu + Phi_t %*% (Y[time_index - 1L, ] - mu) + eps
   }
 
   Y_df <- data.frame(
@@ -156,14 +301,22 @@ simulate_dcvar <- function(n_time,
 
   true_params <- list(
     rho = rho_trajectory,
-    Phi = Phi,
+    Phi = if (is.null(phi_trajectory)) {
+      Phi
+    } else {
+      colnames(phi_mat) <- c("phi11", "phi12", "phi21", "phi22")
+      phi_mat
+    },
     mu = mu,
     margins = margins
   )
 
   # Add margin-specific true params for every family present (independent
   # checks so mixed margins record each family's parameters).
-  if (any(margins_vec == "normal")) {
+  if (!is.null(scale_mat)) {
+    colnames(scale_mat) <- c("y1", "y2")
+    true_params$sigma <- scale_mat
+  } else if (any(margins_vec == "normal")) {
     true_params$sigma_eps <- sigma_eps
   }
   if (any(margins_vec %in% c("exponential", "gamma"))) {
@@ -186,38 +339,75 @@ simulate_dcvar <- function(n_time,
 .sim_marginal_quantile <- function(w, margins, sigma_eps, skew_direction, skew_params) {
   D <- length(w)
   margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
+  scales <- rep(1, D)
+  is_normal <- margins_vec == "normal"
+  if (any(is_normal)) scales[is_normal] <- sigma_eps[is_normal]
+  .sim_marginal_quantile_scaled(w, margins_vec, scales, skew_direction, skew_params)
+}
+
+
+#' Internal: scale-aware marginal quantile transform
+#'
+#' Core shared by the constant-parameter and time-varying simulators. `scales`
+#' is the per-dimension scale on each family's natural reporting scale: the
+#' innovation SD for normal dims, `sigma_exp` for exponential dims (mean and
+#' SD of the shifted exponential), the SD (`sigma_gam`) for gamma dims, and
+#' the residual SD for skew-normal dims. All residuals have mean zero by
+#' construction.
+#' @noRd
+.sim_marginal_quantile_scaled <- function(w, margins_vec, scales, skew_direction, skew_params,
+                                          barrier_k = NULL) {
+  D <- length(w)
   eps <- numeric(D)
+  # Inverse softplus, matching inst/stan/functions/softplus.stan
+  inv_softplus_k <- function(y, k) log(expm1(k * y)) / k
 
   for (i in seq_len(D)) {
     fam <- margins_vec[[i]]
+    s <- scales[i]
     if (identical(fam, "normal")) {
       # w[i] is already standard normal, just scale
-      eps[i] <- w[i] * sigma_eps[i]
+      eps[i] <- w[i] * s
     } else if (identical(fam, "exponential")) {
-      # Convert to uniform, then to standardized exponential (Exp(1), mean/sd 1).
+      # Convert to uniform, then to a shifted exponential with mean/sd s.
       # The Stan likelihoods use u = 1 - F(x_shifted) for left-skewed dimensions,
       # so the uniform must be flipped before the quantile to keep the simulated
       # eps comonotone with the latent copula normal w.
       u <- stats::pnorm(w[i])
       if (skew_direction[i] < 0) u <- 1 - u
-      x_std <- stats::qexp(u, rate = 1) - 1
-      eps[i] <- skew_direction[i] * x_std
+      x_shifted <- stats::qexp(u, rate = 1 / s)        # Exp(1/s) variate, mean s
+      if (is.null(barrier_k)) {
+        eps[i] <- skew_direction[i] * (x_shifted - s)  # exact affine shift
+      } else {
+        # Soft-barrier generative model (matches the tv_sigma Stan likelihood):
+        # x_shifted = softplus_k(s + skew*eps)  =>  eps = skew*(invsoftplus(x) - s).
+        # Floor away from 0 (matches the Stan eps_rep guard) so inv_softplus_k
+        # stays in its y > 0 domain for an extreme lower-tail draw.
+        eps[i] <- skew_direction[i] * (inv_softplus_k(max(x_shifted, 1e-12), barrier_k) - s)
+      }
     } else if (identical(fam, "skew_normal")) {
       if (!requireNamespace("sn", quietly = TRUE)) {
         cli_abort("Package {.pkg sn} is required for skew-normal simulation.")
       }
       alpha_i <- (skew_params$alpha %||% rep(0, D))[i]
       delta <- alpha_i / sqrt(1 + alpha_i^2)
-      omega_i <- sqrt(1 / (1 - 2 * delta^2 / pi))
+      omega_i <- s * sqrt(1 / (1 - 2 * delta^2 / pi))
       xi_i <- -omega_i * delta * sqrt(2 / pi)
       eps[i] <- sn::qsn(stats::pnorm(w[i]), xi = xi_i, omega = omega_i, alpha = alpha_i)
     } else if (identical(fam, "gamma")) {
       shape <- skew_params$shape %||% 1
       # Same uniform flip as the exponential branch (see comment there).
+      # The gamma mean m = sqrt(shape) * s gives SD s; the mean shift keeps
+      # E[eps] = 0 in the exact affine case.
+      m <- sqrt(shape) * s
       u <- stats::pnorm(w[i])
       if (skew_direction[i] < 0) u <- 1 - u
-      x_std <- stats::qgamma(u, shape = shape, rate = sqrt(shape)) - sqrt(shape)
-      eps[i] <- skew_direction[i] * x_std
+      x_shifted <- stats::qgamma(u, shape = shape, rate = shape / m)  # Gamma, mean m
+      if (is.null(barrier_k)) {
+        eps[i] <- skew_direction[i] * (x_shifted - m)
+      } else {
+        eps[i] <- skew_direction[i] * (inv_softplus_k(max(x_shifted, 1e-12), barrier_k) - m)
+      }
     } else {
       cli_abort("Unknown margin type: {.val {fam}}")
     }

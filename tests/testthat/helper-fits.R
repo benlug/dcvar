@@ -1141,3 +1141,103 @@ get_covariate_fit <- function(drift = TRUE) {
     )
   })$fit
 }
+
+get_dcvar_tv_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_both", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_decreasing(40, 0.6, 0.2),
+      phi_trajectory = list(
+        rho_constant(40, 0.3), rho_decreasing(40, 0.3, 0.0),
+        rho_constant(40, 0.1), rho_constant(40, 0.3)
+      ),
+      sigma_trajectory = cbind(seq(0.8, 1.4, length.out = 39), rep(1, 39)),
+      seed = 42
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      tv_phi = TRUE,
+      tv_sigma = TRUE,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 123
+    )
+  })$fit
+}
+
+get_dcvar_tv_sigma_only_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_sigma_only", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_constant(40, 0.4),
+      sigma_trajectory = cbind(seq(0.8, 1.4, length.out = 39), rep(1, 39)),
+      seed = 43
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      tv_phi = FALSE,
+      tv_sigma = TRUE,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 124
+    )
+  })$fit
+}
+
+get_dcvar_tv_ar_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_ar", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_constant(40, 0.4),
+      phi_trajectory = list(
+        rho_decreasing(40, 0.4, 0.1), rho_constant(40, 0.1),
+        rho_constant(40, 0.1), rho_constant(40, 0.3)
+      ),
+      seed = 44
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      tv_phi = "ar",
+      tv_sigma = FALSE,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 125
+    )
+  })$fit
+}
+
+get_dcvar_tv_exp_fit <- function() {
+  .cache_fit_result("dcvar_tv_fit_exp", function() {
+    sim <- simulate_dcvar(
+      n_time = 40,
+      rho_trajectory = rho_constant(40, 0.4),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      sigma_trajectory = cbind(rep(1, 39), seq(0.7, 1.6, length.out = 39)),
+      tv_sigma_k = 8,
+      seed = 46
+    )
+    dcvar(
+      sim$Y_df,
+      vars = c("y1", "y2"),
+      margins = c("normal", "exponential"),
+      skew_direction = c(1, 1),
+      tv_sigma = TRUE,
+      tv_sigma_k = 8,
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      refresh = 0,
+      seed = 126
+    )
+  })$fit
+}

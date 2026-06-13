@@ -4,6 +4,7 @@
 \alias{fitted.dcvar_model_fit}
 \alias{fitted.dcvar_multilevel_fit}
 \alias{fitted.dcvar_sem_fit}
+\alias{fitted.dcvar_tv_fit}
 \title{Fitted values from a copula VAR model}
 \usage{
 \method{fitted}{dcvar_model_fit}(object, type = c("link", "response"), ...)
@@ -11,6 +12,8 @@
 \method{fitted}{dcvar_multilevel_fit}(object, type = c("link", "response"), ...)
 
 \method{fitted}{dcvar_sem_fit}(object, type = c("link", "response"), ...)
+
+\method{fitted}{dcvar_tv_fit}(object, type = c("link", "response"), ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

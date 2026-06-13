@@ -17,6 +17,11 @@ dcvar(
   prior_sigma_eps_rate = 1,
   prior_sigma_omega_rate = 0.1,
   prior_rho_init_sd = 1,
+  tv_phi = FALSE,
+  tv_sigma = FALSE,
+  prior_tau_phi_rate = 0.025,
+  prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   chains = 4,
   iter_warmup = 2000,
   iter_sampling = 4000,
@@ -69,6 +74,32 @@ cause an error because they break VAR(1) time series adjacency. Set to
 
 \item{prior_rho_init_sd}{Prior SD for initial rho on Fisher-z scale.}
 
+\item{tv_phi}{Selects which VAR(1) coefficients evolve as independent
+random walks around the constant baseline \code{Phi}. Either a logical
+(\code{TRUE} = all four, \code{FALSE} = none, the default) or a character selector:
+\code{"ar"} (the autoregressive effects phi11, phi22 -- e.g. for modelling
+changing emotional inertia / critical slowing down), \code{"cross"} (the
+cross-lagged effects phi12, phi21), or specific names from
+\code{c("phi11", "phi12", "phi21", "phi22")}.}
+
+\item{tv_sigma}{Logical; if \code{TRUE}, the residual scales evolve as log-scale
+random walks around their constant baselines (default: \code{FALSE}). Applies
+to all margin families; see the section on shifted margins for how
+exponential and gamma dimensions are handled.}
+
+\item{prior_tau_phi_rate}{Prior mean for the Phi random-walk innovation
+SDs (\code{tau_phi ~ exponential(1/prior_tau_phi_rate)}; default \code{0.025}).
+Used only when \code{tv_phi = TRUE}.}
+
+\item{prior_tau_sigma_rate}{Prior mean for the log-scale random-walk
+innovation SDs (\code{tau_sigma ~ exponential(1/prior_tau_sigma_rate)};
+default \code{0.05}). Used only when \code{tv_sigma = TRUE}.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales (default \code{8}). Larger values approximate the exact shifted margin
+more closely but stiffen the geometry. Used only when \code{tv_sigma = TRUE}
+and an exponential or gamma margin is present.}
+
 \item{chains}{Number of MCMC chains (default: 4).}
 
 \item{iter_warmup}{Warmup iterations per chain (default: 2000).}
@@ -108,6 +139,41 @@ Fits a Dynamic Copula VAR(1) model with time-varying correlation following
 a random walk on the Fisher-z scale. Uses non-centered parameterisation
 for efficient HMC sampling.
 }
+\details{
+Beyond the always time-varying correlation, the VAR coefficients and the
+residual scales can optionally vary over time as well (\code{tv_phi},
+\code{tv_sigma}): each enabled component evolves as a non-centered random walk
+around its constant baseline, with innovation-SD priors that shrink toward
+the constant-parameter model. With both flags off (the default) the fit is
+exactly the classic DC-VAR. With any flag on, the fit uses a generic
+time-varying Stan model and returns a \code{dcvar_tv_fit} object (a subclass of
+\code{dcvar_fit}), with trajectory extractors \code{\link[=phi_trajectory]{phi_trajectory()}} and
+\code{\link[=sigma_trajectory]{sigma_trajectory()}}.
+}
+\section{Time-varying scales and shifted margins}{
+
+\code{tv_sigma = TRUE} gives normal and skew-normal dimensions a multiplicative
+log-scale random walk. Exponential and gamma dimensions use a \strong{soft-barrier}
+construction: the shifted variate \code{x = scale + skew * eps} (which has a hard
+support boundary at 0) is replaced by \code{x = softplus_k(m_t + skew * eps)}
+with a time-varying scale \code{m_t}. This keeps \code{x} positive, matches the exact
+shifted margin in the interior, and rounds the boundary smoothly so the
+scale can vary freely. \code{tv_sigma_k} controls the sharpness; larger values
+track the exact exponential/gamma more closely at the cost of a stiffer
+posterior geometry, smaller values are numerically gentler but introduce a
+small residual-mean bias in the lower tail.
+}
+
+\section{Recommended workflow}{
+
+For typical series lengths (T of 100--300), fit the model ladder
+\code{dcvar()} (constant Phi/sigma) -> \code{dcvar(tv_phi = TRUE)} ->
+\code{dcvar(tv_phi = TRUE, tv_sigma = TRUE)} and compare with
+\code{\link[=dcvar_compare]{dcvar_compare()}}. Up to seven latent random walks are estimated from a
+single bivariate series; the tight innovation-SD priors are what keeps
+this identifiable, so widen them deliberately.
+}
+
 \examples{
 \donttest{
 sim <- simulate_dcvar(

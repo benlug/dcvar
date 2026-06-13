@@ -13,6 +13,9 @@ simulate_dcvar(
   margins = "normal",
   skew_direction = NULL,
   skew_params = NULL,
+  phi_trajectory = NULL,
+  sigma_trajectory = NULL,
+  tv_sigma_k = NULL,
   seed = NULL
 )
 }
@@ -45,6 +48,27 @@ dimensions consult it.}
 dimensions; \code{shape} (scalar gamma shape parameter) is used by gamma
 dimensions. Both may be supplied together for mixed margins.}
 
+\item{phi_trajectory}{Optional time-varying VAR coefficient paths for data
+matching \code{dcvar(tv_phi = TRUE)}: an \verb{(n_time - 1) x 4} matrix with
+columns in row-major order (phi11, phi12, phi21, phi22), a list of 4
+length-\code{(n_time - 1)} vectors (the \verb{rho_*} trajectory generators can be
+reused per coefficient), or a constant \verb{2 x 2} matrix. Mutually exclusive
+with \code{Phi}. \code{NULL} (default) keeps the constant \code{Phi}.}
+
+\item{sigma_trajectory}{Optional time-varying residual scale paths for data
+matching \code{dcvar(tv_sigma = TRUE)}: an \verb{(n_time - 1) x 2} positive matrix,
+a list of 2 length-\code{(n_time - 1)} vectors, or a constant length-2 vector.
+The scale is each family's natural scale (innovation SD for normal,
+residual SD for skew-normal, \code{sigma_exp} / \code{sigma_gam} for
+exponential / gamma). A non-constant path on an exponential or gamma
+dimension requires \code{tv_sigma_k} (soft-barrier generative model). Mutually
+exclusive with \code{sigma_eps}. \code{NULL} (default) keeps constant scales.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales. Supply the same value as the intended \code{dcvar(tv_sigma = TRUE, tv_sigma_k = ...)} fit so the simulated data matches that likelihood.
+\code{NULL} (default) uses the exact affine shifted margin and requires
+constant exp/gamma scales.}
+
 \item{seed}{Random seed for reproducibility.}
 }
 \value{
@@ -57,9 +81,11 @@ A named list with:
 data scale; the fitting functions standardize by default, so round-trip
 comparisons of \code{mu}, \code{Phi}, and \code{sigma_eps} require fitting with
 \code{standardize = FALSE} (the \code{rho} trajectory is scale-invariant).
-Exponential and gamma dimensions are simulated with unit-SD
-standardized innovations, so their implied true scale
-(\code{sigma_exp}/\code{sigma_gam}) is 1.
+Without \code{sigma_trajectory}, exponential and gamma dimensions are
+simulated with unit-SD standardized innovations, so their implied true
+scale (\code{sigma_exp}/\code{sigma_gam}) is 1. With trajectories supplied,
+\code{Phi} is the \verb{(n_time - 1) x 4} coefficient path and \code{sigma} the
+\verb{(n_time - 1) x 2} scale path.
 }
 }
 \description{

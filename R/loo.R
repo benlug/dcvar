@@ -196,6 +196,14 @@ dcvar_compare <- function(...) {
     ))
   }
 
+  has_tv <- vapply(fits, inherits, logical(1), what = "dcvar_tv_fit")
+  if (any(has_tv) && any(!has_tv)) {
+    cli_warn(c(
+      "Time-varying DC-VAR fits condition their {.code log_lik} on additional smoothed latent paths (Phi(t) and/or sigma(t)).",
+      "!" = "elpd differences can systematically favor the more heavily latent-conditioned model; interpret comparisons across the model ladder with caution."
+    ))
+  }
+
   loo_list <- lapply(fits, loo)
   loo::loo_compare(loo_list)
 }

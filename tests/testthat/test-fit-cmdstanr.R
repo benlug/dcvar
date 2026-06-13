@@ -44,3 +44,47 @@ test_that("cmdstanr fits support the standard extractors", {
   expect_s3_class(plot(con_fit, type = "rho"), "ggplot")
   expect_s3_class(loo(con_fit), "loo")
 })
+
+test_that("cmdstanr backend fits partial time-varying models (zero-sized init params omitted)", {
+  skip_if_no_cmdstanr_backend()
+
+  sim <- simulate_dcvar(
+    n_time = 30,
+    rho_trajectory = rho_constant(30, 0.4),
+    phi_trajectory = list(
+      rho_decreasing(30, 0.3, 0.05), rho_constant(30, 0.1),
+      rho_constant(30, 0.1), rho_constant(30, 0.3)
+    ),
+    seed = 91
+  )
+
+  # tv_phi only: sigma_raw / tau_sigma are inactive (zero-sized) -> must be
+  # omitted from the default init so cmdstanr does not abort on a shapeless
+  # empty matrix.
+  fit_phi <- dcvar(
+    sim$Y_df, vars = c("y1", "y2"),
+    tv_phi = "ar", tv_sigma = FALSE,
+    backend = "cmdstanr",
+    chains = 1, iter_warmup = 50, iter_sampling = 50, refresh = 0, seed = 7
+  )
+  expect_s3_class(fit_phi, "dcvar_tv_fit")
+  expect_equal(fit_phi$backend, "cmdstanr")
+  expect_s3_class(phi_trajectory(fit_phi), "data.frame")
+
+  # tv_sigma only: phi_raw / tau_phi are inactive (zero-sized).
+  sim2 <- simulate_dcvar(
+    n_time = 30,
+    rho_trajectory = rho_constant(30, 0.4),
+    sigma_trajectory = cbind(seq(0.8, 1.4, length.out = 29), rep(1, 29)),
+    seed = 92
+  )
+  fit_sig <- dcvar(
+    sim2$Y_df, vars = c("y1", "y2"),
+    tv_phi = FALSE, tv_sigma = TRUE,
+    backend = "cmdstanr",
+    chains = 1, iter_warmup = 50, iter_sampling = 50, refresh = 0, seed = 8
+  )
+  expect_s3_class(fit_sig, "dcvar_tv_fit")
+  expect_equal(fit_sig$backend, "cmdstanr")
+  expect_s3_class(sigma_trajectory(fit_sig), "data.frame")
+})

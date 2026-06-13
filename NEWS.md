@@ -1,3 +1,62 @@
+# dcvar 0.5.0
+
+## New feature: fully time-varying DC-VAR
+
+- `dcvar()` gains `tv_phi` and `tv_sigma` flags. With `tv_phi = TRUE` the
+  four VAR(1) coefficients (the AR effects phi11/phi22 and the cross-lagged
+  effects phi12/phi21) evolve as independent non-centered random walks around
+  the constant baseline `Phi`; with `tv_sigma = TRUE` the residual scales of
+  normal and skew-normal dimensions evolve as log-scale random walks around
+  their baselines. Combined with the always time-varying copula correlation
+  rho(t) and per-variable (mixed) margins, every model component except the
+  intercepts can now vary over time. Both flags default to `FALSE`, which
+  reproduces the previous behavior exactly (same Stan models, same draws).
+- `tv_phi` also accepts a character selector so that only a subset of the
+  VAR coefficients varies: `"ar"` (the autoregressive effects phi11, phi22 --
+  e.g. for changing emotional inertia / critical slowing down), `"cross"`
+  (the cross-lagged effects phi12, phi21), or specific names such as
+  `c("phi11", "phi22")`. Only the selected coefficients get random-walk
+  parameters (the others stay at their constant baseline), which improves
+  identifiability on short series and lets you test a sharp hypothesis.
+  `phi_trajectory()` still returns all four coefficients (the fixed ones as
+  constant paths); `coef()`/`var_params()` label `tau_phi` by coefficient
+  name.
+- Flag-on fits use one generic Stan model (`dcvar_tv_mixed.stan`) for all
+  margin specifications, dispatching on per-dimension family codes; with both
+  flags off in that model the target density is identical term-by-term to
+  `dcvar_mixed_ncp.stan`, so the TV model exactly nests the classic DC-VAR.
+  New walk priors `prior_tau_phi_rate` (default 0.025) and
+  `prior_tau_sigma_rate` (default 0.05) shrink toward the constant model;
+  see the new "Recommended workflow" section in `?dcvar` for the model
+  ladder.
+- New fit subclass `dcvar_tv_fit` (inherits `dcvar_fit`, so
+  `rho_trajectory()`, `plot_rho()`, and `loo()` work unchanged) with new
+  extractors `phi_trajectory()` and `sigma_trajectory()` (flag-agnostic:
+  constants are tiled over time), plots `plot_phi_trajectory()` /
+  `plot_sigma_trajectory()`, `fitted()`/`predict()` using the per-time
+  coefficients and scales, per-time plug-in PIT values, and per-time
+  spectral-radius monitoring in the Stan generated quantities.
+- `simulate_dcvar()` gains optional `phi_trajectory` and `sigma_trajectory`
+  arguments (matrix, list of per-coefficient vectors — the `rho_*`
+  generators can be reused — or constants). The marginal quantile transform
+  is now scale-aware, so exponential/gamma dimensions can be simulated with
+  any constant scale; regression tests pin the copula orientation under
+  time-varying scales for every `skew_direction` combination.
+- Time-varying scales (`tv_sigma`) apply to **all** margin families. Normal
+  and skew-normal dimensions use a multiplicative log-scale random walk;
+  exponential and gamma dimensions use a **soft-barrier** transform
+  `x = softplus_k(m_t + skew * eps)` (sharpness `tv_sigma_k`, default 8) so
+  the scale `m_t` can vary freely without the hard support boundary coupling
+  it to the residuals. The soft-barrier matches the exact shifted margin in
+  the interior and rounds the boundary smoothly (a small residual-mean bias
+  in the lower tail; larger `tv_sigma_k` tightens it at the cost of stiffer
+  geometry). `simulate_dcvar()` gains `tv_sigma_k` to generate matching data
+  for an exp/gamma time-varying-scale fit.
+- In the generic TV model `shape_gam` is per-dimension (mixed-model
+  convention), unlike the shared scalar in the specialised gamma models.
+  `dcvar_compare()` warns when a TV fit is compared against less heavily
+  latent-conditioned fits.
+
 # dcvar 0.4.0
 
 ## Breaking / scientifically relevant fixes

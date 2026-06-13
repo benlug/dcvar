@@ -2,7 +2,7 @@
 #'
 #' Returns the file path to a Stan model file included with the package.
 #'
-#' @param model Character string: `"dcvar"`, `"dcvar_covariate"`,
+#' @param model Character string: `"dcvar"`, `"dcvar_tv"`, `"dcvar_covariate"`,
 #'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
 #'   `"sem"`, or `"sem_naive"`.
 #' @param margins Character string: margin type (`"normal"`, `"exponential"`,
@@ -16,7 +16,7 @@
 #' @examples
 #' dcvar_stan_path("dcvar")
 #' dcvar_stan_path("constant", margins = "exponential")
-dcvar_stan_path <- function(model = c("dcvar", "dcvar_covariate",
+dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_covariate",
                                       "dcvar_covariate_nodrift", "hmm",
                                       "constant", "multilevel", "sem",
                                       "sem_naive"),
@@ -125,7 +125,7 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_covariate",
 #'
 #' @return A compiled model object (backend-dependent class).
 #' @noRd
-.compile_model <- function(model_type = c("dcvar", "dcvar_covariate",
+.compile_model <- function(model_type = c("dcvar", "dcvar_tv", "dcvar_covariate",
                                           "dcvar_covariate_nodrift", "hmm",
                                           "constant", "multilevel", "sem",
                                           "sem_naive"),

@@ -4,6 +4,36 @@
 #' a random walk on the Fisher-z scale. Uses non-centered parameterisation
 #' for efficient HMC sampling.
 #'
+#' Beyond the always time-varying correlation, the VAR coefficients and the
+#' residual scales can optionally vary over time as well (`tv_phi`,
+#' `tv_sigma`): each enabled component evolves as a non-centered random walk
+#' around its constant baseline, with innovation-SD priors that shrink toward
+#' the constant-parameter model. With both flags off (the default) the fit is
+#' exactly the classic DC-VAR. With any flag on, the fit uses a generic
+#' time-varying Stan model and returns a `dcvar_tv_fit` object (a subclass of
+#' `dcvar_fit`), with trajectory extractors [phi_trajectory()] and
+#' [sigma_trajectory()].
+#'
+#' @section Time-varying scales and shifted margins:
+#' `tv_sigma = TRUE` gives normal and skew-normal dimensions a multiplicative
+#' log-scale random walk. Exponential and gamma dimensions use a **soft-barrier**
+#' construction: the shifted variate `x = scale + skew * eps` (which has a hard
+#' support boundary at 0) is replaced by `x = softplus_k(m_t + skew * eps)`
+#' with a time-varying scale `m_t`. This keeps `x` positive, matches the exact
+#' shifted margin in the interior, and rounds the boundary smoothly so the
+#' scale can vary freely. `tv_sigma_k` controls the sharpness; larger values
+#' track the exact exponential/gamma more closely at the cost of a stiffer
+#' posterior geometry, smaller values are numerically gentler but introduce a
+#' small residual-mean bias in the lower tail.
+#'
+#' @section Recommended workflow:
+#' For typical series lengths (T of 100--300), fit the model ladder
+#' `dcvar()` (constant Phi/sigma) -> `dcvar(tv_phi = TRUE)` ->
+#' `dcvar(tv_phi = TRUE, tv_sigma = TRUE)` and compare with
+#' [dcvar_compare()]. Up to seven latent random walks are estimated from a
+#' single bivariate series; the tight innovation-SD priors are what keeps
+#' this identifiable, so widen them deliberately.
+#'
 #' @param data A data frame with time series observations.
 #' @param vars Character vector of two variable names to model.
 #' @param time_var Name of the time column (default: `"time"`).
@@ -29,6 +59,27 @@
 #' @param prior_sigma_omega_rate Prior mean for rho process SD (see
 #'   [prepare_dcvar_data()]).
 #' @param prior_rho_init_sd Prior SD for initial rho on Fisher-z scale.
+#' @param tv_phi Selects which VAR(1) coefficients evolve as independent
+#'   random walks around the constant baseline `Phi`. Either a logical
+#'   (`TRUE` = all four, `FALSE` = none, the default) or a character selector:
+#'   `"ar"` (the autoregressive effects phi11, phi22 -- e.g. for modelling
+#'   changing emotional inertia / critical slowing down), `"cross"` (the
+#'   cross-lagged effects phi12, phi21), or specific names from
+#'   `c("phi11", "phi12", "phi21", "phi22")`.
+#' @param tv_sigma Logical; if `TRUE`, the residual scales evolve as log-scale
+#'   random walks around their constant baselines (default: `FALSE`). Applies
+#'   to all margin families; see the section on shifted margins for how
+#'   exponential and gamma dimensions are handled.
+#' @param prior_tau_phi_rate Prior mean for the Phi random-walk innovation
+#'   SDs (`tau_phi ~ exponential(1/prior_tau_phi_rate)`; default `0.025`).
+#'   Used only when `tv_phi = TRUE`.
+#' @param prior_tau_sigma_rate Prior mean for the log-scale random-walk
+#'   innovation SDs (`tau_sigma ~ exponential(1/prior_tau_sigma_rate)`;
+#'   default `0.05`). Used only when `tv_sigma = TRUE`.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales (default `8`). Larger values approximate the exact shifted margin
+#'   more closely but stiffen the geometry. Used only when `tv_sigma = TRUE`
+#'   and an exponential or gamma margin is present.
 #' @param chains Number of MCMC chains (default: 4).
 #' @param iter_warmup Warmup iterations per chain (default: 2000).
 #' @param iter_sampling Sampling iterations per chain (default: 4000).
@@ -87,6 +138,11 @@ dcvar <- function(data, vars, time_var = "time",
                   prior_sigma_eps_rate = 1,
                   prior_sigma_omega_rate = 0.1,
                   prior_rho_init_sd = 1,
+                  tv_phi = FALSE,
+                  tv_sigma = FALSE,
+                  prior_tau_phi_rate = 0.025,
+                  prior_tau_sigma_rate = 0.05,
+                  tv_sigma_k = 8,
                   chains = 4,
                   iter_warmup = 2000,
                   iter_sampling = 4000,
@@ -104,12 +160,33 @@ dcvar <- function(data, vars, time_var = "time",
                           adapt_delta, max_treedepth)
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  any_phi <- sum(phi_mask) > 0L
+  .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
+
+  is_tv <- any_phi || tv_sigma
+  model_type <- if (is_tv) "dcvar_tv" else "dcvar"
+  margins_vec <- rep(margins, length.out = 2L)
+
+  if (!any_phi && !isTRUE(all.equal(prior_tau_phi_rate, 0.025))) {
+    cli_warn("{.arg prior_tau_phi_rate} is ignored when no VAR coefficient is time-varying.")
+  }
+  if (!tv_sigma && !isTRUE(all.equal(prior_tau_sigma_rate, 0.05))) {
+    cli_warn("{.arg prior_tau_sigma_rate} is ignored when {.code tv_sigma = FALSE}.")
+  }
+  if (tv_sigma) {
+    .prep_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
+  }
 
   # Prepare data
   stan_data <- prepare_dcvar_data(
     data, vars, time_var, standardize, margins, skew_direction,
     prior_mu_sd, prior_phi_sd, prior_sigma_eps_rate,
     prior_sigma_omega_rate, prior_rho_init_sd,
+    tv_phi = tv_phi, tv_sigma = tv_sigma,
+    prior_tau_phi_rate = prior_tau_phi_rate,
+    prior_tau_sigma_rate = prior_tau_sigma_rate,
+    tv_sigma_k = tv_sigma_k,
     allow_gaps = allow_gaps
   )
 
@@ -118,17 +195,29 @@ dcvar <- function(data, vars, time_var = "time",
   } else {
     paste0(" [", paste(margins, collapse = ", "), "]")
   }
-  cli_inform("Fitting DC-VAR model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
+  if (is_tv) {
+    phi_label <- if (any_phi) {
+      if (all(phi_mask == 1L)) "Phi(t)" else paste0("Phi(t):", paste(names(phi_mask)[phi_mask == 1L], collapse = "/"))
+    }
+    components <- c("rho(t)", phi_label, if (tv_sigma) "sigma(t)")
+    cli_inform("Fitting TV DC-VAR model{margins_label} [{paste(components, collapse = ', ')}] (n_time = {stan_data$n_time}, D = {stan_data$D})...")
+  } else {
+    cli_inform("Fitting DC-VAR model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
+  }
 
   # Compile model
-  model <- .compile_model("dcvar", margins = margins, stan_file = stan_file,
+  model <- .compile_model(model_type, margins = margins, stan_file = stan_file,
                           backend = backend)
 
   # Default init
   if (is.null(init)) {
     D <- stan_data$D
     n_time_obs <- stan_data$n_time
-    init <- function() .init_dcvar_params(D, n_time_obs, margins)
+    init <- if (is_tv) {
+      function() .init_dcvar_tv_params(D, n_time_obs, margins, phi_mask, tv_sigma)
+    } else {
+      function() .init_dcvar_params(D, n_time_obs, margins)
+    }
   }
 
   cores <- .normalize_cores(cores, chains)
@@ -150,31 +239,58 @@ dcvar <- function(data, vars, time_var = "time",
     ...
   )
 
-  .report_sampling_outcome(fit, "DC-VAR", chains = chains, backend = backend)
+  .report_sampling_outcome(fit, if (is_tv) "TV DC-VAR" else "DC-VAR",
+                           chains = chains, backend = backend)
 
-  # Wrap in S3 class
-  new_dcvar_fit(
-    fit = fit,
-    stan_data = stan_data,
-    vars = vars,
-    standardized = standardize,
-    margins = margins,
-    skew_direction = skew_direction,
-    backend = backend,
-    priors = list(
+  priors <- c(
+    list(
       mu_sd = prior_mu_sd,
       phi_sd = prior_phi_sd,
       sigma_eps_rate = prior_sigma_eps_rate,
       sigma_omega_rate = prior_sigma_omega_rate,
       rho_init_sd = prior_rho_init_sd
     ),
-    meta = list(
-      chains = chains,
-      iter_warmup = iter_warmup,
-      iter_sampling = iter_sampling,
-      adapt_delta = adapt_delta,
-      max_treedepth = max_treedepth,
-      seed = seed
-    )
+    # tau priors only act on enabled components; recording them otherwise
+    # would suggest they were used.
+    if (any_phi) list(tau_phi_rate = prior_tau_phi_rate),
+    if (tv_sigma) list(tau_sigma_rate = prior_tau_sigma_rate)
   )
+  meta <- list(
+    chains = chains,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    adapt_delta = adapt_delta,
+    max_treedepth = max_treedepth,
+    seed = seed
+  )
+
+  # Wrap in S3 class
+  if (is_tv) {
+    new_dcvar_tv_fit(
+      fit = fit,
+      stan_data = stan_data,
+      vars = vars,
+      standardized = standardize,
+      margins = margins,
+      skew_direction = skew_direction,
+      tv_phi = any_phi,
+      phi_tv_mask = phi_mask,
+      tv_sigma = tv_sigma,
+      backend = backend,
+      priors = priors,
+      meta = meta
+    )
+  } else {
+    new_dcvar_fit(
+      fit = fit,
+      stan_data = stan_data,
+      vars = vars,
+      standardized = standardize,
+      margins = margins,
+      skew_direction = skew_direction,
+      backend = backend,
+      priors = priors,
+      meta = meta
+    )
+  }
 }

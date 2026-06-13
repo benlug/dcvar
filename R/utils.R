@@ -180,6 +180,123 @@
 }
 
 
+#' Row-major VAR(1) coefficient labels (phi11, phi12, phi21, phi22)
+#' @noRd
+.phi_coef_names <- c("phi11", "phi12", "phi21", "phi22")
+
+#' Resolve a `tv_phi` specification to a length-4 coefficient mask
+#'
+#' Accepts a logical scalar (`TRUE` = all four coefficients vary, `FALSE` =
+#' none) or a character selector: `"ar"` (the autoregressive coefficients
+#' phi11, phi22), `"cross"` / `"crosslag"` (the cross-lagged coefficients
+#' phi12, phi21), or specific coefficient names from
+#' `c("phi11", "phi12", "phi21", "phi22")`. Returns a named length-4 integer
+#' vector in row-major order.
+#' @noRd
+.resolve_phi_tv_mask <- function(tv_phi) {
+  mask <- stats::setNames(integer(4), .phi_coef_names)
+
+  # Idempotent: an already-resolved length-4 0/1 mask is returned as-is
+  # (so callers can pass either the user spec or the resolved mask).
+  if (is.numeric(tv_phi) && !is.logical(tv_phi) &&
+      length(tv_phi) == 4L && all(tv_phi %in% c(0, 1))) {
+    mask[] <- as.integer(tv_phi)
+    return(mask)
+  }
+
+  if (is.logical(tv_phi)) {
+    if (length(tv_phi) != 1L || is.na(tv_phi)) {
+      cli_abort("{.arg tv_phi} must be a single non-missing logical, or a character selector.")
+    }
+    mask[] <- as.integer(tv_phi)
+    return(mask)
+  }
+
+  if (is.character(tv_phi)) {
+    if (length(tv_phi) == 0L) {
+      cli_abort("{.arg tv_phi} must not be an empty character vector; use {.code FALSE} for no time variation.")
+    }
+    selected <- unlist(lapply(tv_phi, function(token) {
+      switch(token,
+        ar = c("phi11", "phi22"),
+        cross = ,
+        crosslag = ,
+        cl = c("phi12", "phi21"),
+        token
+      )
+    }), use.names = FALSE)
+    invalid <- setdiff(selected, .phi_coef_names)
+    if (length(invalid) > 0L) {
+      cli_abort(c(
+        "Invalid {.arg tv_phi} selector{?s}: {.val {invalid}}.",
+        "i" = "Use {.val TRUE}/{.val FALSE}, {.val ar}, {.val cross}, or names from {.val {(.phi_coef_names)}}."
+      ))
+    }
+    mask[.phi_coef_names %in% selected] <- 1L
+    return(mask)
+  }
+
+  cli_abort("{.arg tv_phi} must be a logical scalar or a character selector ({.val ar}, {.val cross}, or coefficient names).")
+}
+
+#' Generate default TV-VAR initialization values
+#'
+#' The generic time-varying model declares the full mixed-margin parameter
+#' union plus conditionally sized random-walk containers. rstan requires every
+#' supplied init entry to match the declared dimensions exactly, so the
+#' deviation entries are zero-length when their flag is off.
+#'
+#' @param D Number of variables.
+#' @param T_obs Number of time points.
+#' @param margins Margin type (any spec; the union is always initialised).
+#' @param tv_phi Logical scalar or character selector (see
+#'   [.resolve_phi_tv_mask()]); `tv_sigma` is a logical flag.
+#' @param tv_sigma Logical; time-varying residual scales.
+#' @return A named list of initial values matching the conditionally sized
+#'   Stan parameters (zero-length where a component is off).
+#' @noRd
+.init_dcvar_tv_params <- function(D, T_obs, margins = "normal",
+                                  tv_phi = FALSE, tv_sigma = FALSE) {
+  n_eff <- T_obs - 1L
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  n_phi_tv <- sum(phi_mask)
+  any_phi <- n_phi_tv > 0L
+
+  base <- list(
+    mu = rnorm(D, 0, 0.1),
+    Phi = diag(0.25, D) + matrix(rnorm(D^2, 0, 0.05), D, D),
+    # Full mixed-margin union (the generic model declares every family's
+    # parameters regardless of the requested margins)
+    sigma_eps = runif(D, 0.8, 1.2),
+    eta = rnorm(D, 0, 0.3),
+    omega = runif(D, 0.5, 1.5),
+    delta = runif(D, -0.3, 0.3),
+    shape_gam = runif(D, 0.5, 2.0),
+    sigma_omega = runif(1, 0.05, 0.15),
+    z_rho_init = rnorm(1, 0, 0.1),
+    omega_raw = rnorm(n_eff, 0, 0.1)
+  )
+
+  # Only supply inits for the ACTIVE components. Inactive components are
+  # zero-sized Stan parameters; omitting them lets the sampler initialise them
+  # trivially and avoids passing a zero-extent matrix, which cmdstanr
+  # serialises to a shapeless empty array (CmdStan then aborts with a
+  # "declared (0, D); found (0)" dimension mismatch). Partial inits are
+  # accepted by both backends.
+  tv <- list()
+  if (any_phi) {
+    tv$tau_phi <- runif(n_phi_tv, 0.02, 0.08)
+    tv$phi_raw <- matrix(rnorm(n_eff * n_phi_tv, 0, 0.1), n_eff, n_phi_tv)
+  }
+  if (tv_sigma) {
+    tv$tau_sigma <- runif(D, 0.02, 0.08)
+    tv$sigma_raw <- matrix(rnorm(n_eff * D, 0, 0.1), n_eff, D)
+  }
+
+  c(base, tv)
+}
+
+
 #' Generate default covariate DC-VAR initialization values
 #'
 #' @param D Number of variables.

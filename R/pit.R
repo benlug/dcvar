@@ -356,3 +356,87 @@ plot_pit <- function(object, bins = 20, ...) {
       strip.text = ggplot2::element_text(face = "bold")
     )
 }
+
+
+#' @rdname pit_values
+#' @export
+pit_values.dcvar_tv_fit <- function(object, ...) {
+  D <- object$stan_data$D
+  n_time_eff <- object$stan_data$n_time - 1L
+  margins_vec <- rep(object$margins %||% "normal", length.out = D)
+  skew_dir <- object$skew_direction %||% rep(1, D)
+
+  needs_sn <- any(margins_vec == "skew_normal")
+  if (needs_sn && !requireNamespace("sn", quietly = TRUE)) {
+    cli_abort("Package {.pkg sn} is required for skew-normal PIT values.")
+  }
+
+  eps_draws <- posterior::as_draws_matrix(.fit_draws(object$fit, "eps", backend = object$backend))
+  eps_mean <- matrix(NA_real_, n_time_eff, D)
+  for (d in seq_len(D)) {
+    cols <- paste0("eps[", seq_len(n_time_eff), ",", d, "]")
+    eps_mean[, d] <- colMeans(eps_draws[, cols, drop = FALSE])
+  }
+
+  summ <- .fit_summary(object$fit, backend = object$backend)
+  gm <- function(name) {
+    row <- match(name, summ$variable)
+    if (is.na(row)) {
+      cli_abort("PIT for time-varying fits requires Stan output {.val {name}}.")
+    }
+    summ$mean[row]
+  }
+
+  # Per-time plug-in scale for each dimension (posterior means): the sigma_t
+  # path when scales vary, otherwise the constant baseline tiled over time.
+  scale_mean <- matrix(NA_real_, n_time_eff, D)
+  for (d in seq_len(D)) {
+    if (isTRUE(object$tv_sigma)) {
+      rows <- match(paste0("sigma_t[", seq_len(n_time_eff), ",", d, "]"), summ$variable)
+      if (anyNA(rows)) {
+        cli_abort("PIT for time-varying fits requires Stan output {.val sigma_t}.")
+      }
+      scale_mean[, d] <- summ$mean[rows]
+    } else {
+      base <- switch(margins_vec[d],
+        normal = gm(paste0("sigma_eps[", d, "]")),
+        exponential = gm(paste0("sigma_exp[", d, "]")),
+        skew_normal = gm(paste0("omega[", d, "]")),
+        gamma = gm(paste0("sigma_gam[", d, "]"))
+      )
+      scale_mean[, d] <- base
+    }
+  }
+
+  pit_mat <- matrix(NA_real_, n_time_eff, D)
+  for (d in seq_len(D)) {
+    fam <- margins_vec[d]
+    s <- scale_mean[, d]
+    if (identical(fam, "normal")) {
+      pit_mat[, d] <- stats::pnorm(eps_mean[, d] / s)
+    } else if (identical(fam, "exponential")) {
+      u <- stats::pexp(s + skew_dir[d] * eps_mean[, d], rate = 1 / s)
+      if (skew_dir[d] < 0) u <- 1 - u
+      pit_mat[, d] <- u
+    } else if (identical(fam, "skew_normal")) {
+      delta_d <- gm(paste0("delta[", d, "]"))
+      alpha_d <- delta_d / sqrt(1 - delta_d^2)
+      xi_t <- -s * delta_d * sqrt(2 / pi)
+      pit_mat[, d] <- sn::psn(eps_mean[, d], xi = xi_t, omega = s, alpha = alpha_d)
+    } else {
+      shape_d <- gm(paste0("shape_gam[", d, "]"))
+      mean_x <- sqrt(shape_d) * s
+      u <- stats::pgamma(mean_x + skew_dir[d] * eps_mean[, d],
+                         shape = shape_d, rate = sqrt(shape_d) / s)
+      if (skew_dir[d] < 0) u <- 1 - u
+      pit_mat[, d] <- u
+    }
+  }
+
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+  data.frame(
+    time = rep(time_values, D),
+    variable = rep(object$vars, each = n_time_eff),
+    pit = as.vector(pit_mat)
+  )
+}

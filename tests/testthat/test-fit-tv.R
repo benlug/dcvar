@@ -103,19 +103,22 @@ test_that(".init_dcvar_tv_params sizes the walk containers by flag", {
   expect_length(i_both$shape_gam, 2)
   expect_length(i_both$omega_raw, 39)
 
+  # Inactive components are omitted entirely (not zero-sized), so the default
+  # init never hands the sampler a zero-extent matrix (which cmdstanr cannot
+  # serialise back to the declared 2D shape).
   i_phi <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = TRUE, tv_sigma = FALSE)
-  expect_length(i_phi$tau_sigma, 0)
-  expect_identical(dim(i_phi$sigma_raw), c(0L, 2L))
+  expect_null(i_phi$tau_sigma)
+  expect_null(i_phi$sigma_raw)
 
   i_sig <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = FALSE, tv_sigma = TRUE)
-  expect_length(i_sig$tau_phi, 0)
-  # phi_raw has zero active columns when no coefficient varies
-  expect_identical(dim(i_sig$phi_raw), c(0L, 0L))
+  expect_null(i_sig$tau_phi)
+  expect_null(i_sig$phi_raw)
 
   # AR selector: 2 active coefficients -> 2 walk columns
   i_ar <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = "ar", tv_sigma = FALSE)
   expect_length(i_ar$tau_phi, 2)
   expect_identical(dim(i_ar$phi_raw), c(39L, 2L))
+  expect_null(i_ar$sigma_raw)
 })
 
 # --- Smoke fit: structure, extractors, diagnostics name pin -----------------

@@ -277,20 +277,21 @@
     omega_raw = rnorm(n_eff, 0, 0.1)
   )
 
-  tv <- list(
-    tau_phi = if (any_phi) runif(n_phi_tv, 0.02, 0.08) else numeric(0),
-    phi_raw = if (any_phi) {
-      matrix(rnorm(n_eff * n_phi_tv, 0, 0.1), n_eff, n_phi_tv)
-    } else {
-      matrix(numeric(0), 0, 0)
-    },
-    tau_sigma = if (tv_sigma) runif(D, 0.02, 0.08) else numeric(0),
-    sigma_raw = if (tv_sigma) {
-      matrix(rnorm(n_eff * D, 0, 0.1), n_eff, D)
-    } else {
-      matrix(numeric(0), 0, D)
-    }
-  )
+  # Only supply inits for the ACTIVE components. Inactive components are
+  # zero-sized Stan parameters; omitting them lets the sampler initialise them
+  # trivially and avoids passing a zero-extent matrix, which cmdstanr
+  # serialises to a shapeless empty array (CmdStan then aborts with a
+  # "declared (0, D); found (0)" dimension mismatch). Partial inits are
+  # accepted by both backends.
+  tv <- list()
+  if (any_phi) {
+    tv$tau_phi <- runif(n_phi_tv, 0.02, 0.08)
+    tv$phi_raw <- matrix(rnorm(n_eff * n_phi_tv, 0, 0.1), n_eff, n_phi_tv)
+  }
+  if (tv_sigma) {
+    tv$tau_sigma <- runif(D, 0.02, 0.08)
+    tv$sigma_raw <- matrix(rnorm(n_eff * D, 0, 0.1), n_eff, D)
+  }
 
   c(base, tv)
 }

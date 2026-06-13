@@ -120,6 +120,11 @@ reference:
       - dcvar_stan_path
 
 articles:
+  - title: Articles
+    contents:
+      - getting-started
+      - model-comparison
+      - simulation-tools
   - title: Walkthrough
     contents:
       - dcvar-walkthrough

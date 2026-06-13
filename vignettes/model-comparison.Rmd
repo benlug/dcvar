@@ -112,6 +112,74 @@ specialised single-family model), so existing code is unaffected. Mixed margins
 currently require the Gaussian copula and are available for the three
 single-level models (`dcvar_constant()`, `dcvar()`, `dcvar_hmm()`).
 
+## Time-varying coefficients and scales
+
+In `dcvar()` the copula correlation always evolves over time. The
+autoregressive dynamics and the residual scales can be allowed to evolve as
+well, each as a random walk around a constant baseline. Two flags turn these on:
+
+- `tv_phi` lets the VAR(1) coefficients drift. `tv_phi = TRUE` varies all four
+  (the autoregressive coefficients phi11, phi22 and the cross-lagged
+  coefficients phi12, phi21); a selector varies only a subset. Use `"ar"` to
+  let only the autoregressive coefficients drift (for example to capture
+  changing inertia), `"cross"` for only the cross-lagged coefficients, or pass
+  specific names such as `c("phi11", "phi22")`.
+- `tv_sigma` lets the residual scales drift. Normal and skew-normal dimensions
+  scale multiplicatively on the log scale. Exponential and gamma dimensions use
+  a soft-barrier transform so their scale can vary even though the shifted
+  margin has a hard support boundary; `tv_sigma_k` controls how closely it
+  approximates the exact margin.
+
+With both flags off, `dcvar()` is the usual dynamic copula model with constant
+coefficients and scales. Smaller models are nested in larger ones, which
+suggests fitting a short ladder and comparing the fits.
+
+```{r tv-fit}
+library(dcvar)
+
+# A series with declining coupling to illustrate the time-varying fits
+sim_tv <- simulate_dcvar(
+  n_time = 150,
+  rho_trajectory = rho_decreasing(150, rho_start = 0.7, rho_end = 0.3),
+  seed = 3
+)
+
+# Only the autoregressive coefficients evolve over time
+fit_ar <- dcvar(
+  sim_tv$Y_df,
+  vars = c("y1", "y2"),
+  tv_phi = "ar",
+  seed = 4
+)
+
+# Time-varying coefficients and time-varying scales together, with a
+# right-skewed second margin (the exponential dimension uses the soft barrier)
+fit_full <- dcvar(
+  sim_tv$Y_df,
+  vars = c("y1", "y2"),
+  margins = c("normal", "exponential"),
+  skew_direction = c(1, 1),
+  tv_phi = TRUE,
+  tv_sigma = TRUE,
+  seed = 5
+)
+```
+
+The coefficient and scale paths come back as posterior summaries, in the same
+shape as the correlation trajectory, and have their own plotting helpers.
+
+```{r tv-extract}
+# Posterior summaries of phi11(t), phi12(t), phi21(t), phi22(t)
+head(phi_trajectory(fit_ar))
+
+# Per-variable residual-scale paths
+head(sigma_trajectory(fit_full))
+
+# Facetted trajectory plots
+plot_phi_trajectory(fit_ar)
+plot_sigma_trajectory(fit_full)
+```
+
 ## Fitting All Three Models
 
 ```{r fit-all}

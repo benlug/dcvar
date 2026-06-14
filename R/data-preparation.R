@@ -333,6 +333,53 @@
 }
 
 
+#' Internal: augment a prepared Stan data list into the dcvar_dynamic.stan block
+#'
+#' The unified engine `dcvar_dynamic.stan` has a superset data block: the
+#' time-varying margin codes (`family`, `skew_direction`, `tv_phi`,
+#' `phi_tv_mask`, `tv_sigma`, the TV priors, `barrier_k`) plus the covariate
+#' predictor (`P`, `X`, `sigma_beta_prior`), the residual-drift convention
+#' (`zero_init_eta`), and the copula fast-path flag (`copula_normal_fastpath`).
+#' Either prepare function produces a subset of these; this shim fills in every
+#' field the engine declares, preferring values already present so the TV path
+#' keeps its margin/TV settings and the covariate path keeps its `P`/`X`/drift
+#' settings. It is run inside the fit engines just before sampling and never
+#' inside the exported prepare functions, so their byte-identical outputs are
+#' preserved (the flags-off regression tests stay green).
+#'
+#' @param stan_data A list produced by [prepare_dcvar_data()] (TV path) or
+#'   [prepare_dcvar_covariate_data()] (covariate path).
+#' @return The same list augmented with the full `dcvar_dynamic.stan` data block.
+#' @noRd
+.as_dynamic_stan_data <- function(stan_data) {
+  D <- stan_data$D
+  n_time <- stan_data$n_time
+
+  # Time-varying margin block (present for the TV path, absent for covariate).
+  stan_data$family <- stan_data$family %||% rep(1L, D)
+  stan_data$skew_direction <- stan_data$skew_direction %||% rep(1, D)
+  stan_data$tv_phi <- stan_data$tv_phi %||% 0L
+  stan_data$phi_tv_mask <- stan_data$phi_tv_mask %||% rep(0L, 4L)
+  stan_data$tv_sigma <- stan_data$tv_sigma %||% 0L
+  stan_data$tau_phi_prior <- stan_data$tau_phi_prior %||% 0.025
+  stan_data$tau_sigma_prior <- stan_data$tau_sigma_prior %||% 0.05
+  stan_data$barrier_k <- stan_data$barrier_k %||% 8
+  stan_data$sigma_eps_prior <- stan_data$sigma_eps_prior %||% 1
+
+  # Covariate predictor + residual-drift block (present for covariate,
+  # absent for the TV path, where P = 0 makes the predictor identically zero).
+  stan_data$P <- stan_data$P %||% 0L
+  if (is.null(stan_data$X)) {
+    stan_data$X <- matrix(0, nrow = n_time, ncol = 0L)
+  }
+  stan_data$sigma_beta_prior <- stan_data$sigma_beta_prior %||% 1
+  stan_data$zero_init_eta <- stan_data$zero_init_eta %||% 0L
+  stan_data$copula_normal_fastpath <- stan_data$copula_normal_fastpath %||% 0L
+
+  stan_data
+}
+
+
 #' Prepare data for the DC-VAR model
 #'
 #' Transforms a data frame into a list suitable for the DC-VAR Stan model.

@@ -2,25 +2,43 @@
 # S3 Class: dcvar_fit
 # ============================================================================
 
+#' Internal: assemble the shared dcvar fit-object skeleton
+#'
+#' Every `dcvar_*_fit` constructor stores the same core slots (`fit`,
+#' `stan_data`, `model`, `vars`, `backend`, `priors`, `meta`) plus a handful of
+#' model-specific slots and a class vector. This helper centralises that
+#' assembly so the constructors are thin shims; all slots are accessed by name,
+#' so the model-specific extras (passed via `...`) may appear in any order.
+#'
+#' @param fit,stan_data,model,vars,backend,priors,meta Core fit slots.
+#' @param class Character vector of S3 classes (most specific first).
+#' @param ... Model-specific slots stored verbatim on the object.
+#' @return An object with class `class`.
+#' @noRd
+.new_dcvar_model_fit <- function(fit, stan_data, model, vars, class,
+                                 backend = "rstan", priors, meta, ...) {
+  structure(
+    c(
+      list(fit = fit, stan_data = stan_data, model = model, vars = vars),
+      list(...),
+      list(backend = backend, priors = priors, meta = meta)
+    ),
+    class = class
+  )
+}
+
 #' Construct a dcvar_fit object
 #' @noRd
 new_dcvar_fit <- function(fit, stan_data, vars, standardized,
                           margins = "normal", skew_direction = NULL,
                           backend = "rstan", priors, meta) {
-  structure(
-    list(
-      fit = fit,
-      stan_data = stan_data,
-      model = "dcvar",
-      vars = vars,
-      standardized = standardized,
-      margins = margins,
-      skew_direction = skew_direction,
-      backend = backend,
-      priors = priors,
-      meta = meta
-    ),
-    class = c("dcvar_fit", "dcvar_model_fit")
+  .new_dcvar_model_fit(
+    fit = fit, stan_data = stan_data, model = "dcvar", vars = vars,
+    class = c("dcvar_fit", "dcvar_model_fit"),
+    backend = backend, priors = priors, meta = meta,
+    standardized = standardized,
+    margins = margins,
+    skew_direction = skew_direction
   )
 }
 

@@ -196,11 +196,17 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "dcvar_covariate") || identical(model, "dcvar_covariate_nodrift")) {
     P <- .diagnostic_positive_int(object$stan_data$P, "P", "stan_data")
+    intercept_var <- if (identical(model, "dcvar_covariate") &&
+                         isTRUE(object$dynamic_engine)) {
+      "z_rho_init"
+    } else {
+      "beta_0"
+    }
     vars <- c(
       mu_vars,
       phi_vars,
       margin_vars,
-      "beta_0",
+      intercept_var,
       paste0("beta[", seq_len(P), "]")
     )
     if (identical(model, "dcvar_covariate")) {

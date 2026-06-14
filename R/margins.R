@@ -232,8 +232,21 @@
   .validate_copula(copula)
   .validate_margin_families(margins)
 
-  # The TV-VAR model is a single generic file: per-dimension family codes
-  # handle homogeneous and mixed margins alike.
+  # The unified dynamic engine is a single generic file: per-dimension family
+  # codes handle homogeneous and mixed margins alike.
+  if (identical(model_type, "dcvar_dynamic")) {
+    if (!identical(copula, "gaussian")) {
+      cli_abort(c(
+        "Time-varying VAR components are currently implemented only for the Gaussian copula.",
+        "i" = "Use {.code copula = \"gaussian\"} (the default) with {.arg tv_phi} / {.arg tv_sigma}."
+      ))
+    }
+    return("dcvar_dynamic.stan")
+  }
+
+  # The public TV path remains the legacy-compatible Stan file, matching the
+  # exported prepare_dcvar_data(tv_*) output. The dcvar() wrapper routes bundled
+  # TV fits to dcvar_dynamic.stan internally.
   if (identical(model_type, "dcvar_tv")) {
     if (!identical(copula, "gaussian")) {
       cli_abort(c(
@@ -335,10 +348,13 @@
 }
 
 
-#' Get the cache key for a compiled model
+#' Get a descriptive model key (margin/copula-labelled)
 #'
-#' Includes margin type to prevent cache collisions between different
-#' margin specifications of the same base model.
+#' Builds a human-readable model key that encodes the margin/copula family. This
+#' is a labelling helper only: the actual compiled-model cache is keyed on a
+#' content hash of the Stan source and its recursive includes (see
+#' [.stan_cache_fingerprint()]), so the same `dcvar_dynamic.stan` engine is
+#' compiled once and reused across configurations regardless of this key.
 #'
 #' @param model_type Character: model family key.
 #' @param margins Character: margin type.
@@ -348,6 +364,10 @@
 .margin_cache_key <- function(model_type, margins, copula = "gaussian") {
   .validate_copula(copula)
   .validate_margin_families(margins)
+  if (identical(model_type, "dcvar_dynamic")) {
+    margins_vec <- rep(margins, length.out = 2L)
+    return(paste0("dcvar_dynamic", paste(.family_codes[margins_vec], collapse = ""), "_model"))
+  }
   if (identical(model_type, "dcvar_tv")) {
     margins_vec <- rep(margins, length.out = 2L)
     return(paste0("dcvar_tv_mixed", paste(.family_codes[margins_vec], collapse = ""), "_model"))

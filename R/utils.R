@@ -297,6 +297,70 @@
 }
 
 
+#' Generate default initialization values for the unified dynamic engine
+#'
+#' Inits for `dcvar_dynamic.stan`, which always carries residual drift, the full
+#' mixed-margin parameter union, the covariate effects, and the conditionally
+#' sized time-varying random-walk containers. As with [.init_dcvar_tv_params()],
+#' only the ACTIVE components are supplied: inactive ones (e.g. `beta` when
+#' `P = 0`, the TV deviation containers when their flag is off) are omitted so a
+#' zero-extent matrix is never serialised (cmdstanr aborts on those). Length-1
+#' vectors are wrapped with `array(..., dim = n)` so they keep their declared
+#' shape. The sampled intercept is `z_rho_init` (the engine exposes `beta_0` as
+#' a transformed-parameter alias, so it is not an init).
+#'
+#' @param D Number of variables.
+#' @param T_obs Number of time points.
+#' @param margins Margin spec (any; the union is always initialised).
+#' @param tv_phi Logical scalar or character selector (see
+#'   [.resolve_phi_tv_mask()]).
+#' @param tv_sigma Logical; time-varying residual scales.
+#' @param P Number of covariates (0 omits `beta`).
+#' @param zero_init_eta Logical; whether `eta[1]` is fixed at zero (sets the
+#'   `omega_raw` length to `(T_obs - 1) - zero_init_eta`).
+#' @return A named list of initial values matching the engine's conditionally
+#'   sized parameters.
+#' @noRd
+.init_dcvar_dynamic_params <- function(D, T_obs, margins = "normal",
+                                       tv_phi = FALSE, tv_sigma = FALSE,
+                                       P = 0L, zero_init_eta = FALSE) {
+  n_eff <- T_obs - 1L
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  n_phi_tv <- sum(phi_mask)
+  any_phi <- n_phi_tv > 0L
+  n_omega <- n_eff - as.integer(isTRUE(zero_init_eta))
+
+  base <- list(
+    mu = rnorm(D, 0, 0.1),
+    Phi = diag(0.25, D) + matrix(rnorm(D^2, 0, 0.05), D, D),
+    # Full mixed-margin union (the engine declares every family's parameters).
+    sigma_eps = runif(D, 0.8, 1.2),
+    eta = rnorm(D, 0, 0.3),
+    omega = runif(D, 0.5, 1.5),
+    delta = runif(D, -0.3, 0.3),
+    shape_gam = runif(D, 0.5, 2.0),
+    sigma_omega = runif(1, 0.05, 0.15),
+    z_rho_init = rnorm(1, 0, 0.1),
+    omega_raw = array(rnorm(n_omega, 0, 0.1), dim = n_omega)
+  )
+
+  extra <- list()
+  if (P > 0L) {
+    extra$beta <- array(rnorm(P, 0, 0.05), dim = P)
+  }
+  if (any_phi) {
+    extra$tau_phi <- runif(n_phi_tv, 0.02, 0.08)
+    extra$phi_raw <- matrix(rnorm(n_eff * n_phi_tv, 0, 0.1), n_eff, n_phi_tv)
+  }
+  if (tv_sigma) {
+    extra$tau_sigma <- runif(D, 0.02, 0.08)
+    extra$sigma_raw <- matrix(rnorm(n_eff * D, 0, 0.1), n_eff, D)
+  }
+
+  c(base, extra)
+}
+
+
 #' Generate default covariate DC-VAR initialization values
 #'
 #' @param D Number of variables.

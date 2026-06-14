@@ -15,23 +15,16 @@ new_dcvar_tv_fit <- function(fit, stan_data, vars, standardized,
   if (is.null(phi_tv_mask)) {
     phi_tv_mask <- .resolve_phi_tv_mask(tv_phi)
   }
-  structure(
-    list(
-      fit = fit,
-      stan_data = stan_data,
-      model = "dcvar_tv",
-      vars = vars,
-      standardized = standardized,
-      margins = margins,
-      skew_direction = skew_direction,
-      tv_phi = tv_phi,
-      phi_tv_mask = phi_tv_mask,
-      tv_sigma = tv_sigma,
-      backend = backend,
-      priors = priors,
-      meta = meta
-    ),
-    class = c("dcvar_tv_fit", "dcvar_fit", "dcvar_model_fit")
+  .new_dcvar_model_fit(
+    fit = fit, stan_data = stan_data, model = "dcvar_tv", vars = vars,
+    class = c("dcvar_tv_fit", "dcvar_fit", "dcvar_model_fit"),
+    backend = backend, priors = priors, meta = meta,
+    standardized = standardized,
+    margins = margins,
+    skew_direction = skew_direction,
+    tv_phi = tv_phi,
+    phi_tv_mask = phi_tv_mask,
+    tv_sigma = tv_sigma
   )
 }
 

@@ -2,7 +2,10 @@
 # Routing, data preparation, and fit-object tests for the time-varying DC-VAR
 # ============================================================================
 
-test_that("dcvar_tv routes to the single generic Stan file for all margins", {
+test_that("dcvar_tv public paths stay compatible with prepared TV data", {
+  # dcvar() routes bundled TV fits to dcvar_dynamic.stan internally, but the
+  # public path helper returns the legacy-compatible TV file that matches
+  # prepare_dcvar_data(tv_*).
   expect_identical(.margin_stan_file("dcvar_tv", "normal"), "dcvar_tv_mixed.stan")
   expect_identical(.margin_stan_file("dcvar_tv", c("normal", "exponential")), "dcvar_tv_mixed.stan")
   # Homogeneous non-normal also routes to the generic file (no specialised zoo)

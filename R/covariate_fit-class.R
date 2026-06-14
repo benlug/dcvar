@@ -7,24 +7,21 @@
 new_dcvar_covariate_fit <- function(fit, stan_data, vars, covariates,
                                     standardized, standardized_covariates,
                                     drift, zero_init_eta,
-                                    backend = "rstan", priors, meta) {
-  structure(
-    list(
-      fit = fit,
-      stan_data = stan_data,
-      model = if (drift) "dcvar_covariate" else "dcvar_covariate_nodrift",
-      vars = vars,
-      covariates = covariates,
-      standardized = standardized,
-      standardized_covariates = standardized_covariates,
-      margins = "normal",
-      drift = drift,
-      zero_init_eta = zero_init_eta,
-      backend = backend,
-      priors = priors,
-      meta = meta
-    ),
-    class = c("dcvar_covariate_fit", "dcvar_model_fit")
+                                    backend = "rstan", priors, meta,
+                                    dynamic_engine = FALSE) {
+  .new_dcvar_model_fit(
+    fit = fit, stan_data = stan_data,
+    model = if (drift) "dcvar_covariate" else "dcvar_covariate_nodrift",
+    vars = vars,
+    class = c("dcvar_covariate_fit", "dcvar_model_fit"),
+    backend = backend, priors = priors, meta = meta,
+    covariates = covariates,
+    standardized = standardized,
+    standardized_covariates = standardized_covariates,
+    margins = "normal",
+    drift = drift,
+    zero_init_eta = zero_init_eta,
+    dynamic_engine = dynamic_engine
   )
 }
 

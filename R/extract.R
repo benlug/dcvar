@@ -647,6 +647,198 @@ hmm_states.dcvar_hmm_fit <- function(object, ...) {
 }
 
 
+#' @rdname var_params
+#' @details
+#' For a Markov-switching HMM fit (`dcvar_hmm()` with `switch` beyond `"rho"` or
+#' per-state `margins`), the VAR parameters are state-indexed: `mu[k, d]`, the Phi
+#' baseline `Phi_base[i, j]` plus per-state deviations `Phi_dev[k, i, j]` on the
+#' switching coefficients, and per-state margin scales. A non-switching HMM fit
+#' delegates to the shared method. See [hmm_state_params()] for a per-state
+#' assembled view.
+#' @export
+var_params.dcvar_hmm_fit <- function(object, ...) {
+  if (!isTRUE(object$switching)) {
+    return(NextMethod())
+  }
+
+  sw <- object$switch
+  K <- object$K
+  Mrg_K <- if (isTRUE(sw$margins == 1L)) K else 1L
+  report <- .hmm_switching_report_vars(object$margins_matrix, Mrg_K)
+
+  required_patterns <- c("^mu\\[", "^Phi_base\\[", "^rho_state\\[",
+                         paste0("^", names(report), "\\["))
+  if (any(sw$phi_mask > 0L)) {
+    required_patterns <- c(required_patterns, "^Phi_dev\\[")
+  }
+
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "var_params.dcvar_hmm_fit()",
+    output_type = "parameter group",
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+  extract_param <- function(pattern) {
+    rows <- grep(pattern, summ$variable)
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+  extract_vars <- function(vars) {
+    rows <- match(vars, summ$variable)
+    rows <- rows[!is.na(rows)]
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+
+  result <- list(
+    mu = extract_param("^mu\\["),
+    Phi = extract_param("^Phi_base\\[")
+  )
+  if (any(sw$phi_mask > 0L)) {
+    result$Phi_dev <- extract_param("^Phi_dev\\[")
+  }
+  for (nm in names(report)) {
+    result[[nm]] <- extract_vars(report[[nm]])
+  }
+  result$rho_state <- extract_param("^rho_state\\[")
+  result
+}
+
+
+#' Extract per-state parameters from a Markov-switching HMM fit
+#'
+#' Assembles the state-specific VAR parameters of a switching `dcvar_hmm()` fit
+#' into a per-state view: the intercepts, the effective VAR(1) coefficient matrix
+#' (`Phi_base` plus the per-state deviations on the switching coefficients), the
+#' margin scale/shape parameters, and the per-state marginal family labels. For
+#' components that are NOT state-specific the shared estimate is tiled across all
+#' states, so the return shape does not depend on which components switch.
+#'
+#' @param object A `dcvar_hmm_fit` object.
+#' @param ... Additional arguments (unused).
+#'
+#' @return A list with `families` (a K x D character matrix), `rho_state`
+#'   (length-K), `mu` (a K x D matrix of posterior means), `Phi` (a length-K list
+#'   of D x D posterior-mean coefficient matrices), and `scales` (a data frame of
+#'   per-state margin scale/shape posterior means; shared scales are tiled across
+#'   states).
+#' @seealso [hmm_states()], [var_params()]
+#' @export
+hmm_state_params <- function(object, ...) {
+  UseMethod("hmm_state_params")
+}
+
+#' @rdname hmm_state_params
+#' @export
+hmm_state_params.default <- function(object, ...) {
+  cli_abort("{.fun hmm_state_params} is not defined for objects of class {.cls {class(object)[[1]]}}.")
+}
+
+#' @rdname hmm_state_params
+#' @export
+hmm_state_params.dcvar_hmm_fit <- function(object, ...) {
+  if (!isTRUE(object$switching)) {
+    cli_abort(c(
+      "{.fun hmm_state_params} is for state-specific HMM fits.",
+      "i" = "This fit only switches the copula correlation; use {.fun hmm_states} and {.fun coef}."
+    ))
+  }
+  K <- object$K
+  D <- object$stan_data$D
+  sw <- object$switch
+  margins_char <- object$margins_matrix
+  summ <- .fit_summary(object$fit, backend = object$backend)
+  pm <- function(name) {
+    row <- match(name, summ$variable)
+    if (is.na(row)) NA_real_ else summ$mean[row]
+  }
+
+  # Per-state intercepts (tiled when mu is global).
+  mu <- matrix(NA_real_, nrow = K, ncol = D)
+  for (k in seq_len(K)) {
+    mk <- if (isTRUE(sw$mu == 1L)) k else 1L
+    for (d in seq_len(D)) mu[k, d] <- pm(sprintf("mu[%d,%d]", mk, d))
+  }
+
+  # Effective per-state Phi = baseline + masked per-state deviation.
+  phi_base <- matrix(NA_real_, nrow = D, ncol = D)
+  for (i in seq_len(D)) for (j in seq_len(D)) phi_base[i, j] <- pm(sprintf("Phi_base[%d,%d]", i, j))
+  ij <- list(c(1L, 1L), c(1L, 2L), c(2L, 1L), c(2L, 2L))
+  active <- which(sw$phi_mask > 0L)
+  Phi <- lapply(seq_len(K), function(k) {
+    P <- phi_base
+    for (a in active) {
+      i <- ij[[a]][1]
+      j <- ij[[a]][2]
+      P[i, j] <- P[i, j] + pm(sprintf("Phi_dev[%d,%d,%d]", k, i, j))
+    }
+    P
+  })
+
+  rho_state <- vapply(seq_len(K), function(k) pm(sprintf("rho_state[%d]", k)), numeric(1))
+
+  # Per-state margin scale/shape posterior means. Shared margin configs are
+  # tiled across states so the returned shape is flag-agnostic.
+  Mrg_K <- if (isTRUE(sw$margins == 1L)) K else 1L
+  scale_rows <- list()
+  row_idx <- 1L
+  for (k in seq_len(K)) {
+    mk <- if (Mrg_K == K) k else 1L
+    for (d in seq_len(D)) {
+      fam <- margins_char[k, d]
+      vars <- switch(fam,
+        normal = c(sigma_eps = sprintf("sigma_eps[%d,%d]", mk, d)),
+        exponential = c(sigma_exp = sprintf("sigma_exp[%d,%d]", mk, d)),
+        skew_normal = c(
+          omega = sprintf("omega[%d,%d]", mk, d),
+          delta = sprintf("delta[%d,%d]", mk, d)
+        ),
+        gamma = c(
+          sigma_gam = sprintf("sigma_gam[%d,%d]", mk, d),
+          shape_gam = sprintf("shape_gam[%d,%d]", mk, d)
+        )
+      )
+      for (param in names(vars)) {
+        scale_rows[[row_idx]] <- data.frame(
+          state = k,
+          variable = object$vars[d],
+          dimension = d,
+          family = fam,
+          parameter = param,
+          stan_variable = unname(vars[[param]]),
+          mean = pm(unname(vars[[param]])),
+          stringsAsFactors = FALSE
+        )
+        row_idx <- row_idx + 1L
+      }
+    }
+  }
+  scales <- do.call(rbind, scale_rows)
+  rownames(scales) <- NULL
+
+  list(
+    families = margins_char,
+    rho_state = rho_state,
+    mu = mu,
+    Phi = Phi,
+    scales = scales
+  )
+}
+
+
 #' Extract random effects from a multilevel fit
 #'
 #' Returns posterior summaries for unit-specific VAR coefficients.

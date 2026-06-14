@@ -20,6 +20,7 @@
 dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
                                       "dcvar_covariate",
                                       "dcvar_covariate_nodrift", "hmm",
+                                      "hmm_switching",
                                       "constant", "multilevel", "sem",
                                       "sem_naive"),
                             margins = "normal",
@@ -78,6 +79,18 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
 .uses_dynamic_stan_file <- function(stan_file, margins = "normal") {
   is.null(stan_file) ||
     .same_stan_file(stan_file, dcvar_stan_path("dcvar_dynamic", margins = margins))
+}
+
+#' Internal: was the bundled Markov-switching HMM engine explicitly requested?
+#'
+#' Unlike the dynamic helper, this does NOT treat `stan_file = NULL` as the
+#' engine: the default HMM routes to the legacy files, and the engine is selected
+#' by the feature flags. It only recognises a `stan_file` that IS the bundled
+#' `hmm_switching.stan`, so handing that file forces the engine (with data
+#' augmentation + switching init) even on a rho-only config.
+#' @noRd
+.uses_hmm_switching_stan_file <- function(stan_file) {
+  .same_stan_file(stan_file, dcvar_stan_path("hmm_switching"))
 }
 
 #' Validate common MCMC sampling arguments
@@ -164,6 +177,7 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
 .compile_model <- function(model_type = c("dcvar", "dcvar_tv", "dcvar_dynamic",
                                           "dcvar_covariate",
                                           "dcvar_covariate_nodrift", "hmm",
+                                          "hmm_switching",
                                           "constant", "multilevel", "sem",
                                           "sem_naive"),
                            margins = "normal",

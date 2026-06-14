@@ -3,6 +3,7 @@
 \name{pit_values}
 \alias{pit_values}
 \alias{pit_values.default}
+\alias{pit_values.dcvar_hmm_fit}
 \alias{pit_values.dcvar_model_fit}
 \alias{pit_values.dcvar_tv_fit}
 \title{Extract PIT values from a fitted model}
@@ -10,6 +11,8 @@
 pit_values(object, ...)
 
 \method{pit_values}{default}(object, ...)
+
+\method{pit_values}{dcvar_hmm_fit}(object, ...)
 
 \method{pit_values}{dcvar_model_fit}(object, ...)
 

@@ -24,6 +24,7 @@ reference:
       - var_params
       - covariate_effects
       - hmm_states
+      - hmm_state_params
       - random_effects
       - latent_states
       - draws

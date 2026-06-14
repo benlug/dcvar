@@ -6,7 +6,8 @@
 \usage{
 dcvar_stan_path(
   model = c("dcvar", "dcvar_tv", "dcvar_dynamic", "dcvar_covariate",
-    "dcvar_covariate_nodrift", "hmm", "constant", "multilevel", "sem", "sem_naive"),
+    "dcvar_covariate_nodrift", "hmm", "hmm_switching", "constant", "multilevel", "sem",
+    "sem_naive"),
   margins = "normal",
   copula = "gaussian"
 )

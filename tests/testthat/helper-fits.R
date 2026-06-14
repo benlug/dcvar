@@ -179,6 +179,30 @@ get_hmm_fit <- function() {
   })$fit
 }
 
+get_hmm_switching_fit <- function() {
+  .cache_fit_result("hmm_switching_fit", function() {
+    # Full Markov-switching config: rho + mu + Phi switch, with per-state
+    # families (state 1 normal, state 2 exponential), exercising the engine.
+    sim <- simulate_dcvar(
+      n_time = 60,
+      rho_trajectory = rho_step(60, rho_before = 0.8, rho_after = 0.1),
+      seed = 42
+    )
+    dcvar_hmm(
+      sim$Y_df, vars = c("y1", "y2"), K = 2,
+      switch = c("rho", "mu", "phi"),
+      margins = list(c("normal", "normal"), c("exponential", "exponential")),
+      skew_direction = c(1, 1),
+      chains = 1,
+      iter_warmup = smoke_iter_warmup,
+      iter_sampling = smoke_iter_sampling,
+      adapt_delta = 0.95,
+      max_treedepth = 12,
+      refresh = 0, seed = 123
+    )
+  })$fit
+}
+
 get_hmm_fit_warnings <- function() {
   .cache_fit_result("hmm_fit", function() {
     sim <- simulate_dcvar(n_time = 50, rho_trajectory = rho_step(50), seed = 42)

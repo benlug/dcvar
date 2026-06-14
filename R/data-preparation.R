@@ -380,6 +380,150 @@
 }
 
 
+#' Internal: build the K x D skew-direction matrix for the switching HMM
+#'
+#' Only exp/gamma dimensions consult skew; others default to +1 (inert). Accepts
+#' a length-D vector (recycled across states) or a length-K list of length-D
+#' vectors, and errors (naming the state) when a dimension that needs skew has
+#' none supplied.
+#' @noRd
+.hmm_skew_matrix <- function(skew_direction, margins_char, K, D = 2L) {
+  needs <- matrix(margins_char %in% c("exponential", "gamma"), nrow = K, ncol = D)
+  skew <- matrix(1L, nrow = K, ncol = D)
+  if (!any(needs)) {
+    return(skew)
+  }
+
+  if (is.list(skew_direction)) {
+    if (length(skew_direction) != K) {
+      cli_abort("Per-state {.arg skew_direction} must be a length-{K} list aligned with {.arg margins}.")
+    }
+    skew_in <- do.call(rbind, lapply(seq_len(K), function(k) {
+      s <- skew_direction[[k]]
+      if (is.null(s) || length(s) != D || !all(s %in% c(-1, 1))) {
+        cli_abort("Each per-state {.arg skew_direction} element must be a length-{D} vector of +1/-1.")
+      }
+      as.integer(s)
+    }))
+  } else if (is.null(skew_direction)) {
+    skew_in <- NULL
+  } else {
+    if (length(skew_direction) != D || !all(skew_direction %in% c(-1, 1))) {
+      cli_abort("{.arg skew_direction} must be a length-{D} vector of +1/-1 (or a length-{K} list for per-state margins).")
+    }
+    skew_in <- matrix(as.integer(skew_direction), nrow = K, ncol = D, byrow = TRUE)
+  }
+
+  for (k in seq_len(K)) {
+    for (d in seq_len(D)) {
+      if (needs[k, d]) {
+        if (is.null(skew_in)) {
+          cli_abort(c(
+            "State {k} margin {.val {margins_char[k, d]}} requires {.arg skew_direction}.",
+            "i" = "Supply a length-{D} +1/-1 vector (or a length-{K} list for per-state margins)."
+          ))
+        }
+        skew[k, d] <- skew_in[k, d]
+      }
+    }
+  }
+  skew
+}
+
+
+#' Internal: resolve the HMM margin configuration (global or per-state)
+#'
+#' Normalises the `margins` argument of [dcvar_hmm()] into the K x D family-code
+#' and skew matrices the switching engine needs, validating both the global form
+#' (scalar / length-D) and the per-state form (length-K list). An all-identical
+#' per-state list collapses back to the global form so the legacy default path is
+#' never disturbed.
+#'
+#' @return A list with `per_state` (logical, post-collapse), `margins_global`
+#'   (the global spec when not per-state, else `NULL`), `margins_char` (K x D
+#'   character matrix), `family` (K x D integer codes), `skew` (K x D integer),
+#'   and `per_state_differ` (logical).
+#' @noRd
+.hmm_margin_config <- function(margins, skew_direction, K, D = 2L) {
+  input_is_list <- is.list(margins) && !is.data.frame(margins)
+  per_state <- input_is_list
+
+  if (input_is_list) {
+    if (length(margins) != K) {
+      cli_abort(c(
+        "Per-state {.arg margins} must be a length-{K} list (one family spec per state).",
+        "i" = "Got a list of length {length(margins)}."
+      ))
+    }
+    rows <- lapply(seq_len(K), function(k) {
+      m <- margins[[k]]
+      .validate_margin_families(m)
+      if (length(m) == 1L) rep(m, D) else m
+    })
+    margins_char <- do.call(rbind, rows)
+    margins_global <- NULL
+  } else {
+    margins_global <- .normalize_margins_spec(margins)
+    .validate_margin_families(margins_global)
+    row <- if (length(margins_global) == 1L) rep(margins_global, D) else margins_global
+    margins_char <- matrix(row, nrow = K, ncol = D, byrow = TRUE)
+  }
+
+  skew <- .hmm_skew_matrix(skew_direction, margins_char, K, D)
+
+  margins_differ <- input_is_list && nrow(unique(margins_char)) > 1L
+  skew_differ <- input_is_list &&
+    any(margins_char %in% c("exponential", "gamma")) &&
+    nrow(unique(skew)) > 1L
+
+  if (input_is_list && !margins_differ && !skew_differ) {
+    # Identical across states, including any consulted skew orientation: collapse
+    # to the global form so the legacy path remains available.
+    per_state <- FALSE
+    margins_global <- .normalize_margins_spec(margins_char[1, ])
+  }
+
+  family <- matrix(as.integer(.family_codes[as.vector(margins_char)]), nrow = K, ncol = D)
+  per_state_differ <- margins_differ || skew_differ
+  skew_global <- if (!per_state && any(margins_char[1, ] %in% c("exponential", "gamma"))) {
+    as.integer(skew[1, ])
+  } else {
+    NULL
+  }
+
+  list(
+    per_state = per_state,
+    margins_global = margins_global,
+    margins_char = margins_char,
+    family = family,
+    skew = skew,
+    skew_global = skew_global,
+    per_state_differ = per_state_differ
+  )
+}
+
+
+#' Internal: augment prepared HMM data into the hmm_switching.stan block
+#'
+#' Runs inside [dcvar_hmm()] just before sampling (never inside the exported
+#' [prepare_hmm_data()], preserving its byte-identical default output). Overrides
+#' the base family/skew with the K x D matrices and adds the switch flags and the
+#' Phi-deviation prior SD.
+#' @noRd
+.as_hmm_switching_stan_data <- function(stan_data, switch_spec, family_mat, skew_mat,
+                                        prior_phi_dev_sd) {
+  stan_data$family <- family_mat
+  stan_data$skew_direction <- skew_mat
+  stan_data$switch_mu <- as.integer(switch_spec$mu)
+  stan_data$switch_phi <- as.integer(any(switch_spec$phi_mask > 0L))
+  stan_data$phi_switch_mask <- unname(as.integer(switch_spec$phi_mask))
+  stan_data$switch_margins <- as.integer(switch_spec$margins)
+  stan_data$sigma_eps_prior <- stan_data$sigma_eps_prior %||% 1
+  stan_data$prior_phi_dev_sd <- prior_phi_dev_sd
+  stan_data
+}
+
+
 #' Prepare data for the DC-VAR model
 #'
 #' Transforms a data frame into a list suitable for the DC-VAR Stan model.

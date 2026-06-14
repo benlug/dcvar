@@ -60,6 +60,64 @@
   }))
 }
 
+#' Reportable per-state, per-dimension scale/shape variables for the switching HMM
+#'
+#' Like [.mixed_margin_report_vars()] but lifted to the engine's 2D-indexed
+#' `[m, d]` layout: maps each margin config `m` (state when margins switch, else
+#' the shared config) and dimension to the interpretable scale/shape variable for
+#' its family (e.g. `sigma_exp[m, d]` for an exponential dimension).
+#' @noRd
+.hmm_switching_report_vars <- function(margins_char, Mrg_K) {
+  D <- ncol(margins_char)
+  groups <- list()
+  add <- function(nm, m, d) {
+    groups[[nm]] <<- c(groups[[nm]], paste0(nm, "[", m, ",", d, "]"))
+  }
+  for (m in seq_len(Mrg_K)) {
+    for (d in seq_len(D)) {
+      switch(margins_char[m, d],
+        normal = add("sigma_eps", m, d),
+        exponential = add("sigma_exp", m, d),
+        skew_normal = {
+          add("omega", m, d)
+          add("delta", m, d)
+        },
+        gamma = {
+          add("sigma_gam", m, d)
+          add("shape_gam", m, d)
+        }
+      )
+    }
+  }
+  groups
+}
+
+#' Sampled per-state, per-dimension margin parameters for the switching HMM
+#'
+#' The switching engine declares the margin union as `array[Mrg_K] vector[D]`, so
+#' the sampled names are 2D-indexed `[m, d]`. For each margin config `m` (state
+#' when margins switch, otherwise the single shared config) and dimension `d`,
+#' returns the indexed name of the parameter that config/dimension actually uses
+#' for its family. `margins_char` is the K x D character family matrix; only the
+#' first `Mrg_K` rows are consulted.
+#' @noRd
+.hmm_switching_diagnostic_margin_vars <- function(margins_char, Mrg_K) {
+  D <- ncol(margins_char)
+  out <- character()
+  for (m in seq_len(Mrg_K)) {
+    for (d in seq_len(D)) {
+      v <- switch(margins_char[m, d],
+        normal = paste0("sigma_eps[", m, ",", d, "]"),
+        exponential = paste0("eta[", m, ",", d, "]"),
+        skew_normal = c(paste0("omega[", m, ",", d, "]"), paste0("delta[", m, ",", d, "]")),
+        gamma = c(paste0("eta[", m, ",", d, "]"), paste0("shape_gam[", m, ",", d, "]"))
+      )
+      out <- c(out, v)
+    }
+  }
+  out
+}
+
 #' Per-dimension scale/shape variables to display in trace plots for a mixed fit
 #'
 #' Returns the indexed names of the interpretable scale/shape variable each
@@ -244,6 +302,18 @@
     return("dcvar_dynamic.stan")
   }
 
+  # The Markov-switching HMM engine is a single generic file: per-state, per-
+  # dimension family codes handle homogeneous, mixed, and per-state margins alike.
+  if (identical(model_type, "hmm_switching")) {
+    if (!identical(copula, "gaussian")) {
+      cli_abort(c(
+        "State-specific HMM switching is currently implemented only for the Gaussian copula.",
+        "i" = "Use {.code copula = \"gaussian\"} (the default)."
+      ))
+    }
+    return("hmm_switching.stan")
+  }
+
   # The public TV path remains the legacy-compatible Stan file, matching the
   # exported prepare_dcvar_data(tv_*) output. The dcvar() wrapper routes bundled
   # TV fits to dcvar_dynamic.stan internally.
@@ -367,6 +437,10 @@
   if (identical(model_type, "dcvar_dynamic")) {
     margins_vec <- rep(margins, length.out = 2L)
     return(paste0("dcvar_dynamic", paste(.family_codes[margins_vec], collapse = ""), "_model"))
+  }
+  if (identical(model_type, "hmm_switching")) {
+    margins_vec <- rep(margins, length.out = 2L)
+    return(paste0("hmm_switching", paste(.family_codes[margins_vec], collapse = ""), "_model"))
   }
   if (identical(model_type, "dcvar_tv")) {
     margins_vec <- rep(margins, length.out = 2L)

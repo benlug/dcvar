@@ -16,6 +16,11 @@
   model continue to use their specialised Stan files unchanged, so no refit is
   needed. The covariate model exposes its intercept as `beta_0` exactly as
   before (now a transformed-parameter alias of the sampled `z_rho_init`).
+- `dcvar_stan_path()` continues to return the Stan file matching each exported
+  `prepare_*()` data contract (e.g. `dcvar_stan_path("dcvar_covariate")` still
+  returns the legacy covariate model). The unified engine is selected internally
+  by the fit wrappers; pass `stan_file = dcvar_stan_path("dcvar_dynamic")` to
+  request it explicitly.
 - For an all-normal, constant-scale fit (the covariate model) the engine uses
   the z-score Gaussian-copula form on the standardized residuals, reproducing
   the legacy covariate likelihood term-by-term; an independent recomputation of

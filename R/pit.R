@@ -35,6 +35,18 @@ pit_values.default <- function(object, ...) {
 
 #' @rdname pit_values
 #' @export
+pit_values.dcvar_hmm_fit <- function(object, ...) {
+  if (isTRUE(object$switching)) {
+    cli_abort(c(
+      "{.fun pit_values} is not yet available for state-specific HMM fits (residuals are per-state).",
+      "i" = "Use {.fun hmm_states} / {.fun hmm_state_params} for state-specific summaries."
+    ))
+  }
+  NextMethod()
+}
+
+#' @rdname pit_values
+#' @export
 pit_values.dcvar_model_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
 

@@ -1,3 +1,33 @@
+# dcvar 0.7.0
+
+## New feature: full Markov-switching HMM
+
+- `dcvar_hmm()` gains a `switch` argument that lets the VAR(1) intercepts (`mu`),
+  the VAR coefficients (`Phi`, with `"ar"`/`"cross"`/coefficient-name
+  granularity), and the residual scales become state-specific, in addition to
+  the always state-specific copula correlation. `switch = "rho"` (the default)
+  reproduces the previous regime-switching-correlation model exactly. The copula
+  correlation is the label-switching anchor (`ordered` `z_rho`), so `rho` must
+  remain in `switch` whenever other components switch; states are reported in
+  increasing-correlation order.
+- The marginal distribution **family** can now switch by state: `margins` accepts
+  a length-K list of per-state family specifications, for example
+  `margins = list(c("normal", "normal"), c("exponential", "gamma"))`, with a
+  matching `skew_direction` (a length-2 vector recycled across states, or a
+  length-K list). The list is consumed in increasing-`rho` order, and a warning
+  is emitted when families differ across states so the ordering can be verified.
+- These richer configurations are served by a new internal Stan engine,
+  `inst/stan/hmm_switching.stan`, selected automatically; the default
+  `dcvar_hmm()` keeps routing to the specialised legacy files, so existing fits
+  and posteriors are unchanged. `dcvar_stan_path("hmm")` is unchanged; pass
+  `stan_file = dcvar_stan_path("hmm_switching")` to request the engine explicitly.
+- New `hmm_state_params()` returns the per-state intercepts, effective VAR(1)
+  coefficient matrices, margin scales, and family labels. `coef()`, `var_params()`,
+  `print()`, and `summary()` report state-indexed parameters for switching fits;
+  `fitted()` returns the gamma-weighted one-step prediction. Marginal prediction
+  intervals, PIT, and posterior-predictive plots are not yet available for
+  state-specific fits and abort with a pointer to `hmm_state_params()`.
+
 # dcvar 0.6.0
 
 ## Internal: unified dynamic Stan engine

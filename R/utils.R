@@ -239,6 +239,67 @@
   cli_abort("{.arg tv_phi} must be a logical scalar or a character selector ({.val ar}, {.val cross}, or coefficient names).")
 }
 
+#' Resolve a `switch` specification for the Markov-switching HMM
+#'
+#' Maps the public `switch` argument of [dcvar_hmm()] to canonical flags. Accepts
+#' `TRUE` (every component switches) or a character vector drawn from
+#' `c("rho", "mu", "phi", "ar", "cross", "sigma")` plus explicit Phi coefficient
+#' names. `rho` is mandatory (it is the `ordered[K]` label-switching anchor): a
+#' selector that switches other components without `rho` is rejected, and a
+#' selector that switches nothing is rejected (use [dcvar_constant()]). Phi
+#' granularity reuses [.resolve_phi_tv_mask()].
+#'
+#' @param switch The user's `switch` argument.
+#' @return A named list with `mu` (0/1), `phi_mask` (named length-4 integer),
+#'   `rho` (always 1L), and `margins` (0/1, requesting state-specific scales).
+#' @noRd
+.resolve_switch_spec <- function(switch) {
+  if (isTRUE(switch)) {
+    return(list(mu = 1L, phi_mask = .resolve_phi_tv_mask(TRUE), rho = 1L, margins = 1L))
+  }
+  if (isFALSE(switch) ||
+      (is.character(switch) && (length(switch) == 0L || identical(switch, "none")))) {
+    cli_abort(c(
+      "{.arg switch} must select at least one switching component.",
+      "i" = "A Markov-switching model with no state-specific parameter is not identified; use {.fun dcvar_constant} or {.fun dcvar_hmm} with {.code switch = \"rho\"}."
+    ))
+  }
+  if (!is.character(switch)) {
+    cli_abort("{.arg switch} must be {.val TRUE} or a character selector (e.g. {.val rho}, {.val mu}, {.val phi}).")
+  }
+
+  valid <- c("rho", "mu", "sigma", "margins", "phi",
+             "ar", "cross", "crosslag", "cl", .phi_coef_names)
+  invalid <- setdiff(switch, valid)
+  if (length(invalid) > 0L) {
+    cli_abort(c(
+      "Invalid {.arg switch} selector{?s}: {.val {invalid}}.",
+      "i" = "Use {.val rho}, {.val mu}, {.val phi} (or {.val ar}/{.val cross}/coefficient names), {.val sigma}, or {.val TRUE}."
+    ))
+  }
+
+  mu <- as.integer("mu" %in% switch)
+  margins <- as.integer(any(c("sigma", "margins") %in% switch))
+  phi_tokens <- intersect(switch, c("phi", "ar", "cross", "crosslag", "cl", .phi_coef_names))
+  phi_mask <- if (length(phi_tokens) == 0L) {
+    stats::setNames(integer(4), .phi_coef_names)
+  } else if ("phi" %in% phi_tokens) {
+    .resolve_phi_tv_mask(TRUE)
+  } else {
+    .resolve_phi_tv_mask(phi_tokens)
+  }
+  any_phi <- sum(phi_mask) > 0L
+
+  if (!("rho" %in% switch)) {
+    cli_abort(c(
+      "{.arg switch} must include {.val rho}: the copula correlation is the label-switching anchor.",
+      "i" = "State-specific {.val mu}/{.val phi}/{.val sigma} without an ordered {.code rho} are not identified."
+    ))
+  }
+
+  list(mu = mu, phi_mask = phi_mask, rho = 1L, margins = margins)
+}
+
 #' Generate default TV-VAR initialization values
 #'
 #' The generic time-varying model declares the full mixed-margin parameter
@@ -422,6 +483,55 @@
       A = A_init
     )
   )
+}
+
+
+#' Generate default initialization values for the Markov-switching HMM engine
+#'
+#' Inits for `hmm_switching.stan`. State-indexed groups are sized to the engine's
+#' conditional extent (`K` when switching, `1` when shared); the full mixed-margin
+#' union is initialised per margin config; `Phi_dev` (the per-state coefficient
+#' deviations) is supplied only when any Phi coefficient switches, so a zero-extent
+#' array is never serialised (cmdstanr hazard). `z_rho` is the ordered anchor; the
+#' transition matrix uses a near-identity sticky init.
+#'
+#' @param D Number of variables.
+#' @param K Number of hidden states.
+#' @param switch_spec Resolved spec from [.resolve_switch_spec()].
+#' @return A named list of initial values matching the engine's parameters.
+#' @noRd
+.init_hmm_switching_params <- function(D, K, switch_spec) {
+  Mu_K <- if (isTRUE(switch_spec$mu == 1L)) K else 1L
+  Mrg_K <- if (isTRUE(switch_spec$margins == 1L)) K else 1L
+  any_phi <- sum(switch_spec$phi_mask) > 0L
+
+  z_rho_init <- sort(seq(0.2, 0.8, length.out = K) + rnorm(K, 0, 0.1))
+
+  A_init <- matrix(0.05 / (K - 1), K, K)
+  diag(A_init) <- 0.95
+  A_init <- A_init + matrix(runif(K * K, -0.01, 0.01), K, K)
+  A_init <- pmax(A_init, 0.01)
+  A_init <- A_init / rowSums(A_init)
+
+  init <- list(
+    # array[Mu_K] vector[D]  -> (Mu_K x D)
+    mu = array(rnorm(Mu_K * D, 0, 0.1), dim = c(Mu_K, D)),
+    Phi_base = diag(0.25, D) + matrix(rnorm(D^2, 0, 0.05), D, D),
+    z_rho = z_rho_init,
+    pi0 = rep(1 / K, K),
+    A = A_init,
+    # Full mixed-margin union per config (array[Mrg_K] vector[D] -> Mrg_K x D).
+    sigma_eps = array(runif(Mrg_K * D, 0.8, 1.2), dim = c(Mrg_K, D)),
+    eta = array(rnorm(Mrg_K * D, 0, 0.3), dim = c(Mrg_K, D)),
+    omega = array(runif(Mrg_K * D, 0.5, 1.5), dim = c(Mrg_K, D)),
+    delta = array(runif(Mrg_K * D, -0.3, 0.3), dim = c(Mrg_K, D)),
+    shape_gam = array(runif(Mrg_K * D, 0.5, 2.0), dim = c(Mrg_K, D))
+  )
+  # Per-state Phi deviations only when a coefficient switches (else zero-extent).
+  if (any_phi) {
+    init$Phi_dev <- array(rnorm(K * D * D, 0, 0.05), dim = c(K, D, D))
+  }
+  init
 }
 
 

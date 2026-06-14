@@ -90,6 +90,77 @@ fitted.dcvar_model_fit <- function(object, type = c("link", "response"), ...) {
 }
 
 
+#' One-step-ahead fitted values for a Markov-switching HMM fit
+#'
+#' For a state-specific `dcvar_hmm()` fit the one-step prediction is the
+#' smoothed-state mixture `sum_k gamma[t, k] * (mu_k + Phi_k (Y[t] - mu_k))`,
+#' evaluated at posterior means. A non-switching HMM fit delegates to the shared
+#' method.
+#'
+#' @param object A `dcvar_hmm_fit` object.
+#' @param type `"link"` (default) or `"response"` (back-transform to the data scale).
+#' @param ... Additional arguments (unused).
+#' @return A data frame with a `time` column and one column per variable.
+#' @export
+fitted.dcvar_hmm_fit <- function(object, type = c("link", "response"), ...) {
+  type <- match.arg(type)
+  if (!isTRUE(object$switching)) {
+    return(NextMethod())
+  }
+
+  D <- object$stan_data$D
+  n_time_obs <- object$stan_data$n_time
+  K <- object$K
+  Y <- object$stan_data$Y
+  sp <- hmm_state_params(object)
+  gamma <- hmm_states(object)$gamma
+
+  y_hat <- matrix(NA_real_, n_time_obs - 1L, D)
+  for (t in seq_len(n_time_obs - 1L)) {
+    y_prev <- Y[t, ]
+    pred <- numeric(D)
+    for (k in seq_len(K)) {
+      mu_k <- sp$mu[k, ]
+      pred <- pred + gamma[t, k] * (mu_k + as.numeric(sp$Phi[[k]] %*% (y_prev - mu_k)))
+    }
+    y_hat[t, ] <- pred
+  }
+
+  if (type == "response" && isTRUE(object$standardized)) {
+    Y_means <- attr(object$stan_data, "Y_means")
+    Y_sds <- attr(object$stan_data, "Y_sds")
+    if (!is.null(Y_means) && !is.null(Y_sds)) {
+      for (d in seq_len(D)) y_hat[, d] <- y_hat[, d] * Y_sds[d] + Y_means[d]
+    }
+  }
+
+  out <- data.frame(time = .observed_time_values(object$stan_data, drop_first = TRUE), y_hat)
+  names(out) <- c("time", object$vars)
+  out
+}
+
+
+#' Prediction intervals for a Markov-switching HMM fit
+#'
+#' State-specific HMM fits do not yet support marginal prediction intervals (the
+#' predictive is a regime mixture). Non-switching fits delegate to the shared
+#' method.
+#'
+#' @param object A `dcvar_hmm_fit` object.
+#' @param ... Passed to the shared method for non-switching fits.
+#' @return A data frame of prediction intervals (non-switching fits only).
+#' @export
+predict.dcvar_hmm_fit <- function(object, ...) {
+  if (isTRUE(object$switching)) {
+    cli_abort(c(
+      "{.fun predict} intervals are not yet available for state-specific HMM fits (the predictive is a regime mixture).",
+      "i" = "Use {.fun fitted} for gamma-weighted point predictions, or {.fun hmm_states} / {.fun hmm_state_params}."
+    ))
+  }
+  NextMethod()
+}
+
+
 #' Internal: extract posterior mean unit-specific Phi coefficients
 #' @noRd
 .multilevel_phi_means <- function(object) {

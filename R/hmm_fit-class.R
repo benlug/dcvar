@@ -6,7 +6,9 @@
 #' @noRd
 new_dcvar_hmm_fit <- function(fit, stan_data, K, vars, standardized,
                               margins = "normal", skew_direction = NULL,
-                              backend = "rstan", priors, meta) {
+                              backend = "rstan", priors, meta,
+                              switch = NULL, switching = FALSE,
+                              margins_matrix = NULL) {
   structure(
     list(
       fit = fit,
@@ -17,6 +19,9 @@ new_dcvar_hmm_fit <- function(fit, stan_data, K, vars, standardized,
       standardized = standardized,
       margins = margins,
       skew_direction = skew_direction,
+      switch = switch,
+      switching = switching,
+      margins_matrix = margins_matrix,
       backend = backend,
       priors = priors,
       meta = meta
@@ -78,6 +83,7 @@ summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
     K = object$K,
     rho_trajectory = rho_df,
     states = states,
+    state_params = if (isTRUE(object$switching)) hmm_state_params(object) else NULL,
     var_params = vp,
     diagnostics = diag
   )
@@ -108,12 +114,26 @@ print.dcvar_hmm_summary <- function(x, ...) {
   cat("\nTransition Matrix:\n")
   print(round(x$states$A, 3))
 
-  cat("\nVAR(1) Parameters:\n")
-  cat("  mu:\n")
-  print(x$var_params$mu[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
-  cat("\n  Phi:\n")
-  print(x$var_params$Phi[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
-  .print_margin_params(x$var_params)
+  if (!is.null(x$state_params)) {
+    cat("\nState-Specific VAR(1) Parameters (posterior means):\n")
+    for (k in seq_len(x$K)) {
+      cat(sprintf("  State %d mu: %s\n", k, paste(sprintf("%.3f", x$state_params$mu[k, ]), collapse = ", ")))
+      cat(sprintf("  State %d Phi:\n", k))
+      print(round(x$state_params$Phi[[k]], 3))
+    }
+    if (!is.null(x$state_params$scales) && nrow(x$state_params$scales) > 0L) {
+      cat("\n  Margin scales / shapes:\n")
+      scale_cols <- c("state", "variable", "family", "parameter", "mean")
+      print(x$state_params$scales[, scale_cols], row.names = FALSE)
+    }
+  } else {
+    cat("\nVAR(1) Parameters:\n")
+    cat("  mu:\n")
+    print(x$var_params$mu[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+    cat("\n  Phi:\n")
+    print(x$var_params$Phi[, c("variable", "mean", "q2.5", "q97.5")], row.names = FALSE)
+    .print_margin_params(x$var_params)
+  }
 
   cat("\nDiagnostics:\n")
   cat(sprintf("  Divergences: %d\n", x$diagnostics$n_divergent))
@@ -132,6 +152,33 @@ print.dcvar_hmm_summary <- function(x, ...) {
 #' @export
 coef.dcvar_hmm_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)
+
+  if (isTRUE(object$switching)) {
+    # The switching engine samples state-indexed mu and a Phi baseline + per-state
+    # deviations; margin scales are per config (state when margins switch).
+    sw <- object$switch
+    K <- object$K
+    Mrg_K <- if (isTRUE(sw$margins == 1L)) K else 1L
+    result <- list(
+      mu = .extract_required_coef(summ, "^mu\\[", "mu", "coef.dcvar_hmm_fit()"),
+      Phi = .extract_required_coef(summ, "^Phi_base\\[", "Phi_base", "coef.dcvar_hmm_fit()")
+    )
+    if (any(sw$phi_mask > 0L)) {
+      result$Phi_dev <- .extract_required_coef(summ, "^Phi_dev\\[", "Phi_dev", "coef.dcvar_hmm_fit()")
+    }
+    report <- .hmm_switching_report_vars(object$margins_matrix, Mrg_K)
+    for (nm in names(report)) {
+      idx <- match(report[[nm]], summ$variable)
+      idx <- idx[!is.na(idx)]
+      if (length(idx) > 0L) {
+        result[[nm]] <- stats::setNames(summ$mean[idx], summ$variable[idx])
+      }
+    }
+    result$z_rho <- .extract_required_coef(summ, "^z_rho\\[", "z_rho", "coef.dcvar_hmm_fit()")
+    result$rho_state <- .extract_required_coef(summ, "^rho_state\\[", "rho_state", "coef.dcvar_hmm_fit()")
+    return(result)
+  }
+
   result <- list(
     mu = .extract_required_coef(summ, "^mu\\[", "mu", "coef.dcvar_hmm_fit()"),
     Phi = .extract_required_coef(summ, "^Phi\\[", "Phi", "coef.dcvar_hmm_fit()")
@@ -155,6 +202,12 @@ plot.dcvar_hmm_fit <- function(x,
                                type = c("rho", "states", "transition", "phi", "diagnostics", "ppc", "pit"),
                                ...) {
   type <- match.arg(type)
+  if (isTRUE(x$switching) && type %in% c("phi", "ppc", "pit")) {
+    cli_abort(c(
+      "{.code plot(type = \"{type}\")} is not available for state-specific HMM fits.",
+      "i" = "Use {.fun hmm_state_params} for per-state VAR coefficients/scales, and {.fun hmm_states} for the regime path."
+    ))
+  }
   switch(type,
     rho = plot_rho(x, ...),
     states = plot_hmm_states(x, ...),

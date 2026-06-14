@@ -12,6 +12,7 @@ dcvar_hmm(
   standardize = TRUE,
   margins = "normal",
   skew_direction = NULL,
+  switch = "rho",
   allow_gaps = FALSE,
   prior_mu_sd = 2,
   prior_phi_sd = 0.5,
@@ -45,17 +46,25 @@ dcvar_hmm(
 \item{standardize}{Logical; whether to z-score variables (default: \code{TRUE}).}
 
 \item{margins}{Marginal distribution specification. Either a single string
-applied to both variables, or a length-2 character vector giving a
-per-variable (mixed) margin, e.g. \code{c("normal", "exponential")}. Each entry
-is one of \code{"normal"} (default), \code{"exponential"}, \code{"skew_normal"}, or
-\code{"gamma"}. When the two entries differ the fit uses a generic
-mixed-margins Stan model under the Gaussian copula; identical entries reuse
-the specialised single-family model.}
+applied to both variables, a length-2 character vector giving a per-variable
+(mixed) margin, e.g. \code{c("normal", "exponential")}, or -- for a state-specific
+family -- a length-\code{K} list of such specifications, one per hidden state,
+e.g. \code{list(c("normal", "normal"), c("exponential", "gamma"))}. Each entry is
+one of \code{"normal"} (default), \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.
+A per-state list is consumed in increasing-\code{rho} order.}
 
-\item{skew_direction}{Integer vector of length 2 indicating skew direction
-for asymmetric margins. Each element must be \code{1} (right-skewed) or \code{-1}
-(left-skewed). Required whenever any dimension uses an \code{"exponential"} or
-\code{"gamma"} margin; only those dimensions consult it.}
+\item{skew_direction}{Skew direction for asymmetric margins: each element \code{1}
+(right-skewed) or \code{-1} (left-skewed). A length-2 vector (recycled across
+states) or, for per-state margins, a length-\code{K} list of length-2 vectors.
+Required whenever any (state, dimension) uses an \code{"exponential"} or
+\code{"gamma"} margin; only those entries consult it.}
+
+\item{switch}{Which parameters become state-specific. \code{"rho"} (default) keeps
+only the copula correlation switching (the classic HMM). A character vector
+drawn from \code{c("rho", "mu", "phi", "ar", "cross", "sigma")} (with \code{"ar"} /
+\code{"cross"} / coefficient names like \code{"phi11"} selecting a subset of the VAR
+coefficients), or \code{TRUE} for everything. \code{rho} must be included whenever any
+other component switches (it is the label-switching anchor).}
 
 \item{allow_gaps}{Logical; if \code{FALSE} (default), interior missing values
 cause an error because they break VAR(1) time series adjacency. Set to
@@ -113,6 +122,21 @@ Fits a Hidden Markov Model copula VAR(1) with K discrete states and
 state-specific correlations. Uses ordered z_rho constraint to prevent
 label switching and a sticky Dirichlet prior to encourage state persistence.
 }
+\section{State-specific parameters and per-state margins}{
+
+By default only the copula correlation switches by state. The \code{switch}
+argument turns a full Markov-switching VAR on: the intercepts, the VAR
+coefficients, and the residual scales can each be made state-specific. The
+marginal \strong{family} can also switch by state by passing a length-\code{K}
+\code{margins} list. Because the states are identified by an ordered correlation
+(\code{z_rho}), \code{rho} is the mandatory anchor and a per-state \code{margins} list is
+consumed in increasing-correlation order (\code{margins[[1]]} is the lowest-rho
+state). Richly-parameterized configurations on a single short bivariate series
+are weakly identified; fit a ladder (\code{switch = "rho"} ->
+\code{switch = c("rho", "ar")} -> full) and widen \code{prior_phi_sd}. See
+\code{\link[=hmm_state_params]{hmm_state_params()}} for the per-state parameter view.
+}
+
 \examples{
 \donttest{
 sim <- simulate_dcvar(

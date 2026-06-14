@@ -142,6 +142,13 @@ plot_rho <- function(object, show_ci = TRUE, ci_level = 0.95, inner_level = 0.80
 #' @return A ggplot object.
 #' @export
 plot_phi <- function(object, var_names = NULL, ...) {
+  if (inherits(object, "dcvar_hmm_fit") && isTRUE(object$switching)) {
+    cli_abort(c(
+      "{.fun plot_phi} is not available for state-specific HMM fits.",
+      "i" = "Use {.fun hmm_state_params} to inspect the effective per-state Phi matrices."
+    ))
+  }
+
   summ <- .fit_summary(
     object$fit, variables = NULL, backend = object$backend,
     required = .stan_output_group_pattern("Phi"),
@@ -212,7 +219,38 @@ plot_phi <- function(object, var_names = NULL, ...) {
 plot_diagnostics <- function(object, ...) {
   margins <- object$margins %||% "normal"
 
-  trace_pars <- if (object$model == "multilevel") {
+  trace_pars <- if (object$model == "hmm" && isTRUE(object$switching)) {
+    K <- object$K
+    D <- object$stan_data$D
+    sw <- object$switch
+    Mu_K <- if (isTRUE(sw$mu == 1L)) K else 1L
+    Mrg_K <- if (isTRUE(sw$margins == 1L)) K else 1L
+    mu_pars <- paste0(
+      "mu[",
+      rep(seq_len(Mu_K), each = D), ",", rep(seq_len(D), times = Mu_K),
+      "]"
+    )
+    phi_pars <- paste0(
+      "Phi_base[",
+      rep(seq_len(D), each = D), ",", rep(seq_len(D), times = D),
+      "]"
+    )
+    if (any(sw$phi_mask > 0L)) {
+      ij <- list(c(1L, 1L), c(1L, 2L), c(2L, 1L), c(2L, 2L))
+      active <- which(sw$phi_mask > 0L)
+      phi_dev <- unlist(lapply(seq_len(K), function(k) {
+        vapply(active, function(a) {
+          sprintf("Phi_dev[%d,%d,%d]", k, ij[[a]][1], ij[[a]][2])
+        }, character(1))
+      }), use.names = FALSE)
+      phi_pars <- c(phi_pars, phi_dev)
+    }
+    margin_pars <- unlist(
+      .hmm_switching_report_vars(object$margins_matrix, Mrg_K),
+      use.names = FALSE
+    )
+    c(mu_pars, phi_pars, margin_pars, paste0("rho_state[", seq_len(K), "]"))
+  } else if (object$model == "multilevel") {
     phi_bars <- paste0("phi_bar[", 1:4, "]")
     if (.is_mixed_margins(margins)) {
       c(phi_bars, .mixed_plot_margin_vars(margins), "rho")
@@ -259,7 +297,7 @@ plot_diagnostics <- function(object, ...) {
     trace_pars <- c(trace_pars, "beta_0", paste0("beta[", seq_len(object$stan_data$P), "]"))
     if (object$model == "dcvar_covariate") trace_pars <- c(trace_pars, "sigma_omega")
   }
-  if (object$model == "hmm") {
+  if (object$model == "hmm" && !isTRUE(object$switching)) {
     K <- object$K
     trace_pars <- c(trace_pars, paste0("rho_state[", 1:K, "]"))
   }
@@ -333,6 +371,12 @@ plot_diagnostics <- function(object, ...) {
 plot_ppc <- function(object, n_sample = 100, ...) {
   if (inherits(object, "dcvar_multilevel_fit") || inherits(object, "dcvar_sem_fit")) {
     cli_abort("Posterior predictive checks are not yet supported for {.cls {class(object)[1]}} models.")
+  }
+  if (inherits(object, "dcvar_hmm_fit") && isTRUE(object$switching)) {
+    cli_abort(c(
+      "{.fun plot_ppc} is not yet available for state-specific HMM fits.",
+      "i" = "The observed residuals are state-specific; use {.fun hmm_states} and {.fun hmm_state_params} for regime diagnostics."
+    ))
   }
 
   margins <- object$margins %||% "normal"

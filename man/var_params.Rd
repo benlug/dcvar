@@ -4,6 +4,7 @@
 \alias{var_params}
 \alias{var_params.default}
 \alias{var_params.dcvar_model_fit}
+\alias{var_params.dcvar_hmm_fit}
 \alias{var_params.dcvar_multilevel_fit}
 \alias{var_params.dcvar_sem_fit}
 \alias{var_params.dcvar_tv_fit}
@@ -14,6 +15,8 @@ var_params(object, ...)
 \method{var_params}{default}(object, ...)
 
 \method{var_params}{dcvar_model_fit}(object, ...)
+
+\method{var_params}{dcvar_hmm_fit}(object, ...)
 
 \method{var_params}{dcvar_multilevel_fit}(object, ...)
 
@@ -35,6 +38,13 @@ Returns posterior summaries for the VAR parameters: intercepts (mu),
 coefficients (Phi), innovation SDs (sigma_eps), and sigma_omega (DC-VAR only).
 }
 \details{
+For a Markov-switching HMM fit (\code{dcvar_hmm()} with \code{switch} beyond \code{"rho"} or
+per-state \code{margins}), the VAR parameters are state-indexed: \code{mu[k, d]}, the Phi
+baseline \code{Phi_base[i, j]} plus per-state deviations \code{Phi_dev[k, i, j]} on the
+switching coefficients, and per-state margin scales. A non-switching HMM fit
+delegates to the shared method. See \code{\link[=hmm_state_params]{hmm_state_params()}} for a per-state
+assembled view.
+
 For multilevel models, returns population-level parameters \code{phi_bar}
 (mean VAR coefficients), \code{tau_phi} (between-unit SDs), \code{sigma}
 (innovation SDs), and \code{rho} (copula correlation). These correspond to

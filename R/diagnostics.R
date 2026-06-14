@@ -223,10 +223,7 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "hmm")) {
     K <- .diagnostic_positive_int(object$K, "K", "object")
-    return(c(
-      mu_vars,
-      phi_vars,
-      margin_vars,
+    hmm_tail <- c(
       paste0("z_rho[", seq_len(K), "]"),
       paste0("pi0[", seq_len(K), "]"),
       paste0(
@@ -236,6 +233,43 @@ dcvar_diagnostics.default <- function(object, ...) {
         rep(seq_len(K), times = K),
         "]"
       )
+    )
+
+    if (isTRUE(object$switching)) {
+      # The Markov-switching engine samples state-indexed mu / Phi_base+Phi_dev /
+      # margin-union, so the monitored names follow the array layout.
+      sw <- object$switch
+      Mu_K <- if (isTRUE(sw$mu == 1L)) K else 1L
+      Mrg_K <- if (isTRUE(sw$margins == 1L)) K else 1L
+      mu_sw <- paste0(
+        "mu[",
+        rep(seq_len(Mu_K), each = D), ",", rep(seq_len(D), times = Mu_K),
+        "]"
+      )
+      phi_sw <- paste0(
+        "Phi_base[",
+        rep(seq_len(D), each = D), ",", rep(seq_len(D), times = D),
+        "]"
+      )
+      if (any(sw$phi_mask > 0L)) {
+        ij <- list(c(1L, 1L), c(1L, 2L), c(2L, 1L), c(2L, 2L))
+        active <- which(sw$phi_mask > 0L)
+        dev <- unlist(lapply(seq_len(K), function(k) {
+          vapply(active, function(a) {
+            sprintf("Phi_dev[%d,%d,%d]", k, ij[[a]][1], ij[[a]][2])
+          }, character(1))
+        }))
+        phi_sw <- c(phi_sw, dev)
+      }
+      margin_sw <- .hmm_switching_diagnostic_margin_vars(object$margins_matrix, Mrg_K)
+      return(c(mu_sw, phi_sw, margin_sw, hmm_tail))
+    }
+
+    return(c(
+      mu_vars,
+      phi_vars,
+      margin_vars,
+      hmm_tail
     ))
   }
 

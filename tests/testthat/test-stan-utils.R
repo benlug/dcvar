@@ -1,9 +1,10 @@
 test_that("dcvar_stan_path returns valid file paths", {
-  for (m in c("dcvar", "hmm", "constant", "multilevel", "sem")) {
+  for (m in c("dcvar", "dcvar_dynamic", "hmm", "constant", "multilevel", "sem")) {
     path <- dcvar_stan_path(m)
     expect_true(file.exists(path), info = paste("model:", m))
     expect_true(grepl("\\.stan$", path), info = paste("model:", m))
   }
+  expect_match(basename(dcvar_stan_path("dcvar_dynamic")), "^dcvar_dynamic\\.stan$")
 
   sem_exp <- dcvar_stan_path("sem", margins = "exponential")
   expect_true(file.exists(sem_exp))

@@ -1,3 +1,27 @@
+# dcvar 0.6.0
+
+## Internal: unified dynamic Stan engine
+
+- The time-varying DC-VAR path (`dcvar()` with `tv_phi` / `tv_sigma`) and the
+  drift covariate model (`dcvar_covariate(drift = TRUE)`) are now served by a
+  single generic Stan engine, `inst/stan/dcvar_dynamic.stan`. It extends the
+  time-varying mixed-margin model with a covariate predictor on the Fisher-z
+  correlation and the covariate model's residual-drift convention, unifying the
+  two model families behind one Fisher-z predictor
+  `z_rho[t] = z_rho_init + X[t+1]' beta + drift[t]`.
+- This is an internal consolidation with no change to the public interface:
+  `dcvar()` and `dcvar_covariate()` keep their signatures, defaults, S3 classes,
+  and model strings, and the posteriors are unchanged. The plain (non
+  time-varying) `dcvar()` and the no-drift `dcvar_covariate(drift = FALSE)`
+  model continue to use their specialised Stan files unchanged, so no refit is
+  needed. The covariate model exposes its intercept as `beta_0` exactly as
+  before (now a transformed-parameter alias of the sampled `z_rho_init`).
+- For an all-normal, constant-scale fit (the covariate model) the engine uses
+  the z-score Gaussian-copula form on the standardized residuals, reproducing
+  the legacy covariate likelihood term-by-term; an independent recomputation of
+  the log-likelihood is checked in the test suite. The copula fast path is
+  guarded so it never applies to a time-varying scale.
+
 # dcvar 0.5.0
 
 ## New feature: fully time-varying DC-VAR

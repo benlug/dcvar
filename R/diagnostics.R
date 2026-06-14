@@ -196,6 +196,11 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "dcvar_covariate") || identical(model, "dcvar_covariate_nodrift")) {
     P <- .diagnostic_positive_int(object$stan_data$P, "P", "stan_data")
+    # `beta_0` is the dependence intercept in every covariate configuration: a
+    # sampled parameter in the legacy files, and a transformed-parameter alias of
+    # the sampled `z_rho_init` when the drift model runs on the unified engine.
+    # Monitoring it is robust either way (its draws equal z_rho_init's), and it
+    # keeps working for a user-supplied legacy `stan_file`.
     vars <- c(
       mu_vars,
       phi_vars,

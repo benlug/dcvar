@@ -209,12 +209,27 @@ dcvar <- function(data, vars, time_var = "time",
   model <- .compile_model(model_type, margins = margins, stan_file = stan_file,
                           backend = backend)
 
+  # The time-varying path is served by the unified dynamic engine
+  # (dcvar_dynamic.stan), whose data block is a superset of the TV output of
+  # prepare_dcvar_data(). Augment the prepared data with the engine's covariate
+  # predictor / drift / fast-path fields just before sampling -- only when using
+  # the bundled engine, so a user-supplied stan_file keeps the legacy TV block.
+  if (is_tv && is.null(stan_file)) {
+    stan_data <- .as_dynamic_stan_data(stan_data)
+  }
+
   # Default init
   if (is.null(init)) {
     D <- stan_data$D
     n_time_obs <- stan_data$n_time
     init <- if (is_tv) {
-      function() .init_dcvar_tv_params(D, n_time_obs, margins, phi_mask, tv_sigma)
+      # The TV path runs on the unified dynamic engine, so use its init (P = 0
+      # omits beta, zero_init_eta = FALSE matches the TV omega_raw length). This
+      # is also valid for a custom legacy dcvar_tv_mixed.stan file, whose
+      # parameter block is the same minus the (omitted) covariate effects.
+      function() .init_dcvar_dynamic_params(D, n_time_obs, margins,
+                                            tv_phi = phi_mask, tv_sigma = tv_sigma,
+                                            P = 0L, zero_init_eta = FALSE)
     } else {
       function() .init_dcvar_params(D, n_time_obs, margins)
     }

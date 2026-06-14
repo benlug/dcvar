@@ -2,7 +2,8 @@
 #'
 #' Returns the file path to a Stan model file included with the package.
 #'
-#' @param model Character string: `"dcvar"`, `"dcvar_tv"`, `"dcvar_covariate"`,
+#' @param model Character string: `"dcvar"`, `"dcvar_tv"`, `"dcvar_dynamic"`
+#'   (the unified time-varying / drift covariate engine), `"dcvar_covariate"`,
 #'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
 #'   `"sem"`, or `"sem_naive"`.
 #' @param margins Character string: margin type (`"normal"`, `"exponential"`,
@@ -16,7 +17,8 @@
 #' @examples
 #' dcvar_stan_path("dcvar")
 #' dcvar_stan_path("constant", margins = "exponential")
-dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_covariate",
+dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
+                                      "dcvar_covariate",
                                       "dcvar_covariate_nodrift", "hmm",
                                       "constant", "multilevel", "sem",
                                       "sem_naive"),
@@ -32,8 +34,10 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_covariate",
     if (!identical(copula, "gaussian")) {
       cli_abort("Covariate DC-VAR Stan models currently support only the {.val gaussian} copula.")
     }
+    # The drift covariate model is served by the unified dynamic engine; the
+    # no-drift model keeps its specialised legacy file.
     file <- if (identical(model, "dcvar_covariate")) {
-      "dcvar_covariate_ncp.stan"
+      "dcvar_dynamic.stan"
     } else {
       "dcvar_covariate_nodrift.stan"
     }
@@ -125,7 +129,8 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_covariate",
 #'
 #' @return A compiled model object (backend-dependent class).
 #' @noRd
-.compile_model <- function(model_type = c("dcvar", "dcvar_tv", "dcvar_covariate",
+.compile_model <- function(model_type = c("dcvar", "dcvar_tv", "dcvar_dynamic",
+                                          "dcvar_covariate",
                                           "dcvar_covariate_nodrift", "hmm",
                                           "constant", "multilevel", "sem",
                                           "sem_naive"),

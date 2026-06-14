@@ -225,6 +225,12 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
   model <- .compile_model(model_type, margins = "normal", stan_file = stan_file,
                           backend = backend)
 
+  # The drift covariate model is served by the unified dynamic engine
+  # (dcvar_dynamic.stan); the no-drift model keeps its specialised legacy file.
+  # Only the bundled engine takes the augmented data block, so a user-supplied
+  # stan_file keeps the legacy covariate block.
+  uses_engine <- drift && is.null(stan_file)
+
   if (!drift) {
     # The no-drift model has no residual random walk, so the drift-specific
     # arguments are inert; warn when the user supplied non-default values.
@@ -242,17 +248,38 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
     stan_data$zero_init_eta <- NULL
   }
 
+  if (uses_engine) {
+    # All-normal, constant-scale config: the z-score copula fast path reproduces
+    # the legacy covariate density term-by-term. Augment to the engine block.
+    stan_data$copula_normal_fastpath <- 1L
+    stan_data <- .as_dynamic_stan_data(stan_data)
+  }
+
   if (is.null(init)) {
     D <- stan_data$D
     n_time_obs <- stan_data$n_time
     P <- stan_data$P
-    init <- function() .init_dcvar_covariate_params(
-      D = D,
-      T_obs = n_time_obs,
-      P = P,
-      drift = drift,
-      zero_init_eta = zero_init_eta
-    )
+    init <- if (uses_engine) {
+      # The engine samples z_rho_init (beta_0 is a transformed-parameter alias)
+      # and carries the full mixed-margin union, so it needs the dynamic init.
+      function() .init_dcvar_dynamic_params(
+        D = D,
+        T_obs = n_time_obs,
+        margins = "normal",
+        tv_phi = FALSE,
+        tv_sigma = FALSE,
+        P = P,
+        zero_init_eta = zero_init_eta
+      )
+    } else {
+      function() .init_dcvar_covariate_params(
+        D = D,
+        T_obs = n_time_obs,
+        P = P,
+        drift = drift,
+        zero_init_eta = zero_init_eta
+      )
+    }
   }
 
   cores <- .normalize_cores(cores, chains)

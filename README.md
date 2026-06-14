@@ -21,9 +21,11 @@ Gaussian copula, with a Clayton copula also available for the constant
 baseline. The association can be held constant, allowed to drift smoothly as a
 random walk, allowed to switch between latent regimes, or expressed as a
 function of covariates. In the dynamic model the autoregressive coefficients
-and the innovation scales may vary over time as well. Everything is estimated
-in a fully Bayesian way through [Stan](https://mc-stan.org/), which returns
-posterior distributions for all quantities.
+and the innovation scales may vary over time as well; in the HMM model, the
+regime can also govern the intercepts, autoregressive coefficients, innovation
+scales, and marginal families. Everything is estimated in a fully Bayesian way
+through [Stan](https://mc-stan.org/), which returns posterior distributions for
+all quantities.
 
 Two further families, a multilevel version for panel data and a
 structural-equation version for latent processes, are provided as experimental
@@ -93,8 +95,8 @@ dcvar_compare(dcvar = fit, hmm = fit_hmm, constant = fit_con)
 
 ## Models
 
-The models differ only in how the association between the two series behaves
-over time. The marginal model and the vector-autoregressive mean are shared.
+The core models differ in how dependence, marginal distributions, and the
+vector-autoregressive mean are allowed to change over time.
 
 | Model | Function | Association over time | Status |
 | --- | --- | --- | --- |
@@ -122,6 +124,14 @@ additionally lets the autoregressive coefficients drift as random walks, and
 `"ar"` or `"cross"` to let only the autoregressive or only the cross-lagged
 coefficients vary. With both options off, the model reduces to the
 constant-coefficient dynamic copula.
+
+In `dcvar_hmm()`, `switch = "rho"` gives the classic regime-switching copula
+model, where only the copula correlation changes by latent state. Passing
+components such as `switch = c("rho", "mu", "Phi", "sigma")` fits a fuller
+Markov-switching VAR(1). The HMM can also use state-specific marginal families
+by passing a length-`K` list to `margins`; `hmm_state_params()` extracts the
+effective state-specific intercepts, VAR matrices, scale parameters, and
+families.
 
 ## Estimation and checks
 

@@ -86,9 +86,10 @@ test_that("dcvar_stan_path exposes covariate Stan models", {
 
   expect_true(file.exists(drift_path))
   expect_true(file.exists(nodrift_path))
-  # The drift covariate model is served by the unified dynamic engine; the
-  # no-drift model keeps its specialised legacy file.
-  expect_match(basename(drift_path), "^dcvar_dynamic\\.stan$")
+  # The public path helper returns the legacy-compatible Stan files that match
+  # prepare_dcvar_covariate_data(); dcvar_covariate() routes bundled drift fits
+  # to dcvar_dynamic.stan internally.
+  expect_match(basename(drift_path), "^dcvar_covariate_ncp\\.stan$")
   expect_match(basename(nodrift_path), "^dcvar_covariate_nodrift\\.stan$")
   expect_error(dcvar_stan_path("dcvar_covariate", margins = "gamma"), "normal")
 })

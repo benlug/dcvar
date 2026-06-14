@@ -222,14 +222,15 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
   drift_label <- if (drift) "with residual drift" else "no residual drift"
   cli_inform("Fitting covariate DC-VAR model ({drift_label}; n_time = {stan_data$n_time}, D = {stan_data$D}, P = {stan_data$P})...")
 
-  model <- .compile_model(model_type, margins = "normal", stan_file = stan_file,
-                          backend = backend)
-
   # The drift covariate model is served by the unified dynamic engine
   # (dcvar_dynamic.stan); the no-drift model keeps its specialised legacy file.
-  # Only the bundled engine takes the augmented data block, so a user-supplied
-  # stan_file keeps the legacy covariate block.
-  uses_engine <- drift && is.null(stan_file)
+  # The bundled/default engine takes the augmented data block; a user-supplied
+  # legacy covariate file keeps the legacy covariate block.
+  uses_engine <- drift && .uses_dynamic_stan_file(stan_file, margins = "normal")
+  compile_stan_file <- if (uses_engine) dcvar_stan_path("dcvar_dynamic") else stan_file
+
+  model <- .compile_model(model_type, margins = "normal", stan_file = compile_stan_file,
+                          backend = backend)
 
   if (!drift) {
     # The no-drift model has no residual random walk, so the drift-specific
@@ -333,6 +334,7 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
       adapt_delta = adapt_delta,
       max_treedepth = max_treedepth,
       seed = seed
-    )
+    ),
+    dynamic_engine = uses_engine
   )
 }

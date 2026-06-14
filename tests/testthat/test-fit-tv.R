@@ -2,18 +2,25 @@
 # Routing, data preparation, and fit-object tests for the time-varying DC-VAR
 # ============================================================================
 
-test_that("dcvar_tv routes to the unified dynamic engine for all margins", {
-  # The TV path is served by the unified dcvar_dynamic.stan engine; per-dimension
-  # family codes handle homogeneous and mixed margins alike.
-  expect_identical(.margin_stan_file("dcvar_tv", "normal"), "dcvar_dynamic.stan")
-  expect_identical(.margin_stan_file("dcvar_tv", c("normal", "exponential")), "dcvar_dynamic.stan")
+test_that("dcvar_tv public paths stay compatible with prepared TV data", {
+  # dcvar() routes bundled TV fits to dcvar_dynamic.stan internally, but the
+  # public path helper returns the legacy-compatible TV file that matches
+  # prepare_dcvar_data(tv_*).
+  expect_identical(.margin_stan_file("dcvar_tv", "normal"), "dcvar_tv_mixed.stan")
+  expect_identical(.margin_stan_file("dcvar_tv", c("normal", "exponential")), "dcvar_tv_mixed.stan")
   # Homogeneous non-normal also routes to the generic file (no specialised zoo)
-  expect_identical(.margin_stan_file("dcvar_tv", c("gamma", "gamma")), "dcvar_dynamic.stan")
+  expect_identical(.margin_stan_file("dcvar_tv", c("gamma", "gamma")), "dcvar_tv_mixed.stan")
   expect_error(.margin_stan_file("dcvar_tv", "normal", copula = "clayton"), "Gaussian")
+
+  expect_identical(
+    .margin_cache_key("dcvar_tv", c("normal", "exponential")),
+    "dcvar_tv_mixed12_model"
+  )
+  expect_identical(.margin_cache_key("dcvar_tv", "normal"), "dcvar_tv_mixed11_model")
 
   path <- dcvar_stan_path("dcvar_tv")
   expect_true(file.exists(path))
-  expect_match(path, "dcvar_dynamic\\.stan$")
+  expect_match(path, "dcvar_tv_mixed\\.stan$")
 })
 
 test_that(".resolve_phi_tv_mask maps logicals and selectors to a row-major mask", {

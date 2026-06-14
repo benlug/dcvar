@@ -11,17 +11,21 @@
 
 # --- routing (fast, no fit) -------------------------------------------------
 
-test_that("the dynamic engine is reachable and the covariate paths split correctly", {
+test_that("the dynamic engine is reachable and public paths remain prepare-compatible", {
   dyn <- dcvar_stan_path("dcvar_dynamic")
   expect_true(file.exists(dyn))
   expect_match(dyn, "dcvar_dynamic\\.stan$")
 
-  # Drift covariate -> unified engine; no-drift covariate -> legacy file.
-  expect_match(dcvar_stan_path("dcvar_covariate"), "dcvar_dynamic\\.stan$")
+  # Public model-specific paths match the exported prepare_*() data contracts;
+  # wrappers route bundled TV / drift-covariate fits to dcvar_dynamic internally.
+  expect_match(dcvar_stan_path("dcvar_tv"), "dcvar_tv_mixed\\.stan$")
+  expect_match(dcvar_stan_path("dcvar_covariate"), "dcvar_covariate_ncp\\.stan$")
   expect_match(dcvar_stan_path("dcvar_covariate_nodrift"), "dcvar_covariate_nodrift\\.stan$")
 
-  # The TV path also resolves to the engine.
-  expect_match(dcvar_stan_path("dcvar_tv"), "dcvar_dynamic\\.stan$")
+  expect_true(.uses_dynamic_stan_file(NULL))
+  expect_true(.uses_dynamic_stan_file(dyn))
+  expect_false(.uses_dynamic_stan_file(dcvar_stan_path("dcvar_tv")))
+  expect_false(.uses_dynamic_stan_file(dcvar_stan_path("dcvar_covariate")))
 })
 
 test_that(".as_dynamic_stan_data fills the engine block for both entry shapes", {
@@ -81,6 +85,10 @@ test_that("covariate engine exposes beta_0 as a draw-for-draw alias of z_rho_ini
   dm <- posterior::as_draws_matrix(draws(fit))
   expect_true(all(c("beta_0", "z_rho_init") %in% posterior::variables(dm)))
   expect_equal(as.numeric(dm[, "beta_0"]), as.numeric(dm[, "z_rho_init"]))
+  expect_true(isTRUE(fit$dynamic_engine))
+  monitored <- .diagnostic_parameter_variables(fit)
+  expect_true("z_rho_init" %in% monitored)
+  expect_false("beta_0" %in% monitored)
 })
 
 test_that("covariate engine log_lik matches an independent R recomputation", {
@@ -127,11 +135,37 @@ test_that("the TV path runs on the unified engine and emits its outputs (incl. b
 
   fit <- get_dcvar_tv_fit()
   expect_s3_class(fit, "dcvar_tv_fit")
-  expect_match(dcvar_stan_path("dcvar_tv"), "dcvar_dynamic\\.stan$")
   v <- posterior::variables(draws(fit))
   # The engine exposes beta_0 (= z_rho_init) even on the P = 0 TV path.
   expect_true(all(c("z_rho_init", "beta_0", "rho[1]", "log_lik[1]") %in% v))
   expect_identical(setdiff(.diagnostic_parameter_variables(fit), v), character(0))
+})
+
+test_that("explicit dcvar_dynamic stan_file uses the engine data block", {
+  skip_if_no_rstan()
+
+  dyn <- dcvar_stan_path("dcvar_dynamic")
+
+  sim_tv <- simulate_dcvar(n_time = 24, rho_trajectory = rho_decreasing(24), seed = 21)
+  fit_tv <- dcvar(
+    sim_tv$Y_df, vars = c("y1", "y2"), tv_phi = "ar",
+    stan_file = dyn,
+    chains = 1, iter_warmup = 40, iter_sampling = 40, refresh = 0, seed = 22
+  )
+  expect_s3_class(fit_tv, "dcvar_tv_fit")
+  expect_true("beta_0" %in% posterior::variables(draws(fit_tv)))
+
+  sim_cov <- simulate_dcvar(n_time = 24, rho_trajectory = rho_step(24), seed = 23)
+  df <- sim_cov$Y_df
+  df$phase <- as.numeric(df$time > 12)
+  fit_cov <- dcvar_covariate(
+    df, vars = c("y1", "y2"), covariates = "phase",
+    stan_file = dyn,
+    chains = 1, iter_warmup = 40, iter_sampling = 40, refresh = 0, seed = 24
+  )
+  expect_s3_class(fit_cov, "dcvar_covariate_fit")
+  expect_true(isTRUE(fit_cov$dynamic_engine))
+  expect_true("z_rho_init" %in% .diagnostic_parameter_variables(fit_cov))
 })
 
 test_that("covariate engine fits with multiple covariates and zero_init_eta = FALSE", {
@@ -212,7 +246,7 @@ test_that("a custom stan_file bypasses the dynamic engine on the TV path", {
   sim <- simulate_dcvar(
     n_time = 30, rho_trajectory = rho_decreasing(30, 0.6, 0.2), seed = 5
   )
-  legacy_tv <- system.file("stan", "dcvar_tv_mixed.stan", package = "dcvar")
+  legacy_tv <- dcvar_stan_path("dcvar_tv")
   expect_true(nzchar(legacy_tv))
   fit <- dcvar(
     sim$Y_df, vars = c("y1", "y2"), tv_phi = "ar",
@@ -247,7 +281,7 @@ test_that("covariate engine reproduces the legacy covariate posterior", {
   )
 
   fit_engine <- do.call(dcvar_covariate, common)
-  legacy_path <- system.file("stan", "dcvar_covariate_ncp.stan", package = "dcvar")
+  legacy_path <- dcvar_stan_path("dcvar_covariate")
   expect_true(nzchar(legacy_path))
   fit_legacy <- do.call(dcvar_covariate, c(common, list(stan_file = legacy_path)))
 

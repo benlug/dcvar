@@ -34,10 +34,11 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
     if (!identical(copula, "gaussian")) {
       cli_abort("Covariate DC-VAR Stan models currently support only the {.val gaussian} copula.")
     }
-    # The drift covariate model is served by the unified dynamic engine; the
-    # no-drift model keeps its specialised legacy file.
+    # The public path helper returns files matching the exported prepare_*()
+    # data contracts. The fit wrapper routes drift fits to dcvar_dynamic.stan
+    # internally when stan_file is NULL.
     file <- if (identical(model, "dcvar_covariate")) {
-      "dcvar_dynamic.stan"
+      "dcvar_covariate_ncp.stan"
     } else {
       "dcvar_covariate_nodrift.stan"
     }
@@ -46,6 +47,37 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
   }
 
   system.file("stan", file, package = "dcvar", mustWork = TRUE)
+}
+
+#' Internal: compare a user-supplied Stan path against a bundled target
+#'
+#' Returns `FALSE` for `NULL`, `NA`, non-scalar, or non-existing paths so callers
+#' can safely use it before the usual compile-time file validation.
+#' @noRd
+.same_stan_file <- function(stan_file, target_file) {
+  if (is.null(stan_file) || length(stan_file) != 1L ||
+      is.na(stan_file) || !nzchar(stan_file)) {
+    return(FALSE)
+  }
+  if (is.null(target_file) || length(target_file) != 1L ||
+      is.na(target_file) || !nzchar(target_file)) {
+    return(FALSE)
+  }
+
+  tryCatch(
+    identical(
+      normalizePath(stan_file, winslash = "/", mustWork = TRUE),
+      normalizePath(target_file, winslash = "/", mustWork = TRUE)
+    ),
+    error = function(e) FALSE
+  )
+}
+
+#' Internal: should this call use the bundled dynamic engine?
+#' @noRd
+.uses_dynamic_stan_file <- function(stan_file, margins = "normal") {
+  is.null(stan_file) ||
+    .same_stan_file(stan_file, dcvar_stan_path("dcvar_dynamic", margins = margins))
 }
 
 #' Validate common MCMC sampling arguments

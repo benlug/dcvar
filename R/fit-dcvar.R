@@ -205,16 +205,24 @@ dcvar <- function(data, vars, time_var = "time",
     cli_inform("Fitting DC-VAR model{margins_label} (n_time = {stan_data$n_time}, D = {stan_data$D})...")
   }
 
+  uses_engine <- is_tv && .uses_dynamic_stan_file(stan_file, margins = margins)
+  compile_stan_file <- if (uses_engine) {
+    dcvar_stan_path("dcvar_dynamic", margins = margins)
+  } else {
+    stan_file
+  }
+
   # Compile model
-  model <- .compile_model(model_type, margins = margins, stan_file = stan_file,
+  model <- .compile_model(model_type, margins = margins, stan_file = compile_stan_file,
                           backend = backend)
 
   # The time-varying path is served by the unified dynamic engine
   # (dcvar_dynamic.stan), whose data block is a superset of the TV output of
   # prepare_dcvar_data(). Augment the prepared data with the engine's covariate
-  # predictor / drift / fast-path fields just before sampling -- only when using
-  # the bundled engine, so a user-supplied stan_file keeps the legacy TV block.
-  if (is_tv && is.null(stan_file)) {
+  # predictor / drift / fast-path fields just before sampling when the bundled
+  # engine is selected. A user-supplied legacy TV Stan file keeps the legacy
+  # TV block.
+  if (uses_engine) {
     stan_data <- .as_dynamic_stan_data(stan_data)
   }
 

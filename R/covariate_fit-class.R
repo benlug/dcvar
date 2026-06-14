@@ -7,7 +7,8 @@
 new_dcvar_covariate_fit <- function(fit, stan_data, vars, covariates,
                                     standardized, standardized_covariates,
                                     drift, zero_init_eta,
-                                    backend = "rstan", priors, meta) {
+                                    backend = "rstan", priors, meta,
+                                    dynamic_engine = FALSE) {
   .new_dcvar_model_fit(
     fit = fit, stan_data = stan_data,
     model = if (drift) "dcvar_covariate" else "dcvar_covariate_nodrift",
@@ -19,7 +20,8 @@ new_dcvar_covariate_fit <- function(fit, stan_data, vars, covariates,
     standardized_covariates = standardized_covariates,
     margins = "normal",
     drift = drift,
-    zero_init_eta = zero_init_eta
+    zero_init_eta = zero_init_eta,
+    dynamic_engine = dynamic_engine
   )
 }
 

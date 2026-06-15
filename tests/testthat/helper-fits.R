@@ -3,12 +3,20 @@
 # ============================================================================
 
 # Skip helpers
+.skip_backend_sampling_tests <- function() {
+  identical(Sys.getenv("DCVAR_SKIP_STAN_TESTS"), "true")
+}
+
 skip_if_no_rstan <- function() {
   skip_if_no_backend("rstan")
 }
 
 skip_if_no_cmdstanr_toolchain <- function() {
   skip_on_cran()
+  skip_if(
+    .skip_backend_sampling_tests(),
+    "Backend/toolchain tests disabled by DCVAR_SKIP_STAN_TESTS."
+  )
   skip_if_not_installed("cmdstanr")
   tryCatch(
     cmdstanr::cmdstan_path(),
@@ -18,6 +26,10 @@ skip_if_no_cmdstanr_toolchain <- function() {
 
 skip_if_no_backend <- function(backend = "rstan") {
   skip_on_cran()
+  skip_if(
+    .skip_backend_sampling_tests(),
+    "Backend sampling tests disabled by DCVAR_SKIP_STAN_TESTS."
+  )
   if (backend == "cmdstanr") {
     skip_if_not_installed("cmdstanr")
     skip_if(

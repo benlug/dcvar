@@ -1,0 +1,98 @@
+on:
+  workflow_dispatch:
+    inputs:
+      slow_tests:
+        description: Run tests gated by DCVAR_SLOW_TESTS
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '23 3 * * 0'
+
+name: Backend Stan tests
+
+permissions: read-all
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: ${{ matrix.config.group }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - group: rstan-core
+            test_filter: "fit-(constant|dcvar|hmm)|convergence|extract|predict|plot|pit|interpret|loo-compare|as-data-frame|reproducibility"
+            install_cmdstan: false
+          - group: rstan-extended
+            test_filter: "fit-tv|fit-sem|sem-naive|fit-multilevel|multilevel-exponential|fit-mixed|constant-clayton|dcvar-dynamic-equivalence|covariate|hmm-switching"
+            install_cmdstan: false
+          - group: cmdstanr
+            test_filter: "fit-cmdstanr|stan-utils|hmm-switching|dcvar-dynamic-equivalence"
+            install_cmdstan: true
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: true
+      DCVAR_SKIP_STAN_TESTS: "false"
+      DCVAR_SLOW_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.slow_tests == true && 'true' || 'false' }}
+      TESTTHAT_FILTER: ${{ matrix.config.test_filter }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: 'NA'
+          extra-packages: |
+            any::BH
+            any::RcppEigen
+            any::testthat
+            any::knitr
+            any::rmarkdown
+            any::tibble
+            any::sn
+            any::pkgload
+
+      - name: Install cmdstanr
+        if: ${{ matrix.config.install_cmdstan }}
+        run: |
+          install.packages(
+            "cmdstanr",
+            repos = c("https://stan-dev.r-universe.dev", getOption("repos"))
+          )
+        shell: Rscript {0}
+
+      - name: Install CmdStan
+        if: ${{ matrix.config.install_cmdstan }}
+        run: |
+          cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+          cmdstanr::install_cmdstan(cores = 2, quiet = TRUE)
+          cat(
+            paste0("CMDSTAN=", cmdstanr::cmdstan_path(), "\n"),
+            file = Sys.getenv("GITHUB_ENV"),
+            append = TRUE
+          )
+        shell: Rscript {0}
+
+      - name: Run backend test group
+        run: |
+          pkgload::load_all(".", quiet = TRUE)
+          filter <- Sys.getenv("TESTTHAT_FILTER")
+          message("Running testthat filter: ", filter)
+          testthat::test_dir(
+            "tests/testthat",
+            filter = filter,
+            reporter = testthat::SummaryReporter$new(),
+            stop_on_failure = TRUE
+          )
+        shell: Rscript {0}

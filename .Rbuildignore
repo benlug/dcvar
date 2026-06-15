@@ -3,6 +3,7 @@
 ^\.Rprofile$
 ^\.claude$
 ^\.codex$
+^\.agents$
 ^\.github$
 ^_pkgdown\.yml$
 ^docs$
@@ -11,6 +12,9 @@
 ^data-raw$
 ^RStan-CRAN-plan\.md$
 ^vignettes/dcvar-walkthrough\.qmd$
+^vignettes/\.quarto
+^vignettes/dcvar-walkthrough_cache
+^vignettes/dcvar-walkthrough_files
 ^cran-comments\.md$
 .*-test-local\.log$
 ^inst/stan/constant_mixed_clayton$

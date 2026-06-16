@@ -165,9 +165,21 @@ test_that(".margin_stan_file routes mixed margins to the generic model", {
 test_that(".margin_stan_file routes mixed margins for every supported model", {
   expect_equal(.margin_stan_file("multilevel", c("normal", "exponential")),
                "multilevel_mixed.stan")
+  expect_equal(.margin_stan_file("multilevel", "skew_normal"),
+               "multilevel_mixed.stan")
+  expect_equal(.margin_stan_file("multilevel", "gamma"),
+               "multilevel_mixed.stan")
   expect_equal(.margin_stan_file("sem", c("normal", "exponential")),
                "sem_mixed.stan")
+  expect_equal(.margin_stan_file("sem", "skew_normal"),
+               "sem_mixed.stan")
+  expect_equal(.margin_stan_file("sem", "gamma"),
+               "sem_mixed.stan")
   expect_equal(.margin_stan_file("sem_naive", c("normal", "exponential")),
+               "sem_naive_mixed.stan")
+  expect_equal(.margin_stan_file("sem_naive", "skew_normal"),
+               "sem_naive_mixed.stan")
+  expect_equal(.margin_stan_file("sem_naive", "gamma"),
                "sem_naive_mixed.stan")
   # Clayton mixed is constant-only; the Gaussian copula covers the rest.
   expect_equal(
@@ -187,6 +199,12 @@ test_that(".margin_cache_key encodes the full family vector for mixed fits", {
                "constant_mixed24_model")
   expect_equal(.margin_cache_key("constant", c("skew_normal", "normal")),
                "constant_mixed31_model")
+  expect_equal(.margin_cache_key("multilevel", "skew_normal"),
+               "multilevel_mixed33_model")
+  expect_equal(.margin_cache_key("sem", "gamma"),
+               "sem_mixed44_model")
+  expect_equal(.margin_cache_key("sem_naive", "gamma"),
+               "sem_naive_mixed44_model")
 })
 
 test_that(".mixed_margin_report_vars restricts each group to its own dims", {
@@ -209,16 +227,25 @@ test_that("routing helpers validate family names before dispatching", {
                "constant_mixed\\.stan$")
 })
 
-test_that("single-family SEM still rejects gamma/skew_normal", {
-  # All model families now accept *mixed* margins; single-family SEM keeps its
-  # normal/exponential-only restriction (no specialised gamma/skew_normal model).
+test_that("homogeneous SEM gamma/skew_normal use mixed-engine Stan data", {
   df <- data.frame(time = 1:30, y1_1 = rnorm(30), y1_2 = rnorm(30),
                    y2_1 = rnorm(30), y2_2 = rnorm(30))
   indicators <- list(latent1 = c("y1_1", "y1_2"), latent2 = c("y2_1", "y2_2"))
-  expect_error(
-    prepare_sem_data(df, indicators = indicators, J = 2,
-                     lambda = c(0.8, 0.8), sigma_e = 0.5,
-                     margins = "gamma", skew_direction = c(1, 1)),
-    "only.*normal"
+  gamma_data <- prepare_sem_data(
+    df, indicators = indicators, J = 2,
+    lambda = c(0.8, 0.8), sigma_e = 0.5,
+    margins = "gamma", skew_direction = c(1, 1)
   )
+  skew_data <- prepare_sem_data(
+    df, indicators = indicators, J = 2,
+    lambda = c(0.8, 0.8), sigma_e = 0.5,
+    margins = "skew_normal"
+  )
+
+  expect_equal(gamma_data$family, c(4L, 4L))
+  expect_equal(gamma_data$skew_direction, c(1, 1))
+  expect_equal(attr(gamma_data, "margins"), "gamma")
+  expect_equal(skew_data$family, c(3L, 3L))
+  expect_equal(skew_data$skew_direction, c(1, 1))
+  expect_equal(attr(skew_data, "margins"), "skew_normal")
 })

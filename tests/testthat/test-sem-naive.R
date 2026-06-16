@@ -1,4 +1,4 @@
-make_sem_naive_stub_fit <- function(margins = c("normal", "exponential")) {
+make_sem_naive_stub_fit <- function(margins = c("normal", "exponential", "skew_normal", "gamma")) {
   margins <- match.arg(margins)
   n_time <- 4
   variables <- c(
@@ -10,6 +10,15 @@ make_sem_naive_stub_fit <- function(margins = c("normal", "exponential")) {
   )
   if (identical(margins, "exponential")) {
     variables <- c(variables, "eta[1]", "eta[2]", "sigma_exp[1]", "sigma_exp[2]")
+  } else if (identical(margins, "skew_normal")) {
+    variables <- c(variables, "omega[1]", "omega[2]", "delta[1]", "delta[2]")
+  } else if (identical(margins, "gamma")) {
+    variables <- c(
+      variables,
+      "eta[1]", "eta[2]",
+      "sigma_gam[1]", "sigma_gam[2]",
+      "shape_gam[1]", "shape_gam[2]"
+    )
   } else {
     variables <- c(variables, "sigma[1]", "sigma[2]")
   }
@@ -24,6 +33,12 @@ make_sem_naive_stub_fit <- function(margins = c("normal", "exponential")) {
     -abs(draws[, , paste0("log_lik[", seq_len(n_time), "]")])
   if (identical(margins, "exponential")) {
     draws[, , c("sigma_exp[1]", "sigma_exp[2]")] <- runif(40 * 2, 0.5, 1.5)
+  } else if (identical(margins, "skew_normal")) {
+    draws[, , c("omega[1]", "omega[2]")] <- runif(40 * 2, 0.5, 1.5)
+    draws[, , c("delta[1]", "delta[2]")] <- runif(40 * 2, -0.5, 0.5)
+  } else if (identical(margins, "gamma")) {
+    draws[, , c("sigma_gam[1]", "sigma_gam[2]")] <- runif(40 * 2, 0.5, 1.5)
+    draws[, , c("shape_gam[1]", "shape_gam[2]")] <- runif(40 * 2, 0.5, 2.0)
   } else {
     draws[, , c("sigma[1]", "sigma[2]")] <- runif(40 * 2, 0.5, 1.5)
   }
@@ -44,7 +59,7 @@ make_sem_naive_stub_fit <- function(margins = c("normal", "exponential")) {
     method = "naive",
     J = 2
   )
-  if (identical(margins, "exponential")) {
+  if (margins %in% c("exponential", "gamma")) {
     stan_data$skew_direction <- c(1, -1)
     attr(stan_data, "skew_direction") <- c(1, -1)
   }
@@ -124,4 +139,56 @@ test_that("SEM naive exponential stub fit reports sigma_exp and supports loo", {
 
   out <- suppressWarnings(loo::loo(fit))
   expect_s3_class(out, "loo")
+})
+
+test_that("SEM naive homogeneous skew_normal and gamma stubs report mixed-engine params", {
+  skew_fit <- make_sem_naive_stub_fit("skew_normal")
+  skew_co <- coef(skew_fit)
+  skew_vp <- var_params(skew_fit)
+  expect_named(skew_co, c("mu", "Phi", "omega", "delta", "rho"))
+  expect_equal(names(skew_co$omega), c("omega[1]", "omega[2]"))
+  expect_true(all(c("omega", "delta") %in% names(skew_vp)))
+
+  gamma_fit <- make_sem_naive_stub_fit("gamma")
+  gamma_co <- coef(gamma_fit)
+  gamma_vp <- var_params(gamma_fit)
+  expect_named(gamma_co, c("mu", "Phi", "sigma_gam", "shape_gam", "rho"))
+  expect_equal(names(gamma_co$shape_gam), c("shape_gam[1]", "shape_gam[2]"))
+  expect_true(all(c("sigma_gam", "shape_gam") %in% names(gamma_vp)))
+
+  out <- suppressWarnings(loo::loo(gamma_fit))
+  expect_s3_class(out, "loo")
+})
+
+test_that("SEM naive fits homogeneous skew_normal and gamma margins", {
+  skip_if_no_rstan()
+  skip_if_not_slow()
+
+  for (margin in c("skew_normal", "gamma")) {
+    J <- 2
+    skew_direction <- if (identical(margin, "gamma")) c(1, 1) else NULL
+    sim <- simulate_dcvar_sem(
+      n_time = 80, J = J, lambda = rep(0.8, J), sigma_e = sqrt(0.2),
+      margins = margin,
+      skew_direction = skew_direction,
+      skew_params = if (identical(margin, "skew_normal")) list(alpha = c(2, 2)) else list(shape = 2),
+      rho = 0.5,
+      seed = 700 + match(margin, c("skew_normal", "gamma"))
+    )
+    fit <- dcvar_sem(
+      sim$data,
+      indicators = list(latent1 = paste0("y1_", seq_len(J)), latent2 = paste0("y2_", seq_len(J))),
+      J = J,
+      method = "naive",
+      margins = margin,
+      skew_direction = skew_direction,
+      chains = 2, iter_warmup = 250, iter_sampling = 250,
+      adapt_delta = 0.999, max_treedepth = 13, refresh = 0, seed = 123
+    )
+
+    expect_equal(fit$method, "naive")
+    expect_equal(fit$margins, margin)
+    expect_equal(fit$stan_data$family, rep(unname(.family_codes[[margin]]), 2))
+    expect_true(coef(fit)$rho > -0.2)
+  }
 })

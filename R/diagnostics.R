@@ -51,8 +51,10 @@ dcvar_diagnostics.default <- function(object, ...) {
 
   if (identical(model, "multilevel")) {
     N <- .diagnostic_positive_int(object$N, "N", "object")
-    margin_vars <- if (.is_mixed_margins(margins)) {
-      .mixed_diagnostic_margin_vars(margins)
+    margin_vars <- if (.uses_sem_multilevel_mixed_engine("multilevel", margins)) {
+      .mixed_diagnostic_margin_vars(
+        .sem_multilevel_engine_margins("multilevel", margins, 2L)
+      )
     } else if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {
@@ -76,8 +78,10 @@ dcvar_diagnostics.default <- function(object, ...) {
   if (identical(model, "sem")) {
     n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
     method <- object$method %||% "indicator"
-    margin_vars <- if (.is_mixed_margins(margins)) {
-      .mixed_diagnostic_margin_vars(margins)
+    margin_vars <- if (.uses_sem_multilevel_mixed_engine("sem", margins)) {
+      .mixed_diagnostic_margin_vars(
+        .sem_multilevel_engine_margins("sem", margins, 2L)
+      )
     } else if (identical(margins, "exponential")) {
       paste0("eta[", seq_len(2), "]")
     } else {

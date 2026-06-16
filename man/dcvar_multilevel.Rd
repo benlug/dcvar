@@ -46,12 +46,11 @@ time, and two outcome variables.}
 \code{stan_file} that includes intercept terms.}
 
 \item{margins}{Marginal distribution specification. A single string applies
-the same family to both variables; single-family multilevel fits support
-\code{"normal"} (default) and \code{"exponential"} only. A length-2 character vector
-gives a per-variable (mixed) margin (for example
-\code{c("normal", "gamma")}); mixed fits use a generic Stan model that supports
-all of \code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, and \code{"gamma"} per
-dimension, under the Gaussian copula.}
+the same family to both variables. A length-2 character vector gives a
+per-variable (mixed) margin (for example \code{c("normal", "gamma")}). Normal,
+exponential, skew-normal, and gamma margins are supported; homogeneous
+skew-normal/gamma and per-variable specs route through the generic
+mixed-margin Stan model under the Gaussian copula.}
 
 \item{skew_direction}{Integer vector of length 2 of \code{1}/\code{-1}. Required
 whenever any dimension uses an \code{"exponential"} or \code{"gamma"} margin; only
@@ -114,10 +113,6 @@ hierarchical structure with random effects benefits from deeper trees but
 does not require aggressive step-size adaptation.
 }
 \note{
-Single-family fits support only normal and exponential margins; use a
-per-variable \code{margins} vector (for example \code{c("normal", "gamma")}) to
-access skew_normal and gamma margins via the mixed-margin model.
-
 The bundled multilevel Stan program is defined for person-mean
 centered data and omits intercept terms. With the bundled model,
 \code{center = FALSE} is therefore not supported.

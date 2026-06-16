@@ -923,9 +923,10 @@ random_effects.dcvar_multilevel_fit <- function(object, ...) {
 #' @export
 var_params.dcvar_multilevel_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
-  mixed <- .is_mixed_margins(margins)
+  mixed <- .uses_sem_multilevel_mixed_engine("multilevel", margins)
+  engine_margins <- .sem_multilevel_engine_margins("multilevel", margins, 2L)
   scale_pattern <- if (mixed) {
-    paste0("^", names(.mixed_margin_report_vars(margins)), "\\[")
+    paste0("^", names(.mixed_margin_report_vars(engine_margins)), "\\[")
   } else if (identical(margins, "exponential")) {
     "^sigma_exp\\["
   } else {
@@ -952,7 +953,7 @@ var_params.dcvar_multilevel_fit <- function(object, ...) {
   }
 
   scale_param <- if (mixed) {
-    specs <- .mixed_margin_report_vars(margins)
+    specs <- .mixed_margin_report_vars(engine_margins)
     lapply(specs, function(vars) {
       rows <- match(vars, summ$variable)
       rows <- rows[!is.na(rows)]
@@ -1066,11 +1067,12 @@ latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
 #' @export
 var_params.dcvar_sem_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
-  mixed <- .is_mixed_margins(margins)
+  mixed <- .uses_sem_multilevel_mixed_engine("sem", margins)
+  engine_margins <- .sem_multilevel_engine_margins("sem", margins, 2L)
   required_patterns <- c("^mu\\[", "^Phi\\[", "^rho$")
   if (mixed) {
     required_patterns <- c(required_patterns,
-                           paste0("^", names(.mixed_margin_report_vars(margins)), "\\["))
+                           paste0("^", names(.mixed_margin_report_vars(engine_margins)), "\\["))
   } else if (identical(margins, "normal")) {
     required_patterns <- c(required_patterns, "^sigma\\[")
   } else if (identical(margins, "exponential")) {
@@ -1105,7 +1107,7 @@ var_params.dcvar_sem_fit <- function(object, ...) {
     rho = extract_param("^rho$")
   )
   scale_param <- if (mixed) {
-    specs <- .mixed_margin_report_vars(margins)
+    specs <- .mixed_margin_report_vars(engine_margins)
     lapply(specs, function(vars) {
       rows <- match(vars, summ$variable)
       rows <- rows[!is.na(rows)]

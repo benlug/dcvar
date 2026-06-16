@@ -14,12 +14,11 @@
 #'   `center = TRUE`; set `center = FALSE` only with a custom
 #'   `stan_file` that includes intercept terms.
 #' @param margins Marginal distribution specification. A single string applies
-#'   the same family to both variables; single-family multilevel fits support
-#'   `"normal"` (default) and `"exponential"` only. A length-2 character vector
-#'   gives a per-variable (mixed) margin (for example
-#'   `c("normal", "gamma")`); mixed fits use a generic Stan model that supports
-#'   all of `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per
-#'   dimension, under the Gaussian copula.
+#'   the same family to both variables. A length-2 character vector gives a
+#'   per-variable (mixed) margin (for example `c("normal", "gamma")`). Normal,
+#'   exponential, skew-normal, and gamma margins are supported; homogeneous
+#'   skew-normal/gamma and per-variable specs route through the generic
+#'   mixed-margin Stan model under the Gaussian copula.
 #' @param skew_direction Integer vector of length 2 of `1`/`-1`. Required
 #'   whenever any dimension uses an `"exponential"` or `"gamma"` margin; only
 #'   those dimensions consult it.
@@ -57,10 +56,6 @@
 #'   hierarchical structure with random effects benefits from deeper trees but
 #'   does not require aggressive step-size adaptation.
 #'
-#' @note Single-family fits support only normal and exponential margins; use a
-#'   per-variable `margins` vector (for example `c("normal", "gamma")`) to
-#'   access skew_normal and gamma margins via the mixed-margin model.
-#'
 #' @note The bundled multilevel Stan program is defined for person-mean
 #'   centered data and omits intercept terms. With the bundled model,
 #'   `center = FALSE` is therefore not supported.
@@ -92,12 +87,6 @@ dcvar_multilevel <- function(data, vars,
                              ...) {
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
-  if (!.is_mixed_margins(margins) && !all(margins %in% c("normal", "exponential"))) {
-    cli_abort(c(
-      "Single-family {.fun dcvar_multilevel} supports only {.val {c('normal', 'exponential')}} margins.",
-      "i" = "Use a per-variable {.arg margins} vector (e.g. {.code c('normal', 'gamma')}) for other families."
-    ))
-  }
 
   bundled_stan <- dcvar_stan_path("multilevel", margins = margins)
   uses_bundled_stan <- is.null(stan_file) || identical(

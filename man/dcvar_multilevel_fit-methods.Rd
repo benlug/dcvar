@@ -44,8 +44,8 @@ in single-level models, vectorised as phi11, phi12, phi21, phi22).}
 \item{\code{tau_phi}}{Between-unit SD of VAR coefficients.}
 \item{scale parameters}{\code{sigma} (innovation SDs) for normal margins,
 \code{sigma_exp} for exponential margins, or per-family scale/shape parameters
-(e.g. \code{sigma_eps}, \code{sigma_gam}, \code{shape_gam}) for per-variable (mixed)
-margins.}
+(e.g. \code{sigma_eps}, \code{sigma_gam}, \code{shape_gam}) for per-variable,
+skew-normal, and gamma mixed-engine margins.}
 \item{\code{rho}}{Copula correlation (constant across units).}
 }
 Use \code{\link[=random_effects]{random_effects()}} to obtain unit-specific VAR coefficients.

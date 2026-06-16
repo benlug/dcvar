@@ -1,3 +1,17 @@
+# dcvar 0.8.0
+
+## Margins: full SEM and multilevel family support
+
+- `dcvar_sem()` (indicator and naive score methods) and `dcvar_multilevel()` now
+  accept homogeneous `"skew_normal"` and `"gamma"` margins in addition to
+  `"normal"` and `"exponential"`. These fits route through the existing generic
+  mixed-margin Stan engines (`sem_mixed.stan`, `sem_naive_mixed.stan`, and
+  `multilevel_mixed.stan`) by passing the same family code for both dimensions.
+- Data preparation, default initial values, `coef()`, `var_params()`,
+  diagnostics, and diagnostic plots understand the mixed-engine parameter layout
+  for these homogeneous fits, including per-dimension `shape_gam[d]` outputs for
+  gamma margins.
+
 # dcvar 0.7.0
 
 ## New feature: full Markov-switching HMM

@@ -113,8 +113,8 @@ accepts per-variable margins. Pass a length-two vector such as
 marginal family. The single-level models `dcvar()`, `dcvar_hmm()`, and
 `dcvar_constant()` with a Gaussian copula support all four families (normal,
 exponential, skew-normal, and gamma), used on their own or in combination.
-`dcvar_multilevel()` and `dcvar_sem()` support normal and exponential margins
-as a single family, and all four families in combination.
+`dcvar_multilevel()` and `dcvar_sem()` support all four families as a single
+family or in combination.
 `dcvar_constant(copula = "clayton")` provides a Clayton-copula baseline with
 normal or mixed margins.
 

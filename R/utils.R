@@ -571,7 +571,7 @@
     z_phi = matrix(rnorm(N * 4, 0, 0.5), N, 4),
     rho = runif(1, -0.3, 0.3)
   )
-  if (.is_mixed_margins(margins)) {
+  if (.uses_sem_multilevel_mixed_engine("multilevel", margins)) {
     # Generic mixed multilevel model: union of per-dimension margin parameters.
     return(c(base, list(
       sigma_eps = runif(D, 0.8, 1.2),
@@ -592,9 +592,9 @@
 #' Generate default SEM initialization values
 #'
 #' @param T_obs Number of time points.
-#' @param margins Margin type: a single string (`"normal"` or `"exponential"`),
-#'   or a per-variable (mixed) margin vector, in which case the union of
-#'   per-family parameters is initialised.
+#' @param margins Margin type. Homogeneous skew-normal/gamma and per-variable
+#'   specs use the mixed engine, in which case the union of per-family parameters
+#'   is initialised.
 #' @return A named list with SEM params.
 #' @noRd
 .init_sem_params <- function(T_obs, margins = "normal") {
@@ -608,7 +608,7 @@
     zeta = matrix(rnorm(T_obs * 2, 0, 0.5), T_obs, 2)
   )
 
-  if (.is_mixed_margins(margins)) {
+  if (.uses_sem_multilevel_mixed_engine("sem", margins)) {
     init$sigma_eps <- runif(2, 0.8, 1.2)
     init$eta <- rnorm(2, 0, 0.3)
     init$omega <- runif(2, 0.5, 1.5)
@@ -626,9 +626,9 @@
 #' Generate default naive SEM initialization values
 #'
 #' @param y T x 2 matrix of row-mean factor scores.
-#' @param margins Margin type: a single string (`"normal"` or `"exponential"`),
-#'   or a per-variable (mixed) margin vector, in which case the union of
-#'   per-family parameters is initialised.
+#' @param margins Margin type. Homogeneous skew-normal/gamma and per-variable
+#'   specs use the mixed engine, in which case the union of per-family parameters
+#'   is initialised.
 #' @return A named list with observed-score VAR params.
 #' @noRd
 .init_sem_naive_params <- function(y, margins = "normal") {
@@ -656,7 +656,7 @@
     rho_raw = rnorm(1, 0, 0.5)
   )
 
-  if (.is_mixed_margins(margins)) {
+  if (.uses_sem_multilevel_mixed_engine("sem_naive", margins)) {
     init$sigma_eps <- runif(2, 0.8, 1.2)
     init$eta <- rnorm(2, 0, 0.3)
     init$omega <- runif(2, 0.5, 1.5)
@@ -679,10 +679,11 @@
 #' @return A named list of margin-specific coefficient vectors.
 #' @noRd
 .extract_margin_coefs <- function(summ, margins) {
-  if (.is_mixed_margins(margins)) {
+  if (length(margins) > 1L) {
     # Report each dimension's own family scale/shape (restricted to that
     # family's dimensions), e.g. sigma_eps[1] for a normal dim and
-    # sigma_exp[2] for an exponential dim.
+    # sigma_exp[2] for an exponential dim. This also covers homogeneous
+    # SEM/multilevel gamma/skew-normal fits routed through mixed engines.
     specs <- .mixed_margin_report_vars(margins)
     return(lapply(specs, function(vars) {
       rows <- match(vars, summ$variable)

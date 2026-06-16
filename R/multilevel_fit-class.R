@@ -125,8 +125,8 @@ print.dcvar_multilevel_summary <- function(x, ...) {
 #'   \item{`tau_phi`}{Between-unit SD of VAR coefficients.}
 #'   \item{scale parameters}{`sigma` (innovation SDs) for normal margins,
 #'     `sigma_exp` for exponential margins, or per-family scale/shape parameters
-#'     (e.g. `sigma_eps`, `sigma_gam`, `shape_gam`) for per-variable (mixed)
-#'     margins.}
+#'     (e.g. `sigma_eps`, `sigma_gam`, `shape_gam`) for per-variable,
+#'     skew-normal, and gamma mixed-engine margins.}
 #'   \item{`rho`}{Copula correlation (constant across units).}
 #' }
 #' Use [random_effects()] to obtain unit-specific VAR coefficients.
@@ -135,8 +135,11 @@ print.dcvar_multilevel_summary <- function(x, ...) {
 coef.dcvar_multilevel_fit <- function(object, ...) {
   summ <- .fit_summary(object$fit, backend = object$backend)
   margins <- object$margins %||% "normal"
-  scale_coef <- if (.is_mixed_margins(margins)) {
-    .extract_margin_coefs(summ, margins)
+  scale_coef <- if (.uses_sem_multilevel_mixed_engine("multilevel", margins)) {
+    .extract_margin_coefs(
+      summ,
+      .sem_multilevel_engine_margins("multilevel", margins, 2L)
+    )
   } else if (identical(margins, "exponential")) {
     list(sigma_exp = .extract_required_coef(summ, "^sigma_exp\\[", "sigma_exp", "coef.dcvar_multilevel_fit()"))
   } else {

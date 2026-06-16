@@ -252,16 +252,24 @@ plot_diagnostics <- function(object, ...) {
     c(mu_pars, phi_pars, margin_pars, paste0("rho_state[", seq_len(K), "]"))
   } else if (object$model == "multilevel") {
     phi_bars <- paste0("phi_bar[", 1:4, "]")
-    if (.is_mixed_margins(margins)) {
-      c(phi_bars, .mixed_plot_margin_vars(margins), "rho")
+    if (.uses_sem_multilevel_mixed_engine("multilevel", margins)) {
+      c(
+        phi_bars,
+        .mixed_plot_margin_vars(.sem_multilevel_engine_margins("multilevel", margins, 2L)),
+        "rho"
+      )
     } else if (identical(margins, "exponential")) {
       c(phi_bars, "sigma_exp[1]", "sigma_exp[2]", "rho")
     } else {
       c(phi_bars, "rho")
     }
   } else if (object$model == "sem") {
-    if (.is_mixed_margins(margins)) {
-      c("mu[1]", "mu[2]", "phi11", "phi22", .mixed_plot_margin_vars(margins), "rho")
+    if (.uses_sem_multilevel_mixed_engine("sem", margins)) {
+      c(
+        "mu[1]", "mu[2]", "phi11", "phi22",
+        .mixed_plot_margin_vars(.sem_multilevel_engine_margins("sem", margins, 2L)),
+        "rho"
+      )
     } else if (identical(margins, "exponential")) {
       c("mu[1]", "mu[2]", "phi11", "phi22", "sigma_exp[1]", "sigma_exp[2]", "rho")
     } else {

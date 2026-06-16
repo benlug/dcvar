@@ -98,7 +98,10 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   if (length(mu) != 2L) {
     cli_abort("{.arg mu} must have length 2, got {.val {length(mu)}}.")
   }
-  if (mixed || any(margins_vec %in% c("normal", "skew_normal", "gamma"))) {
+  # sigma is only consumed for normal dimensions (skew-normal/gamma scales come
+  # from skew_params; exponential uses sigma_exp), so it is required exactly when
+  # some dimension is normal -- including mixed specs with a normal dimension.
+  if (any(margins_vec == "normal")) {
     .simulate_sem_validate_numeric_vector(sigma, "sigma")
     if (length(sigma) != 2L) {
       cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")

@@ -30,6 +30,10 @@ phi_trajectory(object, ...)
 
 \item{probs}{Numeric vector of quantile probabilities
 (default: \code{c(0.025, 0.1, 0.5, 0.9, 0.975)}).}
+
+\item{unit}{For \code{dcvar_multilevel_tv_fit} objects, optional unit selector.
+Use \code{NULL} (default) for the population-level Phi path, \code{"all"} for all
+unit-specific paths, or a vector of unit IDs for selected unit paths.}
 }
 \value{
 A data frame with columns \code{time}, \code{coefficient} (one of

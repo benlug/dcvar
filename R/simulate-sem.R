@@ -30,7 +30,7 @@
 #' @param Phi 2x2 VAR coefficient matrix.
 #' @param mu Length-2 intercept vector.
 #' @param margins Latent-innovation marginal family. Either a single string
-#'   (`"normal"` default or `"exponential"`), or a length-2 character vector for
+#'   applied to both latent variables, or a length-2 character vector for
 #'   per-variable (mixed) margins, e.g. `c("normal", "gamma")`, where each entry
 #'   is one of `"normal"`, `"exponential"`, `"skew_normal"`, or `"gamma"`.
 #' @param sigma Length-2 latent innovation SD vector for normal dimensions
@@ -74,6 +74,8 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   .validate_sem_margins(margins, skew_direction)
   margins_vec <- if (length(margins) == 1L) rep(margins, 2L) else margins
   mixed <- .is_mixed_margins(margins)
+  mixed_engine <- .uses_sem_multilevel_mixed_engine("sem", margins)
+  engine_margins <- .sem_multilevel_engine_margins("sem", margins, 2L)
   skew_params <- if (is.list(skew_params)) skew_params else list()
   if (any(margins_vec == "skew_normal")) skew_params$alpha <- skew_params$alpha %||% rep(0, 2L)
   if (any(margins_vec == "gamma")) skew_params$shape <- skew_params$shape %||% 1
@@ -96,7 +98,7 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   if (length(mu) != 2L) {
     cli_abort("{.arg mu} must have length 2, got {.val {length(mu)}}.")
   }
-  if (mixed || any(margins_vec == "normal")) {
+  if (mixed || any(margins_vec %in% c("normal", "skew_normal", "gamma"))) {
     .simulate_sem_validate_numeric_vector(sigma, "sigma")
     if (length(sigma) != 2L) {
       cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")
@@ -133,8 +135,8 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   for (time_index in seq_len(n_time)) {
     z <- rnorm(2)
     w <- drop(L %*% z)
-    if (mixed) {
-      zeta[time_index, ] <- .sim_marginal_quantile(w, margins, sigma, skew_direction, skew_params)
+    if (mixed_engine) {
+      zeta[time_index, ] <- .sim_marginal_quantile(w, engine_margins, sigma, skew_direction, skew_params)
     } else if (identical(margins, "normal")) {
       zeta[time_index, ] <- w * sigma
     } else {
@@ -175,10 +177,14 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
     sigma_e = sigma_e,
     J = J
   )
-  if (mixed) {
+  if (mixed_engine) {
     true_params$sigma <- sigma
-    true_params$skew_direction <- skew_direction
-    true_params$skew_params <- skew_params
+    if (any(engine_margins %in% c("exponential", "gamma"))) {
+      true_params$skew_direction <- skew_direction
+    }
+    if (any(engine_margins %in% c("skew_normal", "gamma"))) {
+      true_params$skew_params <- skew_params
+    }
   } else if (identical(margins, "normal")) {
     true_params$sigma <- sigma
   } else {

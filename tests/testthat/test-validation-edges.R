@@ -236,21 +236,31 @@ test_that("SEM exponential margins require skew_direction", {
   )
 })
 
-test_that("SEM rejects unsupported non-normal margins", {
+test_that("SEM accepts supported non-normal margins", {
   df <- data.frame(time = 1:10, y1_1 = rnorm(10), y1_2 = rnorm(10),
                    y2_1 = rnorm(10), y2_2 = rnorm(10))
-  expect_error(
-    prepare_sem_data(
+
+  sem_gamma <- prepare_sem_data(
+    df,
+    indicators = list(a = c("y1_1", "y1_2"), b = c("y2_1", "y2_2")),
+    J = 2,
+    lambda = c(1, 1),
+    sigma_e = 1,
+    margins = "gamma",
+    skew_direction = c(1, 1)
+  )
+  expect_identical(sem_gamma$family, c(4L, 4L))
+
+  sem_skew <- prepare_sem_data(
       df,
       indicators = list(a = c("y1_1", "y1_2"), b = c("y2_1", "y2_2")),
       J = 2,
       lambda = c(1, 1),
       sigma_e = 1,
-      margins = "gamma",
+      margins = "skew_normal",
       skew_direction = c(1, 1)
-    ),
-    "normal|exponential"
   )
+  expect_identical(sem_skew$family, c(3L, 3L))
 })
 
 test_that("J must be a positive integer", {

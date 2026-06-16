@@ -93,6 +93,34 @@ test_that("prepare_multilevel_data handles exponential margins", {
   expect_equal(.margin_stan_file("multilevel", "exponential"), "multilevel_EG.stan")
 })
 
+test_that("prepare_multilevel_data handles homogeneous skew_normal and gamma via mixed engine", {
+  df <- data.frame(
+    id = rep(1:2, each = 4),
+    time = rep(1:4, times = 2),
+    y1 = rnorm(8),
+    y2 = rnorm(8)
+  )
+
+  gamma_out <- prepare_multilevel_data(
+    df,
+    vars = c("y1", "y2"),
+    margins = "gamma",
+    skew_direction = c(1, -1)
+  )
+  skew_out <- prepare_multilevel_data(
+    df,
+    vars = c("y1", "y2"),
+    margins = "skew_normal"
+  )
+
+  expect_equal(gamma_out$family, c(4L, 4L))
+  expect_equal(gamma_out$skew_direction, c(1, -1))
+  expect_equal(skew_out$family, c(3L, 3L))
+  expect_equal(skew_out$skew_direction, c(1, 1))
+  expect_equal(.margin_stan_file("multilevel", "gamma"), "multilevel_mixed.stan")
+  expect_equal(.margin_stan_file("multilevel", "skew_normal"), "multilevel_mixed.stan")
+})
+
 test_that("multilevel exponential stub fit extractors and loo work", {
   fit <- make_multilevel_exponential_stub_fit()
 

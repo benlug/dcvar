@@ -142,6 +142,11 @@ coef.dcvar_sem_fit <- function(object, ...) {
   margins <- object$margins %||% "normal"
   margin_coefs <- if (identical(margins, "normal")) {
     list(sigma = .extract_required_coef(summ, "^sigma\\[", "sigma", "coef.dcvar_sem_fit()"))
+  } else if (.uses_sem_multilevel_mixed_engine("sem", margins)) {
+    .extract_margin_coefs(
+      summ,
+      .sem_multilevel_engine_margins("sem", margins, 2L)
+    )
   } else {
     .extract_margin_coefs(summ, margins)
   }

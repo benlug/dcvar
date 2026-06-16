@@ -43,6 +43,38 @@
   length(margins) > 1L && length(unique(margins)) > 1L
 }
 
+#' Does this SEM/multilevel margin spec use the generic mixed engine?
+#'
+#' Multilevel and SEM have specialised Stan files for homogeneous normal and
+#' exponential margins. Homogeneous skew-normal and gamma are served by the
+#' generic mixed-margin engines, using the same family code on both dimensions.
+#' @noRd
+.uses_sem_multilevel_mixed_engine <- function(model_type, margins) {
+  if (!model_type %in% c("multilevel", "sem", "sem_naive")) {
+    return(FALSE)
+  }
+  if (.is_mixed_margins(margins)) {
+    return(TRUE)
+  }
+
+  length(margins) >= 1L &&
+    length(unique(margins)) == 1L &&
+    margins[[1L]] %in% c("skew_normal", "gamma")
+}
+
+#' Margin vector passed to a SEM/multilevel mixed engine
+#' @noRd
+.sem_multilevel_engine_margins <- function(model_type, margins, D = 2L) {
+  if (!.uses_sem_multilevel_mixed_engine(model_type, margins)) {
+    return(margins)
+  }
+  if (.is_mixed_margins(margins)) {
+    return(margins)
+  }
+
+  rep(margins[[1L]], D)
+}
+
 #' Sampled per-dimension margin parameters to monitor for a mixed fit
 #'
 #' Returns the indexed names of the *sampled* parameter each dimension uses for
@@ -234,27 +266,18 @@
 
 #' Validate SEM margin specification
 #'
-#' SEM currently supports the normal and exponential latent innovation
-#' parameterizations only.
+#' SEM supports all four latent innovation margin families. Homogeneous normal
+#' and exponential fits use specialised Stan files; homogeneous skew-normal,
+#' homogeneous gamma, and per-variable specs use the generic mixed engines.
 #'
-#' @param margins Character string: one of `"normal"` or `"exponential"`.
-#' @param skew_direction Length-2 integer vector of +1/-1 for exponential
-#'   margins.
+#' @param margins Character vector of margin families.
+#' @param skew_direction Length-2 integer vector of +1/-1 for exponential or
+#'   gamma margins.
 #' @return Invisible TRUE if valid.
 #' @noRd
 .validate_sem_margins <- function(margins, skew_direction = NULL) {
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
-
-  # Homogeneous SEM fits use the specialised normal/exponential models; mixed
-  # (per-variable) fits use the generic sem_mixed / sem_naive_mixed models,
-  # which support all four families per dimension.
-  if (!.is_mixed_margins(margins) && !all(margins %in% c("normal", "exponential"))) {
-    cli_abort(c(
-      "Single-family {.fun dcvar_sem} supports only {.val {c('normal', 'exponential')}} margins.",
-      "i" = "Use a per-variable {.arg margins} vector (e.g. {.code c('normal', 'gamma')}) for other families."
-    ))
-  }
 
   invisible(TRUE)
 }
@@ -327,7 +350,8 @@
     return("dcvar_tv_mixed.stan")
   }
 
-  if (.is_mixed_margins(margins)) {
+  if (.is_mixed_margins(margins) ||
+      .uses_sem_multilevel_mixed_engine(model_type, margins)) {
     if (identical(copula, "clayton")) {
       if (!identical(model_type, "constant")) {
         cli_abort(c(
@@ -376,8 +400,11 @@
     if (margins == "exponential") {
       return("multilevel_EG.stan")
     }
+    if (margins %in% c("skew_normal", "gamma")) {
+      return("multilevel_mixed.stan")
+    }
     cli_abort(
-      "Multilevel Stan models currently support only {.val {c('normal', 'exponential')}} margins, got {.val {margins}}."
+      "Unknown multilevel margin family {.val {margins}}."
     )
   }
   if (identical(model_type, "sem")) {
@@ -387,8 +414,11 @@
     if (margins == "exponential") {
       return("sem_EG.stan")
     }
+    if (margins %in% c("skew_normal", "gamma")) {
+      return("sem_mixed.stan")
+    }
     cli_abort(
-      "SEM Stan models currently support only {.val {c('normal', 'exponential')}} margins, got {.val {margins}}."
+      "Unknown SEM margin family {.val {margins}}."
     )
   }
   if (identical(model_type, "sem_naive")) {
@@ -398,8 +428,11 @@
     if (margins == "exponential") {
       return("sem_naive_EG.stan")
     }
+    if (margins %in% c("skew_normal", "gamma")) {
+      return("sem_naive_mixed.stan")
+    }
     cli_abort(
-      "Naive SEM Stan models currently support only {.val {c('normal', 'exponential')}} margins, got {.val {margins}}."
+      "Unknown naive SEM margin family {.val {margins}}."
     )
   }
   if (margins == "normal") {
@@ -446,8 +479,10 @@
     margins_vec <- rep(margins, length.out = 2L)
     return(paste0("dcvar_tv_mixed", paste(.family_codes[margins_vec], collapse = ""), "_model"))
   }
-  if (.is_mixed_margins(margins)) {
-    suffix <- paste0("_mixed", paste(.family_codes[margins], collapse = ""))
+  if (.is_mixed_margins(margins) ||
+      .uses_sem_multilevel_mixed_engine(model_type, margins)) {
+    margins_vec <- .sem_multilevel_engine_margins(model_type, margins)
+    suffix <- paste0("_mixed", paste(.family_codes[margins_vec], collapse = ""))
     if (!identical(copula, "gaussian")) {
       suffix <- paste0(suffix, "_", copula)
     }

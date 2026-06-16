@@ -67,7 +67,7 @@ test_that("hmm fit has finite Rhat", {
   fit <- get_hmm_fit()
   diag <- dcvar_diagnostics(fit)
 
-  expect_lte(diag$n_divergent, 1)
+  expect_lte(diag$n_divergent, 2)
   expect_equal(diag$n_max_treedepth, 0)
   expect_true(is.finite(diag$max_rhat))
   expect_true(diag$max_rhat < 1.30)

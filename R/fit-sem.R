@@ -19,13 +19,12 @@
 #'   measurement model; `"naive"` averages indicators within each latent block
 #'   and fits the observed score VAR.
 #' @param margins Latent-innovation marginal specification. A single string
-#'   applies the same family to both latent variables; single-family SEM fits
-#'   support `"normal"` (default) and `"exponential"` only. A length-2 character
+#'   applies the same family to both latent variables. A length-2 character
 #'   vector gives a per-variable (mixed) margin (for example
-#'   `c("normal", "gamma")`); mixed fits use a generic Stan model that supports
-#'   all of `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per
-#'   dimension, under the Gaussian copula. Applies to both the indicator and
-#'   naive methods.
+#'   `c("normal", "gamma")`). Normal, exponential, skew-normal, and gamma
+#'   margins are supported; homogeneous skew-normal/gamma and per-variable specs
+#'   route through the generic mixed-margin Stan models under the Gaussian
+#'   copula. Applies to both the indicator and naive methods.
 #' @param skew_direction Integer vector of length 2 of `1` (right-skewed) or
 #'   `-1` (left-skewed). Required whenever any dimension uses an
 #'   `"exponential"` or `"gamma"` margin; only those dimensions consult it.
@@ -71,24 +70,16 @@
 #' Gaussian copula density. Extremely high correlations near \eqn{\pm 1}
 #' are truncated.
 #'
-#' **Margins.** Single-family SEM fits support normal and exponential latent
-#' innovation margins. Exponential margins use the same shifted-exponential
-#' parameterization as the single-level models and therefore require
-#' `skew_direction`. A per-variable (mixed) `margins` vector additionally
-#' supports `"skew_normal"` and `"gamma"` per dimension, routing to a generic
-#' mixed-margins Stan model.
+#' **Margins.** SEM fits support normal, exponential, skew-normal, and gamma
+#' latent innovation margins. Exponential and gamma margins use the same shifted
+#' positive-support parameterization as the single-level models and therefore
+#' require `skew_direction`. Homogeneous skew-normal/gamma and per-variable
+#' margin specs route to the generic mixed-margins Stan model.
 #'
 #' **Post-estimation.** `fitted()` and `predict()` are available for both the
 #' latent-state scale (`type = "link"`) and the observed-indicator scale
 #' (`type = "response"`). Use [latent_states()] when you specifically need the
 #' full posterior summaries of the latent trajectories.
-#'
-#' @note Single-family SEM fits are limited to normal and exponential latent
-#'   margins. Skew-normal and gamma margins are available within `dcvar_sem`
-#'   itself via a per-variable (mixed) `margins` vector (for example
-#'   `c("normal", "gamma")`); only a homogeneous skew-normal or gamma latent
-#'   margin requires another model family such as [dcvar()],
-#'   [dcvar_constant()], or [dcvar_hmm()].
 #'
 #' @seealso [latent_states()] for extracting estimated latent states,
 #'   [simulate_dcvar_sem()] for data generation.

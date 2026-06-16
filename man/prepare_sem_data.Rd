@@ -32,11 +32,11 @@ columns per latent variable.}
 
 \item{sigma_e}{Fixed measurement error SD (scalar).}
 
-\item{margins}{Latent innovation margin specification. A single string is
-restricted to \code{"normal"} (default) or \code{"exponential"}. A length-2 character
-vector gives a per-variable (mixed) margin that may combine any of
-\code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, and \code{"gamma"} per dimension,
-routing to the generic \code{sem_mixed} / \code{sem_naive_mixed} Stan model.}
+\item{margins}{Latent innovation margin specification. A single string
+applies the same family to both latent variables. Normal and exponential
+use specialised Stan data contracts; skew-normal, gamma, and length-2
+per-variable specs use the generic \code{sem_mixed} / \code{sem_naive_mixed} Stan
+model with per-dimension family codes.}
 
 \item{skew_direction}{Integer vector of length 2 of +1/-1. Required whenever
 any dimension uses an \code{"exponential"} or \code{"gamma"} margin.}

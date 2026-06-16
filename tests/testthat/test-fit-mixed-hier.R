@@ -10,6 +10,10 @@ test_that("multilevel mixed margins route and build a family array", {
                "multilevel_copula_var.stan")
   expect_equal(.margin_stan_file("multilevel", c("exponential", "exponential")),
                "multilevel_EG.stan")
+  expect_equal(.margin_stan_file("multilevel", c("gamma", "gamma")),
+               "multilevel_mixed.stan")
+  expect_equal(.margin_stan_file("multilevel", c("skew_normal", "skew_normal")),
+               "multilevel_mixed.stan")
 
   dfm <- data.frame(id = rep(1:3, each = 12), time = rep(1:12, 3),
                     y1 = rnorm(36), y2 = rnorm(36))
@@ -20,14 +24,24 @@ test_that("multilevel mixed margins route and build a family array", {
   expect_equal(sd_ml$skew_direction, c(1, 1))
 })
 
-test_that("single-family multilevel still rejects gamma/skew_normal", {
+test_that("homogeneous multilevel gamma/skew_normal build family arrays", {
   dfm <- data.frame(id = rep(1:3, each = 12), time = rep(1:12, 3),
                     y1 = rnorm(36), y2 = rnorm(36))
-  expect_error(
-    prepare_multilevel_data(dfm, vars = c("y1", "y2"), id_var = "id",
-                            margins = "gamma", skew_direction = c(1, 1)),
-    "only.*normal"
+  gamma_data <- prepare_multilevel_data(
+    dfm, vars = c("y1", "y2"), id_var = "id",
+    margins = "gamma", skew_direction = c(1, 1)
   )
+  skew_data <- prepare_multilevel_data(
+    dfm, vars = c("y1", "y2"), id_var = "id",
+    margins = "skew_normal"
+  )
+
+  expect_equal(gamma_data$family, c(4L, 4L))
+  expect_equal(gamma_data$skew_direction, c(1, 1))
+  expect_equal(attr(gamma_data, "margins"), "gamma")
+  expect_equal(skew_data$family, c(3L, 3L))
+  expect_equal(skew_data$skew_direction, c(1, 1))
+  expect_equal(attr(skew_data, "margins"), "skew_normal")
 })
 
 # --- multilevel mixed fit ---------------------------------------------------
@@ -77,6 +91,10 @@ test_that("SEM mixed margins route and build a family array", {
   # Homogeneous normal/exponential keep the specialised models.
   expect_equal(.margin_stan_file("sem", c("normal", "normal")),
                "sem_copula_var.stan")
+  expect_equal(.margin_stan_file("sem", c("gamma", "gamma")),
+               "sem_mixed.stan")
+  expect_equal(.margin_stan_file("sem_naive", c("skew_normal", "skew_normal")),
+               "sem_naive_mixed.stan")
 
   df <- data.frame(time = 1:30, y1_1 = rnorm(30), y1_2 = rnorm(30),
                    y2_1 = rnorm(30), y2_2 = rnorm(30))

@@ -35,7 +35,7 @@ simulate_dcvar_sem(
 \item{mu}{Length-2 intercept vector.}
 
 \item{margins}{Latent-innovation marginal family. Either a single string
-(\code{"normal"} default or \code{"exponential"}), or a length-2 character vector for
+applied to both latent variables, or a length-2 character vector for
 per-variable (mixed) margins, e.g. \code{c("normal", "gamma")}, where each entry
 is one of \code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
 

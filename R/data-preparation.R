@@ -742,11 +742,10 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
 #' @param prior_tau_phi_scale Prior scale for tau_phi.
 #' @param prior_sigma_sd Prior SD for sigma.
 #' @param prior_rho_sd Prior SD for rho.
-#' @param margins Marginal distribution specification. A single string is
-#'   restricted to `"normal"` (default) or `"exponential"`. A length-2 character
-#'   vector gives a per-variable (mixed) margin that may combine any of
-#'   `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per dimension,
-#'   routing to the generic `multilevel_mixed` Stan model.
+#' @param margins Marginal distribution specification. A single string applies
+#'   the same family to both variables. Normal and exponential use specialised
+#'   Stan data contracts; skew-normal, gamma, and length-2 per-variable specs use
+#'   the generic `multilevel_mixed` Stan model with per-dimension family codes.
 #' @param skew_direction Length-2 integer vector of +1/-1. Required whenever any
 #'   dimension uses an `"exponential"` or `"gamma"` margin.
 #'
@@ -768,14 +767,6 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
   .prep_validate_scalar_logical(center, "center")
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
-  # Homogeneous multilevel fits use the specialised normal/exponential models;
-  # mixed (per-variable) fits use the generic multilevel_mixed model, which
-  # supports all four families per dimension.
-  if (!.is_mixed_margins(margins) && !all(margins %in% c("normal", "exponential"))) {
-    cli_abort(
-      "Single-family {.fun dcvar_multilevel} supports only {.val {c('normal', 'exponential')}} margins; use a per-variable {.arg margins} vector for other families."
-    )
-  }
   if (length(vars) != 2) {
     cli_abort("Exactly 2 variables required for multilevel models. Got {.val {length(vars)}}.")
   }
@@ -868,8 +859,13 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
     prior_sigma_sd = prior_sigma_sd,
     prior_rho_sd = prior_rho_sd
   )
-  if (.is_mixed_margins(margins)) {
-    stan_data <- .add_mixed_family_data(stan_data, margins, 2L, skew_direction)
+  if (.uses_sem_multilevel_mixed_engine("multilevel", margins)) {
+    stan_data <- .add_mixed_family_data(
+      stan_data,
+      .sem_multilevel_engine_margins("multilevel", margins, 2L),
+      2L,
+      skew_direction
+    )
   } else if (identical(margins, "exponential")) {
     stan_data$skew_direction <- as.numeric(skew_direction)
   }
@@ -899,11 +895,11 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
 #' @param J Number of indicators per latent variable.
 #' @param lambda Numeric vector of length J with fixed factor loadings.
 #' @param sigma_e Fixed measurement error SD (scalar).
-#' @param margins Latent innovation margin specification. A single string is
-#'   restricted to `"normal"` (default) or `"exponential"`. A length-2 character
-#'   vector gives a per-variable (mixed) margin that may combine any of
-#'   `"normal"`, `"exponential"`, `"skew_normal"`, and `"gamma"` per dimension,
-#'   routing to the generic `sem_mixed` / `sem_naive_mixed` Stan model.
+#' @param margins Latent innovation margin specification. A single string
+#'   applies the same family to both latent variables. Normal and exponential
+#'   use specialised Stan data contracts; skew-normal, gamma, and length-2
+#'   per-variable specs use the generic `sem_mixed` / `sem_naive_mixed` Stan
+#'   model with per-dimension family codes.
 #' @param skew_direction Integer vector of length 2 of +1/-1. Required whenever
 #'   any dimension uses an `"exponential"` or `"gamma"` margin.
 #' @param time_var Name of the time column (default: `"time"`).
@@ -1021,8 +1017,14 @@ prepare_sem_data <- function(data, indicators, J = NULL, lambda = NULL, sigma_e 
     )
   }
 
-  if (.is_mixed_margins(margins)) {
-    stan_data <- .add_mixed_family_data(stan_data, margins, 2L, skew_direction)
+  model_type <- if (identical(method, "naive")) "sem_naive" else "sem"
+  if (.uses_sem_multilevel_mixed_engine(model_type, margins)) {
+    stan_data <- .add_mixed_family_data(
+      stan_data,
+      .sem_multilevel_engine_margins(model_type, margins, 2L),
+      2L,
+      skew_direction
+    )
   } else if (identical(margins, "exponential")) {
     stan_data$skew_direction <- as.numeric(skew_direction)
   }

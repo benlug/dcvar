@@ -589,6 +589,38 @@
 }
 
 
+#' Generate default TV multilevel initialization values
+#' @noRd
+.init_multilevel_tv_params <- function(D, N, T_obs, margins = "normal",
+                                       tv_phi = FALSE, tv_sigma = FALSE) {
+  n_eff <- T_obs - 1L
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  n_phi_tv <- sum(phi_mask)
+
+  init <- list(
+    phi_bar = rnorm(4, 0, 0.1),
+    tau_phi = runif(4, 0.05, 0.15),
+    z_phi = matrix(rnorm(N * 4, 0, 0.5), N, 4),
+    rho = runif(1, -0.3, 0.3),
+    # Generic TV engine union of margin parameters.
+    sigma_eps = runif(D, 0.8, 1.2),
+    eta = rnorm(D, 0, 0.3),
+    omega = runif(D, 0.5, 1.5),
+    delta = runif(D, -0.3, 0.3),
+    shape_gam = runif(D, 0.5, 2.0)
+  )
+  if (n_phi_tv > 0L) {
+    init$tau_phi_tv <- runif(n_phi_tv, 0.02, 0.08)
+    init$phi_raw <- matrix(rnorm(n_eff * n_phi_tv, 0, 0.1), n_eff, n_phi_tv)
+  }
+  if (isTRUE(tv_sigma)) {
+    init$tau_sigma <- runif(D, 0.02, 0.08)
+    init$sigma_raw <- matrix(rnorm(n_eff * D, 0, 0.1), n_eff, D)
+  }
+  init
+}
+
+
 #' Generate default SEM initialization values
 #'
 #' @param T_obs Number of time points.
@@ -620,6 +652,41 @@
     init$sigma <- runif(2, 0.5, 1.5)
   }
 
+  init
+}
+
+
+#' Generate default TV SEM initialization values
+#' @noRd
+.init_sem_tv_params <- function(T_obs, margins = "normal",
+                                tv_phi = FALSE, tv_sigma = FALSE) {
+  n_eff <- T_obs - 1L
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  n_phi_tv <- sum(phi_mask)
+
+  init <- list(
+    mu = rnorm(2, 0, 0.1),
+    Phi = diag(c(runif(1, 0.1, 0.5), runif(1, 0.1, 0.5))) +
+      matrix(c(0, runif(1, -0.2, 0.2), runif(1, -0.2, 0.2), 0), 2, 2),
+    z_rho_init = rnorm(1, 0, 0.3),
+    sigma_omega = runif(1, 0.05, 0.15),
+    omega_raw = array(rnorm(n_eff, 0, 0.1), dim = n_eff),
+    zeta = matrix(rnorm(T_obs * 2, 0, 0.5), T_obs, 2),
+    # Generic TV engine union of margin parameters.
+    sigma_eps = runif(2, 0.8, 1.2),
+    eta = rnorm(2, 0, 0.3),
+    omega = runif(2, 0.5, 1.5),
+    delta = runif(2, -0.3, 0.3),
+    shape_gam = runif(2, 0.5, 2.0)
+  )
+  if (n_phi_tv > 0L) {
+    init$tau_phi <- runif(n_phi_tv, 0.02, 0.08)
+    init$phi_raw <- matrix(rnorm(n_eff * n_phi_tv, 0, 0.1), n_eff, n_phi_tv)
+  }
+  if (isTRUE(tv_sigma)) {
+    init$tau_sigma <- runif(2, 0.02, 0.08)
+    init$sigma_raw <- matrix(rnorm(n_eff * 2, 0, 0.1), n_eff, 2)
+  }
   init
 }
 

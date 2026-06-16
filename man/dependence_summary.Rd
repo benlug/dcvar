@@ -9,6 +9,8 @@
 \alias{dependence_summary.dcvar_constant_fit}
 \alias{dependence_summary.dcvar_multilevel_fit}
 \alias{dependence_summary.dcvar_sem_fit}
+\alias{dependence_summary.dcvar_sem_tv_fit}
+\alias{dependence_summary.dcvar_multilevel_tv_fit}
 \title{Extract a unified dependence summary}
 \usage{
 dependence_summary(object, ...)
@@ -26,6 +28,10 @@ dependence_summary(object, ...)
 \method{dependence_summary}{dcvar_multilevel_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 
 \method{dependence_summary}{dcvar_sem_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{dependence_summary}{dcvar_sem_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{dependence_summary}{dcvar_multilevel_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

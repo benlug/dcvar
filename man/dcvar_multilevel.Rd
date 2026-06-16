@@ -16,6 +16,11 @@ dcvar_multilevel(
   prior_tau_phi_scale = 0.2,
   prior_sigma_sd = 1,
   prior_rho_sd = 0.5,
+  tv_phi = FALSE,
+  tv_sigma = FALSE,
+  prior_tau_phi_rate = 0.025,
+  prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   chains = 4,
   iter_warmup = 2000,
   iter_sampling = 4000,
@@ -66,6 +71,22 @@ exponential/gamma margins it is the SD of the lognormal prior on the
 marginal scale.}
 
 \item{prior_rho_sd}{Prior SD for normal on rho.}
+
+\item{tv_phi}{Selects which population VAR(1) coefficients carry a shared
+time-varying drift around the unit-specific baselines. Either a logical
+scalar or a character selector as in \code{\link[=dcvar]{dcvar()}}.}
+
+\item{tv_sigma}{Logical; if \code{TRUE}, residual scales evolve as shared
+log-scale random walks across time.}
+
+\item{prior_tau_phi_rate}{Prior mean for the time-drift Phi random-walk
+innovation SDs.}
+
+\item{prior_tau_sigma_rate}{Prior mean for log-scale random-walk innovation
+SDs.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales.}
 
 \item{chains}{Number of MCMC chains.}
 

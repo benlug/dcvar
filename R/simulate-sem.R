@@ -43,6 +43,21 @@
 #'   margins: `alpha` (length-2 skew-normal shape) and/or `shape` (scalar gamma
 #'   shape).
 #' @param rho Copula correlation.
+#' @param rho_trajectory Optional numeric vector of length `n_time - 1` for a
+#'   time-varying copula correlation. Mutually exclusive with `rho`.
+#' @param phi_trajectory Optional time-varying latent VAR coefficient paths,
+#'   accepted in the same forms as [simulate_dcvar()].
+#' @param sigma_trajectory Optional time-varying latent innovation scale paths,
+#'   accepted in the same forms as [simulate_dcvar()]. The supplied value is
+#'   each family's natural scale: innovation SD (normal), residual SD
+#'   (skew-normal), `sigma_exp` (exponential), `sigma_gam` (gamma). Note that
+#'   for skew-normal dimensions this residual SD differs from the `omega`
+#'   scale reported by [sigma_trajectory()] on the fitted model by a factor of
+#'   `sqrt(1 - 2 * delta^2 / pi)` (which is 1 only when `alpha = 0`), so a
+#'   skew-normal path requires rescaling before comparing simulation truth to
+#'   the recovered `sigma_trajectory()`.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales.
 #' @param burnin Retained for backward compatibility but ignored. Default `0`
 #'   keeps the default simulation path aligned with the fitted SEM model,
 #'   which conditions on `x_0 = 0` and treats the first returned state as
@@ -67,6 +82,10 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
                                 skew_direction = NULL,
                                 skew_params = NULL,
                                 rho = 0.3,
+                                rho_trajectory = NULL,
+                                phi_trajectory = NULL,
+                                sigma_trajectory = NULL,
+                                tv_sigma_k = NULL,
                                 burnin = 0,
                                 seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
@@ -93,6 +112,9 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   .simulate_sem_validate_positive_scalar(sigma_e, "sigma_e")
   if (!is.matrix(Phi) || !all(dim(Phi) == c(2L, 2L)) || any(!is.finite(Phi))) {
     cli_abort("{.arg Phi} must be a finite 2x2 matrix.")
+  }
+  if (!is.null(phi_trajectory) && !missing(Phi)) {
+    cli_abort("Supply either {.arg Phi} (constant) or {.arg phi_trajectory} (time-varying), not both.")
   }
   .simulate_sem_validate_numeric_vector(mu, "mu")
   if (length(mu) != 2L) {
@@ -122,6 +144,18 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) || rho < -1 || rho > 1) {
     cli_abort("{.arg rho} must be a single finite numeric value in [-1, 1].")
   }
+  if (!is.null(rho_trajectory) && !missing(rho)) {
+    cli_abort("Supply either {.arg rho} (constant) or {.arg rho_trajectory} (time-varying), not both.")
+  }
+  if (!is.null(sigma_trajectory) && !missing(sigma)) {
+    cli_abort("Supply either {.arg sigma} (constant) or {.arg sigma_trajectory} (time-varying), not both.")
+  }
+  if (!is.null(sigma_trajectory) && !missing(sigma_exp)) {
+    cli_abort("Supply either {.arg sigma_exp} (constant) or {.arg sigma_trajectory} (time-varying), not both.")
+  }
+  if (!is.null(tv_sigma_k)) {
+    .simulate_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
+  }
 
   if (!identical(burnin, 0L) && !identical(burnin, 0)) {
     cli_warn(
@@ -132,33 +166,68 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
     )
   }
 
-  # Generate correlated innovations via Gaussian copula
-  L <- matrix(c(1, rho, 0, sqrt(1 - rho^2)), 2, 2)
-  zeta <- matrix(NA_real_, n_time, 2)
-  for (time_index in seq_len(n_time)) {
-    z <- rnorm(2)
-    w <- drop(L %*% z)
-    if (mixed_engine) {
-      zeta[time_index, ] <- .sim_marginal_quantile(w, engine_margins, sigma, skew_direction, skew_params)
-    } else if (identical(margins, "normal")) {
-      zeta[time_index, ] <- w * sigma
-    } else {
-      u <- stats::pnorm(w)
-      for (i in seq_len(2L)) {
-        # sem_EG.stan uses u = 1 - F(x_shifted) for left-skewed dimensions, so
-        # flip the uniform before the quantile to keep zeta comonotone with w.
-        u_i <- if (skew_direction[i] < 0) 1 - u[i] else u[i]
-        x_raw <- stats::qexp(u_i, rate = 1 / sigma_exp[i])
-        zeta[time_index, i] <- skew_direction[i] * (x_raw - sigma_exp[i])
+  rho_path <- if (is.null(rho_trajectory)) {
+    rep(rho, max(n_time - 1L, 1L))
+  } else {
+    if (length(rho_trajectory) != n_time - 1L) {
+      cli_abort("{.arg rho_trajectory} must have length {.val {n_time - 1L}}.")
+    }
+    if (any(!is.finite(rho_trajectory)) || any(abs(rho_trajectory) > 1)) {
+      cli_abort("{.arg rho_trajectory} values must be finite and in [-1, 1].")
+    }
+    rho_trajectory
+  }
+  phi_mat <- if (is.null(phi_trajectory)) {
+    .tv_resolve_trajectory(Phi, n_time, 4L, "Phi")
+  } else {
+    .tv_resolve_trajectory(phi_trajectory, n_time, 4L, "phi_trajectory")
+  }
+  scale_mat <- if (is.null(sigma_trajectory)) {
+    NULL
+  } else {
+    m <- .tv_resolve_trajectory(sigma_trajectory, n_time, 2L, "sigma_trajectory")
+    if (any(m <= 0)) {
+      cli_abort("{.arg sigma_trajectory} values must be positive.")
+    }
+    if (is.null(tv_sigma_k)) {
+      for (d in seq_len(2L)) {
+        if (margins_vec[d] %in% c("exponential", "gamma") && length(unique(m[, d])) > 1L) {
+          cli_abort(c(
+            "{.arg sigma_trajectory} is not constant on latent dimension {d} ({.val {margins_vec[d]}} margin).",
+            "i" = "Set {.arg tv_sigma_k} to simulate from the soft-barrier model, or keep the scale constant."
+          ))
+        }
       }
     }
+    m
+  }
+
+  base_scales <- rep(1, 2L)
+  if (any(margins_vec == "normal")) base_scales[margins_vec == "normal"] <- sigma[margins_vec == "normal"]
+  if (!mixed && identical(margins, "exponential")) base_scales <- sigma_exp
+
+  # Generate correlated innovations via Gaussian copula
+  zeta <- matrix(NA_real_, n_time, 2)
+  for (time_index in seq_len(n_time)) {
+    tt <- if (time_index == 1L) 1L else time_index - 1L
+    rho_t <- rho_path[tt]
+    L <- matrix(c(1, rho_t, 0, sqrt(1 - rho_t^2)), 2, 2)
+    z <- rnorm(2)
+    w <- drop(L %*% z)
+    scales_t <- if (is.null(scale_mat)) base_scales else scale_mat[tt, ]
+    sim_margins <- if (mixed_engine) engine_margins else margins_vec
+    zeta[time_index, ] <- .sim_marginal_quantile_scaled(
+      w, sim_margins, scales_t, skew_direction, skew_params,
+      barrier_k = tv_sigma_k
+    )
   }
 
   # Latent VAR(1) recursion matching the SEM Stan model, which conditions on x_0 = 0.
   state <- matrix(0, n_time, 2)
   state[1, ] <- mu + zeta[1, ]
   for (time_index in seq_len(n_time - 1L) + 1L) {
-    state[time_index, ] <- mu + as.vector(Phi %*% state[time_index - 1L, ]) + zeta[time_index, ]
+    Phi_t <- matrix(phi_mat[time_index - 1L, ], 2, 2, byrow = TRUE)
+    state[time_index, ] <- mu + as.vector(Phi_t %*% state[time_index - 1L, ]) + zeta[time_index, ]
   }
 
   # Measurement model: y_{ij,t} = lambda_j * state_{i,t} + e_{ij,t}
@@ -172,16 +241,21 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   data <- data.frame(time = seq_len(n_time), y, check.names = FALSE)
 
   true_params <- list(
-    Phi = Phi,
+    Phi = if (is.null(phi_trajectory)) {
+      Phi
+    } else {
+      colnames(phi_mat) <- c("phi11", "phi12", "phi21", "phi22")
+      phi_mat
+    },
     mu = mu,
     margins = margins,
-    rho = rho,
+    rho = if (is.null(rho_trajectory)) rho else rho_path,
     lambda = lambda,
     sigma_e = sigma_e,
     J = J
   )
   if (mixed_engine) {
-    true_params$sigma <- sigma
+    true_params$sigma <- if (is.null(scale_mat)) sigma else scale_mat
     if (any(engine_margins %in% c("exponential", "gamma"))) {
       true_params$skew_direction <- skew_direction
     }
@@ -189,9 +263,9 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
       true_params$skew_params <- skew_params
     }
   } else if (identical(margins, "normal")) {
-    true_params$sigma <- sigma
+    true_params$sigma <- if (is.null(scale_mat)) sigma else scale_mat
   } else {
-    true_params$sigma_exp <- sigma_exp
+    true_params$sigma_exp <- if (is.null(scale_mat)) sigma_exp else scale_mat
     true_params$skew_direction <- skew_direction
   }
 

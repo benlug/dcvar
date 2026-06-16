@@ -4,6 +4,8 @@
 \alias{dcvar_multilevel_fit-methods}
 \alias{print.dcvar_multilevel_fit}
 \alias{summary.dcvar_multilevel_fit}
+\alias{print.dcvar_multilevel_tv_fit}
+\alias{summary.dcvar_multilevel_tv_fit}
 \alias{coef.dcvar_multilevel_fit}
 \alias{plot.dcvar_multilevel_fit}
 \title{S3 methods for dcvar_multilevel_fit objects}
@@ -11,6 +13,10 @@
 \method{print}{dcvar_multilevel_fit}(x, ...)
 
 \method{summary}{dcvar_multilevel_fit}(object, ...)
+
+\method{print}{dcvar_multilevel_tv_fit}(x, ...)
+
+\method{summary}{dcvar_multilevel_tv_fit}(object, probs = c(0.025, 0.5, 0.975), ...)
 
 \method{coef}{dcvar_multilevel_fit}(object, ...)
 
@@ -21,12 +27,18 @@
 
 \item{...}{Additional arguments (unused).}
 
+\item{probs}{Numeric vector of quantile probabilities for trajectories.}
+
 \item{type}{Character; one of \code{"random_effects"}, \code{"diagnostics"}.}
 }
 \value{
 Invisibly returns \code{x}.
 
 A \code{dcvar_multilevel_summary} object (a list).
+
+Invisibly returns \code{x}.
+
+A \code{dcvar_multilevel_tv_summary} object (a list).
 
 A named list of posterior means.
 
@@ -55,6 +67,12 @@ Use \code{\link[=random_effects]{random_effects()}} to obtain unit-specific VAR 
 \item \code{print(dcvar_multilevel_fit)}: Print a concise overview.
 
 \item \code{summary(dcvar_multilevel_fit)}: Produce a detailed summary.
+
+\item \code{print(dcvar_multilevel_tv_fit)}: Print a concise overview of a TV
+multilevel fit.
+
+\item \code{summary(dcvar_multilevel_tv_fit)}: Produce a detailed TV multilevel
+summary.
 
 \item \code{coef(dcvar_multilevel_fit)}: Extract posterior means of
 population-level coefficients.

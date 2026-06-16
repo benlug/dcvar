@@ -17,6 +17,12 @@ prepare_sem_data(
   prior_phi_sd = 0.5,
   prior_sigma_sd = 0.5,
   prior_rho_sd = 0.75,
+  tv_phi = FALSE,
+  tv_sigma = FALSE,
+  prior_sigma_omega_rate = 0.1,
+  prior_tau_phi_rate = 0.025,
+  prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   method = c("indicator", "naive")
 )
 }
@@ -51,6 +57,21 @@ any dimension uses an \code{"exponential"} or \code{"gamma"} margin.}
 innovation scale parameter.}
 
 \item{prior_rho_sd}{Prior SD for rho_raw.}
+
+\item{tv_phi}{Selects which latent VAR(1) coefficients vary over time.
+See \code{\link[=dcvar]{dcvar()}} for accepted selectors.}
+
+\item{tv_sigma}{Logical; if \code{TRUE}, latent innovation scales evolve over time.}
+
+\item{prior_sigma_omega_rate}{Prior mean for the Fisher-z rho random-walk SD
+used by TV SEM fits.}
+
+\item{prior_tau_phi_rate}{Prior mean for Phi random-walk innovation SDs.}
+
+\item{prior_tau_sigma_rate}{Prior mean for log-scale random-walk SDs.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales.}
 
 \item{method}{Character string: \code{"indicator"} for the fixed measurement
 model or \code{"naive"} for row-mean factor scores.}

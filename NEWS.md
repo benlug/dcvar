@@ -1,3 +1,22 @@
+# dcvar 0.9.0
+
+## Time-varying SEM and multilevel extensions
+
+- `dcvar_sem(method = "indicator")` gains `tv_phi` and `tv_sigma`, using a new
+  `sem_tv_mixed.stan` engine with optional masked random walks for latent VAR
+  coefficients, log-scale scale paths, and time-varying Gaussian-copula
+  correlation. The naive score method now rejects TV SEM options explicitly.
+- `dcvar_multilevel()` gains `tv_phi` and `tv_sigma`, using a new
+  `multilevel_tv_mixed.stan` engine. To reduce the main identifiability risk,
+  time-varying Phi is implemented as a shared population drift around
+  unit-specific random baselines rather than independent per-unit random walks.
+- SEM and multilevel simulators now accept time-varying Phi, scale, and
+  correlation paths where supported. New `dcvar_sem_tv_fit` and
+  `dcvar_multilevel_tv_fit` subclasses expose `phi_trajectory()`,
+  `sigma_trajectory()`, `rho_trajectory()`, `dependence_summary()`, `coef()`,
+  and `var_params()` methods; multilevel TV fits also use the per-unit-time Phi
+  path in `fitted()` and `predict()`.
+
 # dcvar 0.8.0
 
 ## Margins: full SEM and multilevel family support

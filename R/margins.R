@@ -10,9 +10,9 @@
 #'
 #' These integer codes label each dimension's marginal family for the generic
 #' mixed Stan models (`constant_mixed`, `constant_mixed_clayton`,
-#' `dcvar_mixed_ncp`, `hmm_mixed`, `multilevel_mixed`, `sem_mixed`, and
-#' `sem_naive_mixed`). The order must match the `family[i] == k` dispatch in the
-#' Stan code.
+#' `dcvar_mixed_ncp`, `hmm_mixed`, `multilevel_mixed`, `multilevel_tv_mixed`,
+#' `sem_mixed`, `sem_tv_mixed`, and `sem_naive_mixed`). The order must match the
+#' `family[i] == k` dispatch in the Stan code.
 #' @noRd
 .family_codes <- c(normal = 1L, exponential = 2L, skew_normal = 3L, gamma = 4L)
 
@@ -348,6 +348,19 @@
       ))
     }
     return("dcvar_tv_mixed.stan")
+  }
+
+  if (model_type %in% c("sem_tv", "multilevel_tv")) {
+    if (!identical(copula, "gaussian")) {
+      cli_abort(c(
+        "Time-varying SEM and multilevel components are currently implemented only for the Gaussian copula.",
+        "i" = "Use {.code copula = \"gaussian\"} (the default) with {.arg tv_phi} / {.arg tv_sigma}."
+      ))
+    }
+    return(switch(model_type,
+      sem_tv = "sem_tv_mixed.stan",
+      multilevel_tv = "multilevel_tv_mixed.stan"
+    ))
   }
 
   if (.is_mixed_margins(margins) ||

@@ -4,6 +4,8 @@
 \alias{sigma_trajectory}
 \alias{sigma_trajectory.default}
 \alias{sigma_trajectory.dcvar_tv_fit}
+\alias{sigma_trajectory.dcvar_sem_tv_fit}
+\alias{sigma_trajectory.dcvar_multilevel_tv_fit}
 \title{Extract the time-varying residual scale trajectories}
 \usage{
 sigma_trajectory(object, ...)
@@ -11,6 +13,10 @@ sigma_trajectory(object, ...)
 \method{sigma_trajectory}{default}(object, ...)
 
 \method{sigma_trajectory}{dcvar_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{sigma_trajectory}{dcvar_sem_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{sigma_trajectory}{dcvar_multilevel_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 }
 \arguments{
 \item{object}{A fitted model object.}

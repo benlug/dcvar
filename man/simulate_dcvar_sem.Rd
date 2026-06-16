@@ -17,6 +17,10 @@ simulate_dcvar_sem(
   skew_direction = NULL,
   skew_params = NULL,
   rho = 0.3,
+  rho_trajectory = NULL,
+  phi_trajectory = NULL,
+  sigma_trajectory = NULL,
+  tv_sigma_k = NULL,
   burnin = 0,
   seed = NULL
 )
@@ -53,6 +57,25 @@ margins: \code{alpha} (length-2 skew-normal shape) and/or \code{shape} (scalar g
 shape).}
 
 \item{rho}{Copula correlation.}
+
+\item{rho_trajectory}{Optional numeric vector of length \code{n_time - 1} for a
+time-varying copula correlation. Mutually exclusive with \code{rho}.}
+
+\item{phi_trajectory}{Optional time-varying latent VAR coefficient paths,
+accepted in the same forms as \code{\link[=simulate_dcvar]{simulate_dcvar()}}.}
+
+\item{sigma_trajectory}{Optional time-varying latent innovation scale paths,
+accepted in the same forms as \code{\link[=simulate_dcvar]{simulate_dcvar()}}. The supplied value is
+each family's natural scale: innovation SD (normal), residual SD
+(skew-normal), \code{sigma_exp} (exponential), \code{sigma_gam} (gamma). Note that
+for skew-normal dimensions this residual SD differs from the \code{omega}
+scale reported by \code{\link[=sigma_trajectory]{sigma_trajectory()}} on the fitted model by a factor of
+\code{sqrt(1 - 2 * delta^2 / pi)} (which is 1 only when \code{alpha = 0}), so a
+skew-normal path requires rescaling before comparing simulation truth to
+the recovered \code{sigma_trajectory()}.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales.}
 
 \item{burnin}{Retained for backward compatibility but ignored. Default \code{0}
 keeps the default simulation path aligned with the fitted SEM model,

@@ -4,6 +4,8 @@
 \alias{phi_trajectory}
 \alias{phi_trajectory.default}
 \alias{phi_trajectory.dcvar_tv_fit}
+\alias{phi_trajectory.dcvar_sem_tv_fit}
+\alias{phi_trajectory.dcvar_multilevel_tv_fit}
 \title{Extract the time-varying VAR coefficient trajectories}
 \usage{
 phi_trajectory(object, ...)
@@ -11,6 +13,15 @@ phi_trajectory(object, ...)
 \method{phi_trajectory}{default}(object, ...)
 
 \method{phi_trajectory}{dcvar_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{phi_trajectory}{dcvar_sem_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{phi_trajectory}{dcvar_multilevel_tv_fit}(
+  object,
+  probs = c(0.025, 0.1, 0.5, 0.9, 0.975),
+  unit = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{A fitted model object.}

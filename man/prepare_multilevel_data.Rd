@@ -14,6 +14,11 @@ prepare_multilevel_data(
   prior_tau_phi_scale = 0.2,
   prior_sigma_sd = 1,
   prior_rho_sd = 0.5,
+  tv_phi = FALSE,
+  tv_sigma = FALSE,
+  prior_tau_phi_rate = 0.025,
+  prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   margins = "normal",
   skew_direction = NULL
 )
@@ -36,6 +41,18 @@ prepare_multilevel_data(
 \item{prior_sigma_sd}{Prior SD for sigma.}
 
 \item{prior_rho_sd}{Prior SD for rho.}
+
+\item{tv_phi}{Selects which population VAR(1) coefficients carry a shared
+time-varying drift. See \code{\link[=dcvar]{dcvar()}} for accepted selectors.}
+
+\item{tv_sigma}{Logical; if \code{TRUE}, residual scales evolve over time.}
+
+\item{prior_tau_phi_rate}{Prior mean for time-drift Phi random-walk SDs.}
+
+\item{prior_tau_sigma_rate}{Prior mean for log-scale random-walk SDs.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales.}
 
 \item{margins}{Marginal distribution specification. A single string applies
 the same family to both variables. Normal and exponential use specialised

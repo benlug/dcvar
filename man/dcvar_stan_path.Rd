@@ -6,8 +6,8 @@
 \usage{
 dcvar_stan_path(
   model = c("dcvar", "dcvar_tv", "dcvar_dynamic", "dcvar_covariate",
-    "dcvar_covariate_nodrift", "hmm", "hmm_switching", "constant", "multilevel", "sem",
-    "sem_naive"),
+    "dcvar_covariate_nodrift", "hmm", "hmm_switching", "constant", "multilevel",
+    "multilevel_tv", "sem", "sem_tv", "sem_naive"),
   margins = "normal",
   copula = "gaussian"
 )
@@ -16,7 +16,7 @@ dcvar_stan_path(
 \item{model}{Character string: \code{"dcvar"}, \code{"dcvar_tv"}, \code{"dcvar_dynamic"}
 (the unified time-varying / drift covariate engine), \code{"dcvar_covariate"},
 \code{"dcvar_covariate_nodrift"}, \code{"hmm"}, \code{"constant"}, \code{"multilevel"},
-\code{"sem"}, or \code{"sem_naive"}.}
+\code{"multilevel_tv"}, \code{"sem"}, \code{"sem_tv"}, or \code{"sem_naive"}.}
 
 \item{margins}{Character string: margin type (\code{"normal"}, \code{"exponential"},
 \code{"skew_normal"}, \code{"gamma"}). Default: \code{"normal"}.}

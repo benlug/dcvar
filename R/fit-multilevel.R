@@ -29,6 +29,17 @@
 #'   exponential/gamma margins it is the SD of the lognormal prior on the
 #'   marginal scale.
 #' @param prior_rho_sd Prior SD for normal on rho.
+#' @param tv_phi Selects which population VAR(1) coefficients carry a shared
+#'   time-varying drift around the unit-specific baselines. Either a logical
+#'   scalar or a character selector as in [dcvar()].
+#' @param tv_sigma Logical; if `TRUE`, residual scales evolve as shared
+#'   log-scale random walks across time.
+#' @param prior_tau_phi_rate Prior mean for the time-drift Phi random-walk
+#'   innovation SDs.
+#' @param prior_tau_sigma_rate Prior mean for log-scale random-walk innovation
+#'   SDs.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales.
 #' @param chains Number of MCMC chains.
 #' @param iter_warmup Warmup iterations per chain.
 #' @param iter_sampling Sampling iterations per chain.
@@ -73,6 +84,11 @@ dcvar_multilevel <- function(data, vars,
                              prior_tau_phi_scale = 0.2,
                              prior_sigma_sd = 1,
                              prior_rho_sd = 0.5,
+                             tv_phi = FALSE,
+                             tv_sigma = FALSE,
+                             prior_tau_phi_rate = 0.025,
+                             prior_tau_sigma_rate = 0.05,
+                             tv_sigma_k = 8,
                              chains = 4,
                              iter_warmup = 2000,
                              iter_sampling = 4000,
@@ -87,8 +103,19 @@ dcvar_multilevel <- function(data, vars,
                              ...) {
   margins <- .normalize_margins_spec(margins)
   .validate_margins(margins, skew_direction)
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  any_phi <- sum(phi_mask) > 0L
+  .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
+  is_tv <- any_phi || tv_sigma
 
-  bundled_stan <- dcvar_stan_path("multilevel", margins = margins)
+  if (!any_phi && !isTRUE(all.equal(prior_tau_phi_rate, 0.025))) {
+    cli_warn("{.arg prior_tau_phi_rate} is ignored when no VAR coefficient is time-varying.")
+  }
+  if (!tv_sigma && !isTRUE(all.equal(prior_tau_sigma_rate, 0.05))) {
+    cli_warn("{.arg prior_tau_sigma_rate} is ignored when {.code tv_sigma = FALSE}.")
+  }
+
+  bundled_stan <- dcvar_stan_path(if (is_tv) "multilevel_tv" else "multilevel", margins = margins)
   uses_bundled_stan <- is.null(stan_file) || identical(
     normalizePath(stan_file, winslash = "/", mustWork = TRUE),
     normalizePath(bundled_stan, winslash = "/", mustWork = TRUE)
@@ -117,6 +144,11 @@ dcvar_multilevel <- function(data, vars,
     prior_tau_phi_scale = prior_tau_phi_scale,
     prior_sigma_sd = prior_sigma_sd,
     prior_rho_sd = prior_rho_sd,
+    tv_phi = phi_mask,
+    tv_sigma = tv_sigma,
+    prior_tau_phi_rate = prior_tau_phi_rate,
+    prior_tau_sigma_rate = prior_tau_sigma_rate,
+    tv_sigma_k = tv_sigma_k,
     margins = margins,
     skew_direction = skew_direction
   )
@@ -125,14 +157,22 @@ dcvar_multilevel <- function(data, vars,
   n_time_obs <- stan_data$n_time
 
   margins_label <- if (all(margins == "normal")) "" else paste0(" [", paste(margins, collapse = ", "), "]")
-  cli_inform("Fitting multilevel copula VAR model{margins_label} (N = {N}, n_time = {n_time_obs})...")
+  model_label <- if (is_tv) "TV multilevel" else "multilevel"
+  cli_inform("Fitting {model_label} copula VAR model{margins_label} (N = {N}, n_time = {n_time_obs})...")
 
   # Compile model
-  model <- .compile_model("multilevel", margins = margins, stan_file = stan_file, backend = backend)
+  model <- .compile_model(if (is_tv) "multilevel_tv" else "multilevel",
+                          margins = margins, stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
-    init <- function() .init_multilevel_params(2, N, margins = margins)
+    init <- if (is_tv) {
+      function() .init_multilevel_tv_params(2, N, n_time_obs, margins = margins,
+                                            tv_phi = phi_mask,
+                                            tv_sigma = tv_sigma)
+    } else {
+      function() .init_multilevel_params(2, N, margins = margins)
+    }
   }
 
   cores <- .normalize_cores(cores, chains)
@@ -153,9 +193,29 @@ dcvar_multilevel <- function(data, vars,
     ...
   )
 
-  .report_sampling_outcome(fit, "Multilevel copula VAR", chains = chains, backend = backend)
+  .report_sampling_outcome(fit, if (is_tv) "TV multilevel copula VAR" else "Multilevel copula VAR",
+                           chains = chains, backend = backend)
 
-  new_dcvar_multilevel_fit(
+  priors <- c(
+    list(
+      phi_bar_sd = prior_phi_bar_sd,
+      tau_phi_scale = prior_tau_phi_scale,
+      sigma_sd = prior_sigma_sd,
+      rho_sd = prior_rho_sd
+    ),
+    if (any_phi) list(tau_phi_rate = prior_tau_phi_rate),
+    if (tv_sigma) list(tau_sigma_rate = prior_tau_sigma_rate)
+  )
+  meta <- list(
+    chains = chains,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    adapt_delta = adapt_delta,
+    max_treedepth = max_treedepth,
+    seed = seed
+  )
+
+  common_args <- list(
     fit = fit,
     stan_data = stan_data,
     N = N,
@@ -165,19 +225,15 @@ dcvar_multilevel <- function(data, vars,
     margins = margins,
     skew_direction = attr(stan_data, "skew_direction"),
     backend = backend,
-    priors = list(
-      phi_bar_sd = prior_phi_bar_sd,
-      tau_phi_scale = prior_tau_phi_scale,
-      sigma_sd = prior_sigma_sd,
-      rho_sd = prior_rho_sd
-    ),
-    meta = list(
-      chains = chains,
-      iter_warmup = iter_warmup,
-      iter_sampling = iter_sampling,
-      adapt_delta = adapt_delta,
-      max_treedepth = max_treedepth,
-      seed = seed
-    )
+    priors = priors,
+    meta = meta
   )
+  if (is_tv) {
+    return(do.call(new_dcvar_multilevel_tv_fit, c(common_args, list(
+      tv_phi = any_phi,
+      phi_tv_mask = phi_mask,
+      tv_sigma = tv_sigma
+    ))))
+  }
+  do.call(new_dcvar_multilevel_fit, common_args)
 }

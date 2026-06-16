@@ -18,6 +18,12 @@ dcvar_sem(
   prior_phi_sd = 0.5,
   prior_sigma_sd = 0.5,
   prior_rho_sd = 0.75,
+  tv_phi = FALSE,
+  tv_sigma = FALSE,
+  prior_sigma_omega_rate = 0.1,
+  prior_tau_phi_rate = 0.025,
+  prior_tau_sigma_rate = 0.05,
+  tv_sigma_k = 8,
   chains = 4,
   iter_warmup = 2000,
   iter_sampling = 4000,
@@ -76,7 +82,27 @@ innovation scale parameter. For normal margins this is applied to
 \code{sigma}; for exponential margins it is applied to \code{sigma_exp}.}
 
 \item{prior_rho_sd}{Prior SD for rho_raw:
-\code{rho_raw ~ normal(0, prior_rho_sd)}, with \code{rho = 0.97 * tanh(rho_raw)}.}
+\code{rho_raw ~ normal(0, prior_rho_sd)}, with \code{rho = 0.97 * tanh(rho_raw)}.
+For TV SEM fits this is the prior SD for the initial Fisher-z rho.}
+
+\item{tv_phi}{Selects which latent VAR(1) coefficients evolve as random walks
+around their baseline. Either a logical scalar or a character selector as in
+\code{\link[=dcvar]{dcvar()}}. Time-varying SEM currently requires \code{method = "indicator"}.}
+
+\item{tv_sigma}{Logical; if \code{TRUE}, latent innovation scales evolve as
+log-scale random walks. Time-varying SEM currently requires
+\code{method = "indicator"}.}
+
+\item{prior_sigma_omega_rate}{Prior mean for the TV SEM Fisher-z rho
+random-walk SD.}
+
+\item{prior_tau_phi_rate}{Prior mean for Phi random-walk innovation SDs.}
+
+\item{prior_tau_sigma_rate}{Prior mean for log-scale random-walk innovation
+SDs.}
+
+\item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
+scales.}
 
 \item{chains}{Number of MCMC chains.}
 

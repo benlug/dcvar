@@ -49,6 +49,50 @@ dcvar_diagnostics.default <- function(object, ...) {
   margins <- object$margins %||% "normal"
   model <- object$model
 
+  if (identical(model, "multilevel_tv")) {
+    N <- .diagnostic_positive_int(object$N, "N", "object")
+    n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
+    n_eff <- n_time_obs - 1L
+    margin_vars <- .mixed_diagnostic_margin_vars(rep(margins, length.out = 2L))
+    vars <- c(
+      paste0("phi_bar[", seq_len(4), "]"),
+      paste0("tau_phi[", seq_len(4), "]"),
+      paste0(
+        "z_phi[",
+        rep(seq_len(N), each = 4),
+        ",",
+        rep(seq_len(4), times = N),
+        "]"
+      ),
+      margin_vars,
+      "rho"
+    )
+    if (isTRUE(object$tv_phi)) {
+      n_phi_tv <- sum(object$phi_tv_mask %||% .resolve_phi_tv_mask(TRUE))
+      vars <- c(
+        vars,
+        paste0("tau_phi_tv[", seq_len(n_phi_tv), "]"),
+        paste0(
+          "phi_raw[",
+          rep(seq_len(n_eff), each = n_phi_tv), ",", rep(seq_len(n_phi_tv), times = n_eff),
+          "]"
+        )
+      )
+    }
+    if (isTRUE(object$tv_sigma)) {
+      vars <- c(
+        vars,
+        paste0("tau_sigma[", seq_len(2), "]"),
+        paste0(
+          "sigma_raw[",
+          rep(seq_len(n_eff), each = 2), ",", rep(seq_len(2), times = n_eff),
+          "]"
+        )
+      )
+    }
+    return(vars)
+  }
+
   if (identical(model, "multilevel")) {
     N <- .diagnostic_positive_int(object$N, "N", "object")
     margin_vars <- if (.uses_sem_multilevel_mixed_engine("multilevel", margins)) {
@@ -73,6 +117,51 @@ dcvar_diagnostics.default <- function(object, ...) {
       margin_vars,
       "rho"
     ))
+  }
+
+  if (identical(model, "sem_tv")) {
+    n_time_obs <- .diagnostic_positive_int(object$stan_data$n_time, "n_time", "stan_data")
+    n_eff <- n_time_obs - 1L
+    margin_vars <- .mixed_diagnostic_margin_vars(rep(margins, length.out = 2L))
+    vars <- c(
+      "mu[1]", "mu[2]",
+      "Phi[1,1]", "Phi[1,2]", "Phi[2,1]", "Phi[2,2]",
+      margin_vars,
+      "z_rho_init",
+      "sigma_omega",
+      paste0("omega_raw[", seq_len(n_eff), "]"),
+      paste0(
+        "zeta[",
+        rep(seq_len(n_time_obs), each = 2),
+        ",",
+        rep(seq_len(2), times = n_time_obs),
+        "]"
+      )
+    )
+    if (isTRUE(object$tv_phi)) {
+      n_phi_tv <- sum(object$phi_tv_mask %||% .resolve_phi_tv_mask(TRUE))
+      vars <- c(
+        vars,
+        paste0("tau_phi[", seq_len(n_phi_tv), "]"),
+        paste0(
+          "phi_raw[",
+          rep(seq_len(n_eff), each = n_phi_tv), ",", rep(seq_len(n_phi_tv), times = n_eff),
+          "]"
+        )
+      )
+    }
+    if (isTRUE(object$tv_sigma)) {
+      vars <- c(
+        vars,
+        paste0("tau_sigma[", seq_len(2), "]"),
+        paste0(
+          "sigma_raw[",
+          rep(seq_len(n_eff), each = 2), ",", rep(seq_len(2), times = n_eff),
+          "]"
+        )
+      )
+    }
+    return(vars)
   }
 
   if (identical(model, "sem")) {

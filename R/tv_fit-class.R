@@ -60,6 +60,21 @@ NULL
   )
 }
 
+#' Internal: compact start/end/range summaries for trajectory data frames
+#' @noRd
+.tv_trajectory_summary_block <- function(df, group_col) {
+  do.call(rbind, lapply(split(df, df[[group_col]]), function(g) {
+    data.frame(
+      group = g[[group_col]][1],
+      start = g$mean[1],
+      end = g$mean[nrow(g)],
+      delta = g$mean[nrow(g)] - g$mean[1],
+      min = min(g$mean),
+      max = max(g$mean)
+    )
+  }))
+}
+
 #' @describeIn dcvar_tv_fit-methods Print a concise overview of the TV DC-VAR
 #'   fit.
 #' @return Invisibly returns `x`.
@@ -94,26 +109,13 @@ summary.dcvar_tv_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
   vp <- var_params(object)
   diag <- dcvar_diagnostics(object)
 
-  trajectory_block <- function(df, group_col) {
-    do.call(rbind, lapply(split(df, df[[group_col]]), function(g) {
-      data.frame(
-        group = g[[group_col]][1],
-        start = g$mean[1],
-        end = g$mean[nrow(g)],
-        delta = g$mean[nrow(g)] - g$mean[1],
-        min = min(g$mean),
-        max = max(g$mean)
-      )
-    }))
-  }
-
   phi_summary <- if (isTRUE(object$tv_phi)) {
-    trajectory_block(phi_trajectory(object, probs = probs), "coefficient")
+    .tv_trajectory_summary_block(phi_trajectory(object, probs = probs), "coefficient")
   } else {
     NULL
   }
   sigma_summary <- if (isTRUE(object$tv_sigma)) {
-    trajectory_block(sigma_trajectory(object, probs = probs), "variable")
+    .tv_trajectory_summary_block(sigma_trajectory(object, probs = probs), "variable")
   } else {
     NULL
   }

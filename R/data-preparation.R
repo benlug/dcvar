@@ -742,6 +742,13 @@ prepare_hmm_data <- function(data, vars, K = 2, time_var = "time",
 #' @param prior_tau_phi_scale Prior scale for tau_phi.
 #' @param prior_sigma_sd Prior SD for sigma.
 #' @param prior_rho_sd Prior SD for rho.
+#' @param tv_phi Selects which population VAR(1) coefficients carry a shared
+#'   time-varying drift. See [dcvar()] for accepted selectors.
+#' @param tv_sigma Logical; if `TRUE`, residual scales evolve over time.
+#' @param prior_tau_phi_rate Prior mean for time-drift Phi random-walk SDs.
+#' @param prior_tau_sigma_rate Prior mean for log-scale random-walk SDs.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales.
 #' @param margins Marginal distribution specification. A single string applies
 #'   the same family to both variables. Normal and exponential use specialised
 #'   Stan data contracts; skew-normal, gamma, and length-2 per-variable specs use
@@ -757,6 +764,11 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
                                     prior_tau_phi_scale = 0.2,
                                     prior_sigma_sd = 1,
                                     prior_rho_sd = 0.5,
+                                    tv_phi = FALSE,
+                                    tv_sigma = FALSE,
+                                    prior_tau_phi_rate = 0.025,
+                                    prior_tau_sigma_rate = 0.05,
+                                    tv_sigma_k = 8,
                                     margins = "normal",
                                     skew_direction = NULL) {
   if (!is.data.frame(data)) cli_abort("{.arg data} must be a data frame.")
@@ -775,6 +787,12 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
   .prep_validate_positive_scalar(prior_tau_phi_scale, "prior_tau_phi_scale")
   .prep_validate_positive_scalar(prior_sigma_sd, "prior_sigma_sd")
   .prep_validate_positive_scalar(prior_rho_sd, "prior_rho_sd")
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  any_phi <- sum(phi_mask) > 0L
+  .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
+  .prep_validate_positive_scalar(prior_tau_phi_rate, "prior_tau_phi_rate")
+  .prep_validate_positive_scalar(prior_tau_sigma_rate, "prior_tau_sigma_rate")
+  .prep_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
   missing_cols <- setdiff(c(vars, id_var, time_var), names(data))
   if (length(missing_cols) > 0) {
     cli_abort("Column{?s} not found: {.val {missing_cols}}")
@@ -870,6 +888,21 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
     stan_data$skew_direction <- as.numeric(skew_direction)
   }
 
+  if (any_phi || tv_sigma) {
+    margins_vec <- rep(margins, length.out = 2L)
+    stan_data$family <- unname(as.integer(.family_codes[margins_vec]))
+    stan_data$skew_direction <- stan_data$skew_direction %||% rep(1, 2L)
+    stan_data$tv_phi <- as.integer(any_phi)
+    stan_data$phi_tv_mask <- unname(phi_mask)
+    stan_data$tv_sigma <- as.integer(tv_sigma)
+    stan_data$tau_phi_prior <- prior_tau_phi_rate
+    stan_data$tau_sigma_prior <- prior_tau_sigma_rate
+    stan_data$barrier_k <- tv_sigma_k
+    attr(stan_data, "tv_phi") <- any_phi
+    attr(stan_data, "phi_tv_mask") <- phi_mask
+    attr(stan_data, "tv_sigma") <- tv_sigma
+  }
+
   attr(stan_data, "vars") <- vars
   attr(stan_data, "person_means") <- person_means
   attr(stan_data, "ids") <- ids
@@ -908,6 +941,15 @@ prepare_multilevel_data <- function(data, vars, id_var = "id",
 #' @param prior_sigma_sd Prior SD for the lognormal prior on the latent
 #'   innovation scale parameter.
 #' @param prior_rho_sd Prior SD for rho_raw.
+#' @param tv_phi Selects which latent VAR(1) coefficients vary over time.
+#'   See [dcvar()] for accepted selectors.
+#' @param tv_sigma Logical; if `TRUE`, latent innovation scales evolve over time.
+#' @param prior_sigma_omega_rate Prior mean for the Fisher-z rho random-walk SD
+#'   used by TV SEM fits.
+#' @param prior_tau_phi_rate Prior mean for Phi random-walk innovation SDs.
+#' @param prior_tau_sigma_rate Prior mean for log-scale random-walk SDs.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales.
 #' @param method Character string: `"indicator"` for the fixed measurement
 #'   model or `"naive"` for row-mean factor scores.
 #'
@@ -921,6 +963,12 @@ prepare_sem_data <- function(data, indicators, J = NULL, lambda = NULL, sigma_e 
                              prior_phi_sd = 0.5,
                              prior_sigma_sd = 0.5,
                              prior_rho_sd = 0.75,
+                             tv_phi = FALSE,
+                             tv_sigma = FALSE,
+                             prior_sigma_omega_rate = 0.1,
+                             prior_tau_phi_rate = 0.025,
+                             prior_tau_sigma_rate = 0.05,
+                             tv_sigma_k = 8,
                              method = c("indicator", "naive")) {
   method <- match.arg(method)
   if (!is.data.frame(data)) {
@@ -951,6 +999,19 @@ prepare_sem_data <- function(data, indicators, J = NULL, lambda = NULL, sigma_e 
   .prep_validate_positive_scalar(prior_phi_sd, "prior_phi_sd")
   .prep_validate_positive_scalar(prior_sigma_sd, "prior_sigma_sd")
   .prep_validate_positive_scalar(prior_rho_sd, "prior_rho_sd")
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  any_phi <- sum(phi_mask) > 0L
+  .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
+  .prep_validate_positive_scalar(prior_sigma_omega_rate, "prior_sigma_omega_rate")
+  .prep_validate_positive_scalar(prior_tau_phi_rate, "prior_tau_phi_rate")
+  .prep_validate_positive_scalar(prior_tau_sigma_rate, "prior_tau_sigma_rate")
+  .prep_validate_positive_scalar(tv_sigma_k, "tv_sigma_k")
+  if (identical(method, "naive") && (any_phi || tv_sigma)) {
+    cli_abort(c(
+      "Time-varying SEM parameters are not implemented for {.code method = \"naive\"}.",
+      "i" = "Use {.code method = \"indicator\"} with fixed measurement parameters, or fit a single-level {.fun dcvar} model to score data."
+    ))
+  }
 
   all_ind <- c(indicators[[1]], indicators[[2]])
   if (anyDuplicated(all_ind)) {
@@ -1027,6 +1088,22 @@ prepare_sem_data <- function(data, indicators, J = NULL, lambda = NULL, sigma_e 
     )
   } else if (identical(margins, "exponential")) {
     stan_data$skew_direction <- as.numeric(skew_direction)
+  }
+
+  if (any_phi || tv_sigma) {
+    margins_vec <- rep(margins, length.out = 2L)
+    stan_data$family <- unname(as.integer(.family_codes[margins_vec]))
+    stan_data$skew_direction <- stan_data$skew_direction %||% rep(1, 2L)
+    stan_data$tv_phi <- as.integer(any_phi)
+    stan_data$phi_tv_mask <- unname(phi_mask)
+    stan_data$tv_sigma <- as.integer(tv_sigma)
+    stan_data$sigma_omega_prior <- prior_sigma_omega_rate
+    stan_data$tau_phi_prior <- prior_tau_phi_rate
+    stan_data$tau_sigma_prior <- prior_tau_sigma_rate
+    stan_data$barrier_k <- tv_sigma_k
+    attr(stan_data, "tv_phi") <- any_phi
+    attr(stan_data, "phi_tv_mask") <- phi_mask
+    attr(stan_data, "tv_sigma") <- tv_sigma
   }
 
   # Use list names as latent variable names, or default

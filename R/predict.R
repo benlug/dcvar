@@ -257,6 +257,62 @@ fitted.dcvar_multilevel_fit <- function(object, type = c("link", "response"), ..
 }
 
 
+#' @rdname fitted.dcvar_model_fit
+#' @export
+fitted.dcvar_multilevel_tv_fit <- function(object, type = c("link", "response"), ...) {
+  type <- match.arg(type)
+  if (!isTRUE(object$tv_phi)) {
+    return(NextMethod())
+  }
+
+  y_list <- object$stan_data$y
+  unit_ids <- attr(object$stan_data, "ids") %||% seq_len(object$N)
+  unit_ids <- as.character(unit_ids)
+  n_time_eff <- object$stan_data$n_time - 1L
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+
+  phi_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "phi_unit_t", backend = object$backend,
+    required = .stan_output_group_pattern("phi_unit_t"),
+    required_type = "pattern",
+    context = "fitted.dcvar_multilevel_tv_fit()",
+    output_type = "generated quantity"
+  ))
+
+  person_means <- object$person_means %||% attr(object$stan_data, "person_means")
+  response_shift <- identical(type, "response") &&
+    isTRUE(object$centered) &&
+    !is.null(person_means) &&
+    all(is.finite(person_means))
+
+  out <- vector("list", object$N)
+  for (i in seq_len(object$N)) {
+    y_i <- y_list[[i]]
+    fitted_mat <- matrix(NA_real_, nrow = n_time_eff, ncol = 2)
+    for (t in seq_len(n_time_eff)) {
+      phi <- vapply(1:4, function(k) {
+        mean(phi_draws[, paste0("phi_unit_t[", i, ",", t, ",", k, "]")])
+      }, numeric(1))
+      Phi_T <- matrix(c(phi[1], phi[3], phi[2], phi[4]), nrow = 2, byrow = TRUE)
+      fitted_mat[t, ] <- as.numeric(y_i[t, , drop = FALSE] %*% Phi_T)
+    }
+    if (response_shift) {
+      fitted_mat <- sweep(fitted_mat, 2, person_means[i, ], "+")
+    }
+    df <- data.frame(
+      unit = rep(unit_ids[i], n_time_eff),
+      time = time_values,
+      fitted_mat,
+      check.names = FALSE
+    )
+    names(df)[3:4] <- object$vars
+    out[[i]] <- df
+  }
+
+  do.call(rbind, out)
+}
+
+
 #' Internal: build SEM latent state summaries as a list
 #' @noRd
 .sem_state_summaries <- function(object) {
@@ -537,6 +593,65 @@ predict.dcvar_multilevel_fit <- function(object, type = c("link", "response"),
       mean = mean,
       lower = mean - z_crit * sigma[d],
       upper = mean + z_crit * sigma[d],
+      check.names = FALSE
+    )
+  }
+
+  do.call(rbind, rows)
+}
+
+#' @rdname predict.dcvar_model_fit
+#' @export
+predict.dcvar_multilevel_tv_fit <- function(object, type = c("link", "response"),
+                                            ci_level = 0.95, ...) {
+  type <- match.arg(type)
+  .validate_interval_level(ci_level, arg_name = "ci_level")
+  margins <- object$margins %||% "normal"
+  if (!all(margins == "normal")) {
+    cli_abort("Prediction intervals are currently only supported for normal TV multilevel margins, not {.val {margins}}.")
+  }
+
+  fit_df <- stats::fitted(object, type = type)
+  D <- length(object$vars)
+  n_time_eff <- object$stan_data$n_time - 1L
+  sigma_mat <- if (isTRUE(object$tv_sigma)) {
+    sigma_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "sigma_t", backend = object$backend,
+      required = .stan_output_group_pattern("sigma_t"),
+      required_type = "pattern",
+      context = "predict.dcvar_multilevel_tv_fit()",
+      output_type = "generated quantity"
+    ))
+    out <- matrix(NA_real_, n_time_eff, D)
+    for (d in seq_len(D)) {
+      cols <- paste0("sigma_t[", seq_len(n_time_eff), ",", d, "]")
+      out[, d] <- colMeans(sigma_draws[, cols, drop = FALSE])
+    }
+    out
+  } else {
+    sigma_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "sigma_eps", backend = object$backend,
+      required = .stan_output_group_pattern("sigma_eps"),
+      required_type = "pattern",
+      context = "predict.dcvar_multilevel_tv_fit()",
+      output_type = "parameter group"
+    ))
+    sigma_eps <- colMeans(sigma_draws[, paste0("sigma_eps[", seq_len(D), "]"), drop = FALSE])
+    matrix(rep(sigma_eps, each = n_time_eff), n_time_eff, D)
+  }
+
+  z_crit <- stats::qnorm(1 - (1 - ci_level) / 2)
+  rows <- vector("list", length(object$vars))
+  for (d in seq_along(object$vars)) {
+    mean <- fit_df[[object$vars[d]]]
+    sigma <- rep(sigma_mat[, d], times = object$N)
+    rows[[d]] <- data.frame(
+      unit = fit_df$unit,
+      time = fit_df$time,
+      variable = object$vars[d],
+      mean = mean,
+      lower = mean - z_crit * sigma,
+      upper = mean + z_crit * sigma,
       check.names = FALSE
     )
   }

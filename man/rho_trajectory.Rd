@@ -9,6 +9,8 @@
 \alias{rho_trajectory.dcvar_constant_fit}
 \alias{rho_trajectory.dcvar_multilevel_fit}
 \alias{rho_trajectory.dcvar_sem_fit}
+\alias{rho_trajectory.dcvar_sem_tv_fit}
+\alias{rho_trajectory.dcvar_multilevel_tv_fit}
 \title{Extract the rho trajectory with credible intervals}
 \usage{
 rho_trajectory(object, ...)
@@ -26,6 +28,10 @@ rho_trajectory(object, ...)
 \method{rho_trajectory}{dcvar_multilevel_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 
 \method{rho_trajectory}{dcvar_sem_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{rho_trajectory}{dcvar_sem_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
+
+\method{rho_trajectory}{dcvar_multilevel_tv_fit}(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...)
 }
 \arguments{
 \item{object}{A fitted model object (\code{dcvar_fit}, \code{dcvar_covariate_fit},

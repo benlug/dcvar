@@ -4,6 +4,8 @@
 \alias{dcvar_sem_fit-methods}
 \alias{print.dcvar_sem_fit}
 \alias{summary.dcvar_sem_fit}
+\alias{print.dcvar_sem_tv_fit}
+\alias{summary.dcvar_sem_tv_fit}
 \alias{coef.dcvar_sem_fit}
 \alias{plot.dcvar_sem_fit}
 \title{S3 methods for dcvar_sem_fit objects}
@@ -11,6 +13,10 @@
 \method{print}{dcvar_sem_fit}(x, ...)
 
 \method{summary}{dcvar_sem_fit}(object, ...)
+
+\method{print}{dcvar_sem_tv_fit}(x, ...)
+
+\method{summary}{dcvar_sem_tv_fit}(object, probs = c(0.025, 0.5, 0.975), ...)
 
 \method{coef}{dcvar_sem_fit}(object, ...)
 
@@ -21,12 +27,18 @@
 
 \item{...}{Additional arguments (unused).}
 
+\item{probs}{Numeric vector of quantile probabilities for trajectories.}
+
 \item{type}{Character; one of \code{"latent_states"}, \code{"rho"}, \code{"diagnostics"}.}
 }
 \value{
 Invisibly returns \code{x}.
 
 A \code{dcvar_sem_summary} object (a list).
+
+Invisibly returns \code{x}.
+
+A \code{dcvar_sem_tv_summary} object (a list).
 
 A named list of posterior means.
 
@@ -40,6 +52,10 @@ S3 methods for dcvar_sem_fit objects
 \item \code{print(dcvar_sem_fit)}: Print a concise overview.
 
 \item \code{summary(dcvar_sem_fit)}: Produce a detailed summary.
+
+\item \code{print(dcvar_sem_tv_fit)}: Print a concise overview of a TV SEM fit.
+
+\item \code{summary(dcvar_sem_tv_fit)}: Produce a detailed TV SEM summary.
 
 \item \code{coef(dcvar_sem_fit)}: Extract posterior means of
 latent VAR coefficients.

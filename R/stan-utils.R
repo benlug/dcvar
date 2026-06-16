@@ -5,7 +5,7 @@
 #' @param model Character string: `"dcvar"`, `"dcvar_tv"`, `"dcvar_dynamic"`
 #'   (the unified time-varying / drift covariate engine), `"dcvar_covariate"`,
 #'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
-#'   `"sem"`, or `"sem_naive"`.
+#'   `"multilevel_tv"`, `"sem"`, `"sem_tv"`, or `"sem_naive"`.
 #' @param margins Character string: margin type (`"normal"`, `"exponential"`,
 #'   `"skew_normal"`, `"gamma"`). Default: `"normal"`.
 #' @param copula Character string: copula family (`"gaussian"` or
@@ -21,8 +21,8 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
                                       "dcvar_covariate",
                                       "dcvar_covariate_nodrift", "hmm",
                                       "hmm_switching",
-                                      "constant", "multilevel", "sem",
-                                      "sem_naive"),
+                                      "constant", "multilevel", "multilevel_tv",
+                                      "sem", "sem_tv", "sem_naive"),
                             margins = "normal",
                             copula = "gaussian") {
   model <- match.arg(model)
@@ -163,7 +163,7 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
 #'
 #' @param model_type Character string: `"dcvar"`, `"dcvar_covariate"`,
 #'   `"dcvar_covariate_nodrift"`, `"hmm"`, `"constant"`, `"multilevel"`,
-#'   `"sem"`, or `"sem_naive"`.
+#'   `"multilevel_tv"`, `"sem"`, `"sem_tv"`, or `"sem_naive"`.
 #' @param margins Character: margin type (default: `"normal"`).
 #' @param copula Character: copula family (default: `"gaussian"`).
 #' @param stan_file Optional path to a custom Stan file. If `NULL`, uses the
@@ -178,8 +178,8 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
                                           "dcvar_covariate",
                                           "dcvar_covariate_nodrift", "hmm",
                                           "hmm_switching",
-                                          "constant", "multilevel", "sem",
-                                          "sem_naive"),
+                                          "constant", "multilevel", "multilevel_tv",
+                                          "sem", "sem_tv", "sem_naive"),
                            margins = "normal",
                            copula = "gaussian",
                            stan_file = NULL,

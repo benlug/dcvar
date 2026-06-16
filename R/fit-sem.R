@@ -37,6 +37,20 @@
 #'   `sigma`; for exponential margins it is applied to `sigma_exp`.
 #' @param prior_rho_sd Prior SD for rho_raw:
 #'   `rho_raw ~ normal(0, prior_rho_sd)`, with `rho = 0.97 * tanh(rho_raw)`.
+#'   For TV SEM fits this is the prior SD for the initial Fisher-z rho.
+#' @param tv_phi Selects which latent VAR(1) coefficients evolve as random walks
+#'   around their baseline. Either a logical scalar or a character selector as in
+#'   [dcvar()]. Time-varying SEM currently requires `method = "indicator"`.
+#' @param tv_sigma Logical; if `TRUE`, latent innovation scales evolve as
+#'   log-scale random walks. Time-varying SEM currently requires
+#'   `method = "indicator"`.
+#' @param prior_sigma_omega_rate Prior mean for the TV SEM Fisher-z rho
+#'   random-walk SD.
+#' @param prior_tau_phi_rate Prior mean for Phi random-walk innovation SDs.
+#' @param prior_tau_sigma_rate Prior mean for log-scale random-walk innovation
+#'   SDs.
+#' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
+#'   scales.
 #' @param chains Number of MCMC chains.
 #' @param iter_warmup Warmup iterations per chain.
 #' @param iter_sampling Sampling iterations per chain.
@@ -93,6 +107,12 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
                       prior_phi_sd = 0.5,
                       prior_sigma_sd = 0.5,
                       prior_rho_sd = 0.75,
+                      tv_phi = FALSE,
+                      tv_sigma = FALSE,
+                      prior_sigma_omega_rate = 0.1,
+                      prior_tau_phi_rate = 0.025,
+                      prior_tau_sigma_rate = 0.05,
+                      tv_sigma_k = 8,
                       chains = 4,
                       iter_warmup = 2000,
                       iter_sampling = 4000,
@@ -111,6 +131,26 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
   margins <- .normalize_margins_spec(margins)
   .validate_sem_margins(margins, skew_direction)
   method <- match.arg(method)
+  phi_mask <- .resolve_phi_tv_mask(tv_phi)
+  any_phi <- sum(phi_mask) > 0L
+  .prep_validate_scalar_logical(tv_sigma, "tv_sigma")
+  is_tv <- any_phi || tv_sigma
+
+  if (is_tv && identical(method, "naive")) {
+    cli_abort(c(
+      "Time-varying SEM parameters are not implemented for {.code method = \"naive\"}.",
+      "i" = "Use {.code method = \"indicator\"} with fixed measurement parameters, or fit {.fun dcvar} to score data."
+    ))
+  }
+  if (!any_phi && !isTRUE(all.equal(prior_tau_phi_rate, 0.025))) {
+    cli_warn("{.arg prior_tau_phi_rate} is ignored when no VAR coefficient is time-varying.")
+  }
+  if (!tv_sigma && !isTRUE(all.equal(prior_tau_sigma_rate, 0.05))) {
+    cli_warn("{.arg prior_tau_sigma_rate} is ignored when {.code tv_sigma = FALSE}.")
+  }
+  if (!is_tv && !isTRUE(all.equal(prior_sigma_omega_rate, 0.1))) {
+    cli_warn("{.arg prior_sigma_omega_rate} is ignored when SEM time-varying components are disabled.")
+  }
 
   if (identical(method, "indicator") &&
       (!is.numeric(J) || length(J) != 1 || J < 1 || J != as.integer(J))) {
@@ -127,6 +167,12 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
     prior_phi_sd = prior_phi_sd,
     prior_sigma_sd = prior_sigma_sd,
     prior_rho_sd = prior_rho_sd,
+    tv_phi = phi_mask,
+    tv_sigma = tv_sigma,
+    prior_sigma_omega_rate = prior_sigma_omega_rate,
+    prior_tau_phi_rate = prior_tau_phi_rate,
+    prior_tau_sigma_rate = prior_tau_sigma_rate,
+    tv_sigma_k = tv_sigma_k,
     method = method
   )
 
@@ -134,17 +180,27 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
   vars <- attr(stan_data, "vars")
   J_fit <- attr(stan_data, "J") %||% J
 
-  method_label <- if (identical(method, "naive")) "naive SEM" else "SEM"
+  method_label <- if (identical(method, "naive")) "naive SEM" else if (is_tv) "TV SEM" else "SEM"
   margins_text <- paste(margins, collapse = ", ")
   cli_inform("Fitting {method_label} copula VAR model [{margins_text}] (n_time = {n_time_obs}, J = {J_fit})...")
 
   # Compile model
-  model_type <- if (identical(method, "naive")) "sem_naive" else "sem"
+  model_type <- if (is_tv) {
+    "sem_tv"
+  } else if (identical(method, "naive")) {
+    "sem_naive"
+  } else {
+    "sem"
+  }
   model <- .compile_model(model_type, margins = margins, stan_file = stan_file, backend = backend)
 
   # Default init
   if (is.null(init)) {
-    if (identical(method, "naive")) {
+    if (is_tv) {
+      init <- function() .init_sem_tv_params(n_time_obs, margins,
+                                             tv_phi = phi_mask,
+                                             tv_sigma = tv_sigma)
+    } else if (identical(method, "naive")) {
       y_scores <- stan_data$y
       init <- function() .init_sem_naive_params(y_scores, margins)
     } else {
@@ -170,10 +226,30 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
     ...
   )
 
-  .report_sampling_outcome(fit, if (identical(method, "naive")) "Naive SEM copula VAR" else "SEM copula VAR",
+  .report_sampling_outcome(fit, if (is_tv) "TV SEM copula VAR" else if (identical(method, "naive")) "Naive SEM copula VAR" else "SEM copula VAR",
                            chains = chains, backend = backend)
 
-  new_dcvar_sem_fit(
+  priors <- c(
+    list(
+      mu_sd = prior_mu_sd,
+      phi_sd = prior_phi_sd,
+      sigma_sd = prior_sigma_sd,
+      rho_sd = prior_rho_sd
+    ),
+    if (is_tv) list(sigma_omega_rate = prior_sigma_omega_rate),
+    if (any_phi) list(tau_phi_rate = prior_tau_phi_rate),
+    if (tv_sigma) list(tau_sigma_rate = prior_tau_sigma_rate)
+  )
+  meta <- list(
+    chains = chains,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    adapt_delta = adapt_delta,
+    max_treedepth = max_treedepth,
+    seed = seed
+  )
+
+  common_args <- list(
     fit = fit,
     stan_data = stan_data,
     vars = vars,
@@ -185,19 +261,15 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
     method = method,
     skew_direction = attr(stan_data, "skew_direction"),
     backend = backend,
-    priors = list(
-      mu_sd = prior_mu_sd,
-      phi_sd = prior_phi_sd,
-      sigma_sd = prior_sigma_sd,
-      rho_sd = prior_rho_sd
-    ),
-    meta = list(
-      chains = chains,
-      iter_warmup = iter_warmup,
-      iter_sampling = iter_sampling,
-      adapt_delta = adapt_delta,
-      max_treedepth = max_treedepth,
-      seed = seed
-    )
+    priors = priors,
+    meta = meta
   )
+  if (is_tv) {
+    return(do.call(new_dcvar_sem_tv_fit, c(common_args, list(
+      tv_phi = any_phi,
+      phi_tv_mask = phi_mask,
+      tv_sigma = tv_sigma
+    ))))
+  }
+  do.call(new_dcvar_sem_fit, common_args)
 }

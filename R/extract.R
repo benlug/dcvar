@@ -1354,7 +1354,7 @@ sigma_trajectory.dcvar_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9
         required = paste0("^", sub("\\[.*$", "\\\\[", col)),
         required_type = "pattern",
         context = "sigma_trajectory.dcvar_tv_fit()",
-        output_type = "parameter group"
+        output_type = "Stan output group"
       ))
       one <- .summarise_rho_draws(
         as.matrix(base_draws[, col, drop = FALSE]),
@@ -1427,5 +1427,330 @@ var_params.dcvar_tv_fit <- function(object, ...) {
     result$tau_sigma <- extract_param("^tau_sigma\\[")
   }
   result$sigma_omega <- extract_param("^sigma_omega$")
+  result
+}
+
+
+# ============================================================================
+# Time-varying SEM and multilevel extractors
+# ============================================================================
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcvar_sem_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = .stan_output_group_pattern("rho"),
+    required_type = "pattern",
+    context = "rho_trajectory.dcvar_sem_tv_fit()",
+    output_type = "transformed parameter group"
+  ))
+  .summarise_rho_draws(rho_draws, probs, .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_sem_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  rho_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "rho", backend = object$backend,
+    required = .stan_output_group_pattern("rho"),
+    required_type = "pattern",
+    context = "dependence_summary.dcvar_sem_tv_fit()",
+    output_type = "transformed parameter group"
+  ))
+  .summarise_rho_draws(2 / pi * asin(rho_draws), probs,
+                       .observed_time_values(object$stan_data, drop_first = TRUE))
+}
+
+#' @rdname rho_trajectory
+#' @export
+rho_trajectory.dcvar_multilevel_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .rho_trajectory_constant_impl(object, probs)
+}
+
+#' @rdname dependence_summary
+#' @export
+dependence_summary.dcvar_multilevel_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .dependence_summary_constant_impl(object, probs)
+}
+
+.phi_trajectory_tv_matrix <- function(object, probs, context, draw_name = "phi_t") {
+  n_time_eff <- object$stan_data$n_time - 1L
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+  phi_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, draw_name, backend = object$backend,
+    required = .stan_output_group_pattern(draw_name),
+    required_type = "pattern",
+    context = context,
+    output_type = "generated quantity"
+  ))
+  out <- lapply(1:4, function(k) {
+    cols <- paste0(draw_name, "[", seq_len(n_time_eff), ",", k, "]")
+    df <- .summarise_rho_draws(as.matrix(phi_draws[, cols, drop = FALSE]), probs, time_values)
+    df$coefficient <- .phi_tv_labels[k]
+    df
+  })
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
+  out[, c("time", "coefficient", setdiff(names(out), c("time", "coefficient")))]
+}
+
+.phi_trajectory_tile_baseline <- function(draws, cols, labels, probs, time_values) {
+  n_time_eff <- length(time_values)
+  out <- lapply(seq_along(cols), function(k) {
+    one <- .summarise_rho_draws(
+      as.matrix(draws[, cols[k], drop = FALSE]),
+      probs,
+      time_values[1]
+    )
+    df <- one[rep(1L, n_time_eff), , drop = FALSE]
+    df$time <- time_values
+    rownames(df) <- NULL
+    df$coefficient <- labels[k]
+    df
+  })
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
+  out[, c("time", "coefficient", setdiff(names(out), c("time", "coefficient")))]
+}
+
+#' @rdname phi_trajectory
+#' @export
+phi_trajectory.dcvar_sem_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  if (isTRUE(object$tv_phi)) {
+    return(.phi_trajectory_tv_matrix(object, probs, "phi_trajectory.dcvar_sem_tv_fit()"))
+  }
+  base_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, "Phi", backend = object$backend,
+    required = .stan_output_group_pattern("Phi"),
+    required_type = "pattern",
+    context = "phi_trajectory.dcvar_sem_tv_fit()",
+    output_type = "parameter group"
+  ))
+  .phi_trajectory_tile_baseline(
+    base_draws, .phi_tv_baseline_cols, .phi_tv_labels, probs,
+    .observed_time_values(object$stan_data, drop_first = TRUE)
+  )
+}
+
+#' @rdname phi_trajectory
+#' @export
+phi_trajectory.dcvar_multilevel_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975),
+                                                   unit = NULL, ...) {
+  n_time_eff <- object$stan_data$n_time - 1L
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+  unit_ids <- attr(object$stan_data, "ids") %||% seq_len(object$N)
+
+  if (is.null(unit)) {
+    if (isTRUE(object$tv_phi)) {
+      return(.phi_trajectory_tv_matrix(object, probs, "phi_trajectory.dcvar_multilevel_tv_fit()"))
+    }
+    base_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "phi_bar", backend = object$backend,
+      required = .stan_output_group_pattern("phi_bar"),
+      required_type = "pattern",
+      context = "phi_trajectory.dcvar_multilevel_tv_fit()",
+      output_type = "parameter group"
+    ))
+    return(.phi_trajectory_tile_baseline(
+      base_draws, paste0("phi_bar[", 1:4, "]"), .phi_tv_labels, probs, time_values
+    ))
+  }
+
+  selected_units <- if (identical(unit, "all")) unit_ids else unit
+  selected_idx <- match(as.character(selected_units), as.character(unit_ids))
+  if (anyNA(selected_idx)) {
+    cli_abort("Unknown {.arg unit} value{?s}: {.val {selected_units[is.na(selected_idx)]}}.")
+  }
+
+  if (isTRUE(object$tv_phi)) {
+    unit_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "phi_unit_t", backend = object$backend,
+      required = .stan_output_group_pattern("phi_unit_t"),
+      required_type = "pattern",
+      context = "phi_trajectory.dcvar_multilevel_tv_fit()",
+      output_type = "generated quantity"
+    ))
+    out <- lapply(seq_along(selected_idx), function(ii) {
+      i <- selected_idx[ii]
+      rows <- lapply(1:4, function(k) {
+        cols <- paste0("phi_unit_t[", i, ",", seq_len(n_time_eff), ",", k, "]")
+        df <- .summarise_rho_draws(as.matrix(unit_draws[, cols, drop = FALSE]), probs, time_values)
+        df$unit <- unit_ids[i]
+        df$coefficient <- .phi_tv_labels[k]
+        df
+      })
+      do.call(rbind, rows)
+    })
+  } else {
+    base_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "phi_unit", backend = object$backend,
+      required = .stan_output_group_pattern("phi_unit"),
+      required_type = "pattern",
+      context = "phi_trajectory.dcvar_multilevel_tv_fit()",
+      output_type = "transformed parameter group"
+    ))
+    out <- lapply(seq_along(selected_idx), function(ii) {
+      i <- selected_idx[ii]
+      df <- .phi_trajectory_tile_baseline(
+        base_draws, paste0("phi_unit[", i, ",", 1:4, "]"),
+        .phi_tv_labels, probs, time_values
+      )
+      df$unit <- unit_ids[i]
+      df
+    })
+  }
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
+  out[, c("unit", "time", "coefficient", setdiff(names(out), c("unit", "time", "coefficient")))]
+}
+
+.sigma_trajectory_tv_generic <- function(object, probs, context) {
+  D <- 2L
+  n_time_eff <- object$stan_data$n_time - 1L
+  time_values <- .observed_time_values(object$stan_data, drop_first = TRUE)
+  margins_vec <- rep(object$margins %||% "normal", length.out = D)
+
+  if (isTRUE(object$tv_sigma)) {
+    sigma_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, "sigma_t", backend = object$backend,
+      required = .stan_output_group_pattern("sigma_t"),
+      required_type = "pattern",
+      context = context,
+      output_type = "generated quantity"
+    ))
+    out <- lapply(seq_len(D), function(d) {
+      cols <- paste0("sigma_t[", seq_len(n_time_eff), ",", d, "]")
+      df <- .summarise_rho_draws(as.matrix(sigma_draws[, cols, drop = FALSE]), probs, time_values)
+      df$variable <- object$vars[d]
+      df
+    })
+  } else {
+    out <- lapply(seq_len(D), function(d) {
+      col <- .sigma_tv_baseline_col(margins_vec[d], d)
+      base_draws <- posterior::as_draws_matrix(.fit_draws(
+        object$fit, sub("\\[.*$", "", col), backend = object$backend,
+        required = paste0("^", sub("\\[.*$", "\\\\[", col)),
+        required_type = "pattern",
+        context = context,
+        output_type = "Stan output group"
+      ))
+      one <- .summarise_rho_draws(
+        as.matrix(base_draws[, col, drop = FALSE]),
+        probs,
+        time_values[1]
+      )
+      df <- one[rep(1L, n_time_eff), , drop = FALSE]
+      df$time <- time_values
+      rownames(df) <- NULL
+      df$variable <- object$vars[d]
+      df
+    })
+  }
+
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
+  out[, c("time", "variable", setdiff(names(out), c("time", "variable")))]
+}
+
+#' @rdname sigma_trajectory
+#' @export
+sigma_trajectory.dcvar_sem_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .sigma_trajectory_tv_generic(object, probs, "sigma_trajectory.dcvar_sem_tv_fit()")
+}
+
+#' @rdname sigma_trajectory
+#' @export
+sigma_trajectory.dcvar_multilevel_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
+  .sigma_trajectory_tv_generic(object, probs, "sigma_trajectory.dcvar_multilevel_tv_fit()")
+}
+
+.tv_margin_groups <- function(object, D = 2L) {
+  names(.mixed_margin_report_vars(rep(object$margins %||% "normal", length.out = D)))
+}
+
+#' @rdname var_params
+#' @export
+var_params.dcvar_sem_tv_fit <- function(object, ...) {
+  margin_groups <- .tv_margin_groups(object, 2L)
+  required_patterns <- c("^mu\\[", "^Phi\\[", "^rho\\[", "^sigma_omega$",
+                         paste0("^", margin_groups, "\\["))
+  if (isTRUE(object$tv_phi)) required_patterns <- c(required_patterns, "^tau_phi\\[")
+  if (isTRUE(object$tv_sigma)) required_patterns <- c(required_patterns, "^tau_sigma\\[")
+
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "var_params.dcvar_sem_tv_fit()",
+    output_type = "parameter group",
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+  extract_param <- function(pattern) {
+    rows <- grep(pattern, summ$variable)
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+
+  result <- list(mu = extract_param("^mu\\["), Phi = extract_param("^Phi\\["))
+  for (group in margin_groups) result[[group]] <- extract_param(paste0("^", group, "\\["))
+  result$sigma_omega <- extract_param("^sigma_omega$")
+  if (isTRUE(object$tv_phi)) {
+    tau_phi <- extract_param("^tau_phi\\[")
+    tau_phi$variable <- paste0("tau_phi[", .tv_active_phi_coefs(object), "]")
+    result$tau_phi <- tau_phi
+  }
+  if (isTRUE(object$tv_sigma)) result$tau_sigma <- extract_param("^tau_sigma\\[")
+  result$rho <- extract_param("^rho\\[")
+  result
+}
+
+#' @rdname var_params
+#' @export
+var_params.dcvar_multilevel_tv_fit <- function(object, ...) {
+  margin_groups <- .tv_margin_groups(object, 2L)
+  required_patterns <- c("^phi_bar\\[", "^tau_phi\\[", "^rho$",
+                         paste0("^", margin_groups, "\\["))
+  if (isTRUE(object$tv_phi)) required_patterns <- c(required_patterns, "^tau_phi_tv\\[")
+  if (isTRUE(object$tv_sigma)) required_patterns <- c(required_patterns, "^tau_sigma\\[")
+
+  summ <- .fit_summary(
+    object$fit, variables = NULL, backend = object$backend,
+    required = required_patterns,
+    required_type = "pattern",
+    context = "var_params.dcvar_multilevel_tv_fit()",
+    output_type = "parameter group",
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+  extract_param <- function(pattern) {
+    rows <- grep(pattern, summ$variable)
+    data.frame(
+      variable = summ$variable[rows],
+      mean = summ$mean[rows],
+      sd = summ$sd[rows],
+      q2.5 = summ$q2.5[rows],
+      q97.5 = summ$q97.5[rows]
+    )
+  }
+
+  result <- list(
+    phi_bar = extract_param("^phi_bar\\["),
+    tau_phi = extract_param("^tau_phi\\[")
+  )
+  for (group in margin_groups) result[[group]] <- extract_param(paste0("^", group, "\\["))
+  result$rho <- extract_param("^rho$")
+  if (isTRUE(object$tv_phi)) {
+    tau_phi_tv <- extract_param("^tau_phi_tv\\[")
+    tau_phi_tv$variable <- paste0("tau_phi_tv[", .tv_active_phi_coefs(object), "]")
+    result$tau_phi_tv <- tau_phi_tv
+  }
+  if (isTRUE(object$tv_sigma)) result$tau_sigma <- extract_param("^tau_sigma\\[")
   result
 }

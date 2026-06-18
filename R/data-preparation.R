@@ -196,9 +196,10 @@
     interior <- missing_idx[missing_idx > keep_range[1] & missing_idx < keep_range[2]]
 
     if (length(interior) > 0) {
+      n_interior <- length(interior)
       if (!allow_gaps) {
         cli_abort(c(
-          "Found {n_missing} interior missing value{?s} that would break time series adjacency.",
+          "Found {n_interior} interior missing value{?s} that would break time series adjacency.",
           "!" = "The VAR(1) model assumes consecutive observations.",
           "i" = "Consider imputation or explicit missing-data handling.",
           "i" = "Set {.arg allow_gaps = TRUE} to remove these rows with a warning instead."

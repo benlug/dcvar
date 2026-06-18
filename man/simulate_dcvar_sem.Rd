@@ -43,8 +43,11 @@ applied to both latent variables, or a length-2 character vector for
 per-variable (mixed) margins, e.g. \code{c("normal", "gamma")}, where each entry
 is one of \code{"normal"}, \code{"exponential"}, \code{"skew_normal"}, or \code{"gamma"}.}
 
-\item{sigma}{Length-2 latent innovation SD vector for normal dimensions
-(also used by the normal dimensions of a mixed specification).}
+\item{sigma}{Length-2 latent innovation scale vector used by normal,
+skew-normal, gamma, and mixed-margin specifications. Values are on each
+family's natural residual scale: innovation SD for normal/skew-normal,
+and \code{sigma_gam} for gamma. Homogeneous exponential margins use
+\code{sigma_exp} instead.}
 
 \item{sigma_exp}{Length-2 shifted-exponential scale vector for the
 single-family exponential path.}
@@ -67,12 +70,7 @@ accepted in the same forms as \code{\link[=simulate_dcvar]{simulate_dcvar()}}.}
 \item{sigma_trajectory}{Optional time-varying latent innovation scale paths,
 accepted in the same forms as \code{\link[=simulate_dcvar]{simulate_dcvar()}}. The supplied value is
 each family's natural scale: innovation SD (normal), residual SD
-(skew-normal), \code{sigma_exp} (exponential), \code{sigma_gam} (gamma). Note that
-for skew-normal dimensions this residual SD differs from the \code{omega}
-scale reported by \code{\link[=sigma_trajectory]{sigma_trajectory()}} on the fitted model by a factor of
-\code{sqrt(1 - 2 * delta^2 / pi)} (which is 1 only when \code{alpha = 0}), so a
-skew-normal path requires rescaling before comparing simulation truth to
-the recovered \code{sigma_trajectory()}.}
+(skew-normal), \code{sigma_exp} (exponential), \code{sigma_gam} (gamma).}
 
 \item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
 scales.}

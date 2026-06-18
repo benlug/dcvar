@@ -6,6 +6,12 @@
 #' @noRd
 .valid_margins <- c("normal", "exponential", "skew_normal", "gamma")
 
+#' Skew-normal residual SD as a fraction of omega
+#' @noRd
+.skew_normal_residual_sd_factor <- function(delta) {
+  sqrt(1 - 2 * delta^2 / pi)
+}
+
 #' Per-dimension margin family codes passed to the generic mixed Stan model
 #'
 #' These integer codes label each dimension's marginal family for the generic

@@ -14,7 +14,9 @@
 #' @param phi_bar Population mean for VAR coefficients (length-4 vector:
 #'   phi11, phi12, phi21, phi22).
 #' @param tau_phi Population SD for each VAR coefficient (length-4 vector).
-#' @param sigma Innovation SDs (length-2 vector; used by normal dimensions).
+#' @param sigma Innovation scale vector (length 2). Values are on each
+#'   family's natural residual scale: innovation SD for normal/skew-normal,
+#'   `sigma_exp` for exponential, and `sigma_gam` for gamma.
 #' @param rho Global copula correlation.
 #' @param margins Marginal family. Either a single string applied to both
 #'   variables, or a length-2 character vector for per-variable (mixed) margins,
@@ -30,10 +32,7 @@
 #' @param sigma_trajectory Optional shared time-varying innovation scale path.
 #'   The supplied value is each family's natural scale (innovation SD for
 #'   normal, residual SD for skew-normal, `sigma_exp` / `sigma_gam` for
-#'   exponential / gamma). For skew-normal dimensions the residual SD differs
-#'   from the `omega` scale reported by [sigma_trajectory()] on the fitted
-#'   model by a factor of `sqrt(1 - 2 * delta^2 / pi)`, so a skew-normal path
-#'   requires rescaling before comparing simulation truth to recovery.
+#'   exponential / gamma).
 #' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
 #'   scales.
 #' @param burnin Number of burn-in observations to discard (default: 30).
@@ -157,8 +156,7 @@ simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
   } else {
     scale_ret
   }
-  base_scales <- rep(1, 2L)
-  if (any(margins_vec == "normal")) base_scales[margins_vec == "normal"] <- sigma[margins_vec == "normal"]
+  base_scales <- sigma
 
   Phi_mat <- matrix(NA_real_, N, 4)
   Phi_list <- vector("list", N)

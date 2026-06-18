@@ -1,3 +1,24 @@
+# dcvar 0.9.1
+
+## Bug fixes
+
+- SEM and multilevel simulators now use and record the same residual scale for
+  skew-normal and gamma innovations when a non-default `sigma` is supplied.
+- `sigma_trajectory()` now reports skew-normal time-varying scales on the
+  residual-SD scale, matching simulation truth and the gamma convention.
+- Gaussian-copula exponential posterior-predictive draws now clamp inverse-CDF
+  uniforms before applying `log1m()`, matching the Clayton guard.
+- Missing-data diagnostics now report the number of interior missing rows,
+  rather than the total number of incomplete rows.
+- The README HMM switching example now uses the valid lowercase `phi` selector.
+
+## Tests
+
+- Strengthened multilevel TV `fitted()`/`predict()` tests so they exercise
+  time-varying unit-level Phi paths and `sigma_t` intervals away from `t = 1`.
+- Added regression tests for skew-normal/gamma simulator scale conventions and
+  skew-normal `sigma_trajectory()` scale reporting.
+
 # dcvar 0.9.0
 
 ## Time-varying SEM and multilevel extensions

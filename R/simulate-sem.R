@@ -33,8 +33,11 @@
 #'   applied to both latent variables, or a length-2 character vector for
 #'   per-variable (mixed) margins, e.g. `c("normal", "gamma")`, where each entry
 #'   is one of `"normal"`, `"exponential"`, `"skew_normal"`, or `"gamma"`.
-#' @param sigma Length-2 latent innovation SD vector for normal dimensions
-#'   (also used by the normal dimensions of a mixed specification).
+#' @param sigma Length-2 latent innovation scale vector used by normal,
+#'   skew-normal, gamma, and mixed-margin specifications. Values are on each
+#'   family's natural residual scale: innovation SD for normal/skew-normal,
+#'   and `sigma_gam` for gamma. Homogeneous exponential margins use
+#'   `sigma_exp` instead.
 #' @param sigma_exp Length-2 shifted-exponential scale vector for the
 #'   single-family exponential path.
 #' @param skew_direction Integer vector of length 2 of `1`/`-1`. Required
@@ -50,12 +53,7 @@
 #' @param sigma_trajectory Optional time-varying latent innovation scale paths,
 #'   accepted in the same forms as [simulate_dcvar()]. The supplied value is
 #'   each family's natural scale: innovation SD (normal), residual SD
-#'   (skew-normal), `sigma_exp` (exponential), `sigma_gam` (gamma). Note that
-#'   for skew-normal dimensions this residual SD differs from the `omega`
-#'   scale reported by [sigma_trajectory()] on the fitted model by a factor of
-#'   `sqrt(1 - 2 * delta^2 / pi)` (which is 1 only when `alpha = 0`), so a
-#'   skew-normal path requires rescaling before comparing simulation truth to
-#'   the recovered `sigma_trajectory()`.
+#'   (skew-normal), `sigma_exp` (exponential), `sigma_gam` (gamma).
 #' @param tv_sigma_k Soft-barrier sharpness for time-varying exponential/gamma
 #'   scales.
 #' @param burnin Retained for backward compatibility but ignored. Default `0`
@@ -120,10 +118,8 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
   if (length(mu) != 2L) {
     cli_abort("{.arg mu} must have length 2, got {.val {length(mu)}}.")
   }
-  # sigma is only consumed for normal dimensions (skew-normal/gamma scales come
-  # from skew_params; exponential uses sigma_exp), so it is required exactly when
-  # some dimension is normal -- including mixed specs with a normal dimension.
-  if (any(margins_vec == "normal")) {
+  # sigma is the constant scale for every non-homogeneous-exponential path.
+  if (!(!mixed && identical(margins, "exponential"))) {
     .simulate_sem_validate_numeric_vector(sigma, "sigma")
     if (length(sigma) != 2L) {
       cli_abort("{.arg sigma} must have length 2, got {.val {length(sigma)}}.")
@@ -202,9 +198,11 @@ simulate_dcvar_sem <- function(n_time = 200, J = 3,
     m
   }
 
-  base_scales <- rep(1, 2L)
-  if (any(margins_vec == "normal")) base_scales[margins_vec == "normal"] <- sigma[margins_vec == "normal"]
-  if (!mixed && identical(margins, "exponential")) base_scales <- sigma_exp
+  base_scales <- if (!mixed && identical(margins, "exponential")) {
+    sigma_exp
+  } else {
+    sigma
+  }
 
   # Generate correlated innovations via Gaussian copula
   zeta <- matrix(NA_real_, n_time, 2)

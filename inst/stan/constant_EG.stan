@@ -122,6 +122,8 @@ generated quantities {
         // orientation consistent with rho.
         if (skew_direction[1] < 0) u1 = 1 - u1;
         if (skew_direction[2] < 0) u2 = 1 - u2;
+        u1 = fmax(1e-9, fmin(1 - 1e-9, u1));
+        u2 = fmax(1e-9, fmin(1 - 1e-9, u2));
         eps_rep[t, 1] = skew_direction[1] * (-log1m(u1) / rate_exp[1] - sigma_exp[1]);
         eps_rep[t, 2] = skew_direction[2] * (-log1m(u2) / rate_exp[2] - sigma_exp[2]);
       }

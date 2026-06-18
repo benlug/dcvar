@@ -282,7 +282,8 @@ generated quantities {
           if (family[j] == 1) {
             sigma_t[t, j] = sigma_eps[j] * exp(sigma_dev[t, j]);
           } else if (family[j] == 3) {
-            sigma_t[t, j] = omega[j] * exp(sigma_dev[t, j]);
+            sigma_t[t, j] = omega[j] * exp(sigma_dev[t, j]) *
+              sqrt(1 - 2 * square(delta[j]) / pi());
           } else if (family[j] == 2) {
             sigma_t[t, j] = exp(eta[j] + sigma_dev[t, j]);
           } else {

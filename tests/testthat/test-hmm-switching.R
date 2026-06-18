@@ -42,6 +42,8 @@ test_that(".resolve_switch_spec maps selectors and enforces the rho anchor", {
   expect_identical(unname(.resolve_switch_spec(c("rho", "cross"))$phi_mask), c(0L, 1L, 1L, 0L))
   expect_identical(unname(.resolve_switch_spec(c("rho", "phi"))$phi_mask), c(1L, 1L, 1L, 1L))
   expect_identical(.resolve_switch_spec(c("rho", "sigma"))$margins, 1L)
+  expect_identical(unname(.resolve_switch_spec(c("rho", "mu", "phi", "sigma"))$phi_mask), c(1L, 1L, 1L, 1L))
+  expect_identical(.resolve_switch_spec(c("rho", "mu", "phi", "sigma"))$margins, 1L)
 
   full <- .resolve_switch_spec(TRUE)
   expect_identical(full$mu, 1L)
@@ -56,6 +58,7 @@ test_that(".resolve_switch_spec maps selectors and enforces the rho anchor", {
   expect_error(.resolve_switch_spec("none"), "at least one")
   expect_error(.resolve_switch_spec(character(0)), "at least one")
   expect_error(.resolve_switch_spec(c("rho", "nonsense")), "Invalid")
+  expect_error(.resolve_switch_spec(c("rho", "mu", "Phi", "sigma")), "Invalid")
 })
 
 # --- per-state margin configuration -----------------------------------------

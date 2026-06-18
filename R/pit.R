@@ -433,8 +433,13 @@ pit_values.dcvar_tv_fit <- function(object, ...) {
     } else if (identical(fam, "skew_normal")) {
       delta_d <- gm(paste0("delta[", d, "]"))
       alpha_d <- delta_d / sqrt(1 - delta_d^2)
-      xi_t <- -s * delta_d * sqrt(2 / pi)
-      pit_mat[, d] <- sn::psn(eps_mean[, d], xi = xi_t, omega = s, alpha = alpha_d)
+      omega_t <- if (isTRUE(object$tv_sigma)) {
+        s / .skew_normal_residual_sd_factor(delta_d)
+      } else {
+        s
+      }
+      xi_t <- -omega_t * delta_d * sqrt(2 / pi)
+      pit_mat[, d] <- sn::psn(eps_mean[, d], xi = xi_t, omega = omega_t, alpha = alpha_d)
     } else {
       shape_d <- gm(paste0("shape_gam[", d, "]"))
       mean_x <- sqrt(shape_d) * s

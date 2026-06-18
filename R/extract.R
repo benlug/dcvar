@@ -1291,11 +1291,11 @@ phi_trajectory.dcvar_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 
 #'
 #' Returns posterior summaries of the per-variable residual scale paths from
 #' a time-varying DC-VAR fit. The reported value is each margin family's
-#' natural scale: the innovation SD for normal dimensions, the direct
-#' parameterization scale `omega` for skew-normal dimensions, and the
-#' (time-constant) `sigma_exp` / `sigma_gam` for exponential and gamma
-#' dimensions. For fits with `tv_sigma = FALSE` the constant baselines are
-#' tiled over time so the return shape does not depend on the flag.
+#' natural residual scale: the innovation SD for normal/skew-normal
+#' dimensions, and the (time-constant) `sigma_exp` / `sigma_gam` for
+#' exponential and gamma dimensions. For fits with `tv_sigma = FALSE` the
+#' constant baselines are tiled over time so the return shape does not depend
+#' on the flag.
 #'
 #' @param object A fitted model object.
 #' @param probs Numeric vector of quantile probabilities
@@ -1327,6 +1327,39 @@ sigma_trajectory.default <- function(object, ...) {
   )
 }
 
+#' Internal: baseline scale draws on the sigma_trajectory() reporting scale
+#' @noRd
+.sigma_tv_baseline_draws <- function(object, family, d, context) {
+  if (identical(family, "skew_normal")) {
+    omega_col <- paste0("omega[", d, "]")
+    delta_col <- paste0("delta[", d, "]")
+    base_draws <- posterior::as_draws_matrix(.fit_draws(
+      object$fit, c("omega", "delta"), backend = object$backend,
+      required = c(paste0("^omega\\[", d, "\\]$"), paste0("^delta\\[", d, "\\]$")),
+      required_type = "pattern",
+      context = context,
+      output_type = "Stan output group"
+    ))
+    out <- matrix(
+      base_draws[, omega_col] *
+        .skew_normal_residual_sd_factor(base_draws[, delta_col]),
+      ncol = 1L
+    )
+    colnames(out) <- paste0("sigma_sd[", d, "]")
+    return(out)
+  }
+
+  col <- .sigma_tv_baseline_col(family, d)
+  base_draws <- posterior::as_draws_matrix(.fit_draws(
+    object$fit, sub("\\[.*$", "", col), backend = object$backend,
+    required = paste0("^", sub("\\[.*$", "\\\\[", col)),
+    required_type = "pattern",
+    context = context,
+    output_type = "Stan output group"
+  ))
+  as.matrix(base_draws[, col, drop = FALSE])
+}
+
 #' @rdname sigma_trajectory
 #' @export
 sigma_trajectory.dcvar_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9, 0.975), ...) {
@@ -1351,16 +1384,10 @@ sigma_trajectory.dcvar_tv_fit <- function(object, probs = c(0.025, 0.1, 0.5, 0.9
     })
   } else {
     out <- lapply(seq_len(D), function(d) {
-      col <- .sigma_tv_baseline_col(margins_vec[d], d)
-      base_draws <- posterior::as_draws_matrix(.fit_draws(
-        object$fit, sub("\\[.*$", "", col), backend = object$backend,
-        required = paste0("^", sub("\\[.*$", "\\\\[", col)),
-        required_type = "pattern",
-        context = "sigma_trajectory.dcvar_tv_fit()",
-        output_type = "Stan output group"
-      ))
       one <- .summarise_rho_draws(
-        as.matrix(base_draws[, col, drop = FALSE]),
+        .sigma_tv_baseline_draws(
+          object, margins_vec[d], d, "sigma_trajectory.dcvar_tv_fit()"
+        ),
         probs, time_values[1]
       )
       df <- one[rep(1L, n_time_eff), , drop = FALSE]
@@ -1630,16 +1657,8 @@ phi_trajectory.dcvar_multilevel_tv_fit <- function(object, probs = c(0.025, 0.1,
     })
   } else {
     out <- lapply(seq_len(D), function(d) {
-      col <- .sigma_tv_baseline_col(margins_vec[d], d)
-      base_draws <- posterior::as_draws_matrix(.fit_draws(
-        object$fit, sub("\\[.*$", "", col), backend = object$backend,
-        required = paste0("^", sub("\\[.*$", "\\\\[", col)),
-        required_type = "pattern",
-        context = context,
-        output_type = "Stan output group"
-      ))
       one <- .summarise_rho_draws(
-        as.matrix(base_draws[, col, drop = FALSE]),
+        .sigma_tv_baseline_draws(object, margins_vec[d], d, context),
         probs,
         time_values[1]
       )

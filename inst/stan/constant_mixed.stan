@@ -205,6 +205,7 @@ generated quantities {
             // The likelihood uses u = 1 - F(x_shifted) on left-skewed dims,
             // so invert at the flipped uniform.
             real u_eff = skew_direction[i] < 0 ? 1 - u_i : u_i;
+            u_eff = fmax(1e-9, fmin(1 - 1e-9, u_eff));
             eps_rep[t, i] = skew_direction[i] * (-log1m(u_eff) / rate_exp[i] - sigma_exp[i]);
           } else {
             eps_rep[t, i] = z_rep[i];  // skew_normal / gamma: copula-level z-score

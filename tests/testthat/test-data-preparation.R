@@ -32,6 +32,15 @@ test_that("prepare_dcvar_data errors on interior missing values by default", {
   expect_error(prepare_dcvar_data(df, vars = c("y1", "y2")), "interior missing")
 })
 
+test_that("prepare_dcvar_data reports the interior missing count", {
+  df <- data.frame(time = 1:10, y1 = rnorm(10), y2 = rnorm(10))
+  df$y1[c(1, 2, 6)] <- NA
+  expect_error(
+    prepare_dcvar_data(df, vars = c("y1", "y2")),
+    "Found 1 interior missing value"
+  )
+})
+
 test_that("prepare_dcvar_data can drop interior missing values when allow_gaps = TRUE", {
   df <- data.frame(time = 1:50, y1 = rnorm(50), y2 = rnorm(50))
   df$y1[25] <- NA

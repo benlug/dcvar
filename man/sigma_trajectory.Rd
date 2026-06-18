@@ -33,11 +33,11 @@ one column per requested quantile.
 \description{
 Returns posterior summaries of the per-variable residual scale paths from
 a time-varying DC-VAR fit. The reported value is each margin family's
-natural scale: the innovation SD for normal dimensions, the direct
-parameterization scale \code{omega} for skew-normal dimensions, and the
-(time-constant) \code{sigma_exp} / \code{sigma_gam} for exponential and gamma
-dimensions. For fits with \code{tv_sigma = FALSE} the constant baselines are
-tiled over time so the return shape does not depend on the flag.
+natural residual scale: the innovation SD for normal/skew-normal
+dimensions, and the (time-constant) \code{sigma_exp} / \code{sigma_gam} for
+exponential and gamma dimensions. For fits with \code{tv_sigma = FALSE} the
+constant baselines are tiled over time so the return shape does not depend
+on the flag.
 }
 \seealso{
 \code{\link[=phi_trajectory]{phi_trajectory()}}, \code{\link[=rho_trajectory]{rho_trajectory()}}, \code{\link[=plot_sigma_trajectory]{plot_sigma_trajectory()}}

@@ -107,6 +107,41 @@ test_that("simulate_dcvar_sem supports exponential latent margins", {
   expect_true(all(is.finite(sim$innovations)))
 })
 
+test_that("simulate_dcvar_sem records the scale used for skew-normal and gamma innovations", {
+  skip_if_not_installed("sn")
+
+  sim_sn <- simulate_dcvar_sem(
+    n_time = 8000,
+    J = 1,
+    lambda = 1,
+    sigma_e = 1e-12,
+    Phi = matrix(0, 2, 2),
+    margins = "skew_normal",
+    sigma = c(2, 2.5),
+    skew_params = list(alpha = c(0, 0)),
+    rho = 0,
+    seed = 21
+  )
+  expect_equal(sim_sn$true_params$sigma, c(2, 2.5))
+  expect_equal(unname(apply(sim_sn$innovations, 2, stats::sd)), sim_sn$true_params$sigma, tolerance = 0.06)
+
+  sim_gam <- simulate_dcvar_sem(
+    n_time = 8000,
+    J = 1,
+    lambda = 1,
+    sigma_e = 1e-12,
+    Phi = matrix(0, 2, 2),
+    margins = "gamma",
+    sigma = c(2, 2.5),
+    skew_direction = c(1, 1),
+    skew_params = list(shape = 2),
+    rho = 0,
+    seed = 22
+  )
+  expect_equal(sim_gam$true_params$sigma, c(2, 2.5))
+  expect_equal(unname(apply(sim_gam$innovations, 2, stats::sd)), sim_gam$true_params$sigma, tolerance = 0.08)
+})
+
 test_that("simulate_dcvar_sem exponential margins require skew_direction", {
   expect_error(
     simulate_dcvar_sem(n_time = 20, margins = "exponential", sigma_exp = c(1, 1)),

@@ -73,6 +73,45 @@ test_that("simulate_dcvar_multilevel validates vector lengths and center flag", 
   )
 })
 
+test_that("simulate_dcvar_multilevel uses recorded sigma for skew-normal and gamma innovations", {
+  skip_if_not_installed("sn")
+
+  sim_sn <- simulate_dcvar_multilevel(
+    N = 1,
+    n_time = 8000,
+    burnin = 0,
+    phi_bar = c(0, 0, 0, 0),
+    tau_phi = c(0, 0, 0, 0),
+    margins = "skew_normal",
+    sigma = c(2, 2.5),
+    skew_params = list(alpha = c(0, 0)),
+    rho = 0,
+    center = FALSE,
+    seed = 31
+  )
+  y_sn <- as.matrix(sim_sn$data[, c("y1", "y2")])
+  expect_equal(sim_sn$true_params$sigma, c(2, 2.5))
+  expect_equal(unname(apply(y_sn[-1, , drop = FALSE], 2, stats::sd)), sim_sn$true_params$sigma, tolerance = 0.06)
+
+  sim_gam <- simulate_dcvar_multilevel(
+    N = 1,
+    n_time = 8000,
+    burnin = 0,
+    phi_bar = c(0, 0, 0, 0),
+    tau_phi = c(0, 0, 0, 0),
+    margins = "gamma",
+    sigma = c(2, 2.5),
+    skew_direction = c(1, 1),
+    skew_params = list(shape = 2),
+    rho = 0,
+    center = FALSE,
+    seed = 32
+  )
+  y_gam <- as.matrix(sim_gam$data[, c("y1", "y2")])
+  expect_equal(sim_gam$true_params$sigma, c(2, 2.5))
+  expect_equal(unname(apply(y_gam[-1, , drop = FALSE], 2, stats::sd)), sim_gam$true_params$sigma, tolerance = 0.08)
+})
+
 test_that("simulate_dcvar_multilevel preserves sampled nonstationary Phi matrices", {
   sim <- simulate_dcvar_multilevel(
     N = 1,

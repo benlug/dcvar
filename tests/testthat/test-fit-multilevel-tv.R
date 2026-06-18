@@ -303,6 +303,9 @@ test_that("multilevel TV fitted and predict use unit-time Phi and sigma paths", 
   expect_identical(names(fv), c("unit", "time", "y1", "y2"))
   expect_equal(fv$y1[1], 1 * 0.20 + 2 * 0.40)
   expect_equal(fv$y2[1], 1 * -0.10 + 2 * 0.30)
+  a_t13 <- fv[fv$unit == "a" & fv$time == 13, ]
+  expect_equal(a_t13$y1, 0.84)
+  expect_equal(a_t13$y2, 0.095)
 
   response <- fitted(fit, type = "response")
   expect_equal(response$y1[1], fv$y1[1] + 10)
@@ -313,6 +316,10 @@ test_that("multilevel TV fitted and predict use unit-time Phi and sigma paths", 
   expect_true(all(c("unit", "time", "variable", "mean", "lower", "upper") %in% names(pr)))
   expect_true(all(pr$lower <= pr$mean))
   expect_true(all(pr$mean <= pr$upper))
+  pr_a_t13_y1 <- pr[pr$unit == "a" & pr$time == 13 & pr$variable == "y1", ]
+  expect_equal(pr_a_t13_y1$mean, 0.84)
+  expect_equal(pr_a_t13_y1$upper - pr_a_t13_y1$mean, stats::qnorm(0.9) * 0.98)
+  expect_equal(pr_a_t13_y1$mean - pr_a_t13_y1$lower, stats::qnorm(0.9) * 0.98)
 })
 
 test_that("multilevel TV phi_trajectory tiles baselines when tv_phi is off", {

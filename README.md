@@ -127,7 +127,7 @@ constant-coefficient dynamic copula.
 
 In `dcvar_hmm()`, `switch = "rho"` gives the classic regime-switching copula
 model, where only the copula correlation changes by latent state. Passing
-components such as `switch = c("rho", "mu", "Phi", "sigma")` fits a fuller
+components such as `switch = c("rho", "mu", "phi", "sigma")` fits a fuller
 Markov-switching VAR(1). The HMM can also use state-specific marginal families
 by passing a length-`K` list to `margins`; `hmm_state_params()` extracts the
 effective state-specific intercepts, VAR matrices, scale parameters, and

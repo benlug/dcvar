@@ -32,7 +32,9 @@ phi11, phi12, phi21, phi22).}
 
 \item{tau_phi}{Population SD for each VAR coefficient (length-4 vector).}
 
-\item{sigma}{Innovation SDs (length-2 vector; used by normal dimensions).}
+\item{sigma}{Innovation scale vector (length 2). Values are on each
+family's natural residual scale: innovation SD for normal/skew-normal,
+\code{sigma_exp} for exponential, and \code{sigma_gam} for gamma.}
 
 \item{rho}{Global copula correlation.}
 
@@ -54,10 +56,7 @@ sampled baselines.}
 \item{sigma_trajectory}{Optional shared time-varying innovation scale path.
 The supplied value is each family's natural scale (innovation SD for
 normal, residual SD for skew-normal, \code{sigma_exp} / \code{sigma_gam} for
-exponential / gamma). For skew-normal dimensions the residual SD differs
-from the \code{omega} scale reported by \code{\link[=sigma_trajectory]{sigma_trajectory()}} on the fitted
-model by a factor of \code{sqrt(1 - 2 * delta^2 / pi)}, so a skew-normal path
-requires rescaling before comparing simulation truth to recovery.}
+exponential / gamma).}
 
 \item{tv_sigma_k}{Soft-barrier sharpness for time-varying exponential/gamma
 scales.}

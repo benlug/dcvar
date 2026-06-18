@@ -161,6 +161,57 @@ test_that("TV trajectory extractors return the documented structure", {
   expect_true(all(abs(rho_df$mean) <= 1))
 })
 
+test_that("sigma_trajectory reports skew-normal baselines as residual SD", {
+  n_draw <- 20
+  variables <- c("omega[1]", "delta[1]", "sigma_eps[2]")
+  draws <- array(
+    0,
+    dim = c(n_draw, 1, length(variables)),
+    dimnames = list(NULL, NULL, variables)
+  )
+  draws[, , "omega[1]"] <- 2
+  draws[, , "delta[1]"] <- 0.6
+  draws[, , "sigma_eps[2]"] <- 1.25
+  stan_data <- structure(
+    list(D = 2L, n_time = 4L),
+    time_values = 11:14
+  )
+  fit <- new_dcvar_tv_fit(
+    fit = posterior::as_draws_array(draws),
+    stan_data = stan_data,
+    vars = c("y1", "y2"),
+    standardized = FALSE,
+    margins = c("skew_normal", "normal"),
+    tv_phi = FALSE,
+    tv_sigma = FALSE,
+    backend = "rstan",
+    priors = list(),
+    meta = list(chains = 1, iter_warmup = 0, iter_sampling = n_draw)
+  )
+
+  sigma_df <- sigma_trajectory(fit)
+  y1 <- sigma_df[sigma_df$variable == "y1", ]
+  y2 <- sigma_df[sigma_df$variable == "y2", ]
+  expect_equal(y1$mean, rep(2 * sqrt(1 - 2 * 0.6^2 / pi), 3), tolerance = 1e-12)
+  expect_equal(y2$mean, rep(1.25, 3), tolerance = 1e-12)
+})
+
+test_that("TV Stan generated quantities report skew-normal sigma_t as residual SD", {
+  read_stan <- function(model) paste(readLines(dcvar_stan_path(model), warn = FALSE), collapse = " ")
+  residual_sd_expr <- "sqrt\\(1 - 2 \\* square\\(delta\\[i\\]\\) / pi\\(\\)\\)"
+
+  expect_match(read_stan("dcvar_dynamic"), residual_sd_expr)
+  expect_match(read_stan("dcvar_tv"), residual_sd_expr)
+  expect_match(
+    paste(readLines(dcvar_stan_path("sem_tv"), warn = FALSE), collapse = " "),
+    residual_sd_expr
+  )
+  expect_match(
+    paste(readLines(dcvar_stan_path("multilevel_tv"), warn = FALSE), collapse = " "),
+    "sqrt\\(1 - 2 \\* square\\(delta\\[j\\]\\) / pi\\(\\)\\)"
+  )
+})
+
 test_that("TV fit methods run and report the time-varying components", {
   skip_if_no_rstan()
 

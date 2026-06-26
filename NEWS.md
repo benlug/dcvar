@@ -1,3 +1,16 @@
+# dcvar 0.9.2
+
+## New features
+
+- `applicability_check()` screens a fitted constant copula-VAR for the
+  floor/ceiling pile-up pathology, combining a boundary-atom signal, a
+  dynamics-collapse signal (fitted self-lags against an OLS VAR(1) anchor and an
+  optional normal-margin reference fit), and slant/convergence flags into a
+  `suitable`/`caution`/`unsuitable` verdict with a recommendation. Has a `print`
+  method. Convergence problems (divergences, elevated split-Rhat) block a
+  `suitable` verdict; the boundary atom requires a genuine tie at the bound; and
+  the dynamics-collapse anchor is sign-agnostic.
+
 # dcvar 0.9.1
 
 ## Bug fixes

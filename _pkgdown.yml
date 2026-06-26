@@ -46,6 +46,7 @@ reference:
       - starts_with("loo.")
       - dcvar_compare
       - interpret_rho_trajectory
+      - applicability_check
 
   - title: Plotting
     desc: Visualise model results.
@@ -115,6 +116,7 @@ reference:
       - print.dcvar_covariate_summary
       - print.dcvar_multilevel_summary
       - print.dcvar_sem_summary
+      - print.dcvar_applicability
 
   - title: Utilities
     contents:

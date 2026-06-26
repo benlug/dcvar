@@ -45,21 +45,23 @@ jobs:
       # Keep the shared matrix on hard dependencies plus explicit test/vignette
       # packages. Optional CmdStan tooling lives in backend-stan-tests.yaml.
       #
-      # Pin the source-compiled Stan/Eigen stack to CRAN. DESCRIPTION lists the
-      # Stan r-universe in Additional_repositories (for cmdstanr), which also
-      # offers development rstan/StanHeaders builds with a higher version than
-      # CRAN. pak would otherwise prefer those dev builds, but they require a
-      # newer RcppEigen than CRAN ships, so the Linux source build of rstan fails
-      # (e.g. "'plain_enum_min' is not a member of 'Eigen::internal'"). Forcing
-      # the consistent CRAN trio avoids the mismatch.
+      # DESCRIPTION lists the Stan r-universe in Additional_repositories (for
+      # cmdstanr). pak reads that field and offers development rstan/StanHeaders
+      # builds (2.36.0.9000) whose version outranks CRAN's 2.32.x, so it prefers
+      # them even with a `cran::` source ref. Those dev builds need a newer
+      # RcppEigen than CRAN ships, so the Linux source build of rstan fails
+      # (e.g. "'plain_enum_min' is not a member of 'Eigen::internal'"). Pin the
+      # exact current CRAN versions (which the r-universe does not offer) so pak
+      # is forced onto the consistent CRAN trio. Bump or drop these once CRAN's
+      # StanHeaders catches up to the newer RcppEigen.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           dependencies: 'NA'
           extra-packages: |
             any::BH
             cran::RcppEigen
-            cran::StanHeaders
-            cran::rstan
+            StanHeaders@2.32.10
+            rstan@2.32.7
             any::testthat
             any::knitr
             any::rmarkdown

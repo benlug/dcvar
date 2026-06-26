@@ -50,19 +50,21 @@ jobs:
           r-version: release
           use-public-rspm: true
 
-      # Pin the source-compiled Stan/Eigen stack to CRAN so pak does not pull the
-      # higher-versioned development rstan/StanHeaders from the Stan r-universe
-      # (listed in DESCRIPTION's Additional_repositories for cmdstanr); those dev
-      # builds need a newer RcppEigen than CRAN ships and fail to compile on
-      # Linux. cmdstanr is still installed from the r-universe in its own step.
+      # Pin the exact current CRAN rstan/StanHeaders versions so pak does not pull
+      # the higher-versioned development builds from the Stan r-universe (listed in
+      # DESCRIPTION's Additional_repositories for cmdstanr); a `cran::` source ref
+      # is not enough because pak still prefers the higher r-universe version, and
+      # those dev builds need a newer RcppEigen than CRAN ships and fail to compile
+      # on Linux. cmdstanr is still installed from the r-universe in its own step.
+      # Bump or drop these once CRAN's StanHeaders catches up to the new RcppEigen.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           dependencies: 'NA'
           extra-packages: |
             any::BH
             cran::RcppEigen
-            cran::StanHeaders
-            cran::rstan
+            StanHeaders@2.32.10
+            rstan@2.32.7
             any::testthat
             any::knitr
             any::rmarkdown

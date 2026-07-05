@@ -198,10 +198,6 @@ test_that("mixed margins route to the Clayton mixed model", {
     .margin_stan_file("constant", c("normal", "exponential"), copula = "clayton"),
     "constant_mixed_clayton.stan"
   )
-  expect_equal(
-    .margin_cache_key("constant", c("normal", "exponential"), copula = "clayton"),
-    "constant_mixed12_clayton_model"
-  )
   # Clayton mixed is constant-only.
   expect_error(
     .margin_stan_file("dcvar", c("normal", "exponential"), copula = "clayton"),

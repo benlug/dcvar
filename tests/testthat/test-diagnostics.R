@@ -59,6 +59,56 @@ test_that("dcvar_diagnostics scopes headline convergence to sampled parameters",
   expect_equal(diag$mean_accept_prob, 0.85)
 })
 
+test_that("report_sampling_outcome uses the fit object's diagnostic parameter scope", {
+  object <- structure(
+    list(
+      fit = structure(list(), class = "mock_fit"),
+      stan_data = list(n_time = 5, D = 2),
+      model = "dcvar",
+      vars = c("y1", "y2"),
+      standardized = TRUE,
+      margins = "normal",
+      backend = "rstan",
+      priors = list(),
+      meta = list()
+    ),
+    class = c("dcvar_fit", "dcvar_model_fit")
+  )
+  expected_variables <- .diagnostic_parameter_variables(object)
+  requested_variables <- NULL
+
+  testthat::local_mocked_bindings(
+    .fit_diagnostic_summary = function(fit, backend) {
+      list(num_divergent = 0L, num_max_treedepth = 0L)
+    },
+    .fit_sampler_diagnostics = function(fit, backend) {
+      array(
+        0.9,
+        dim = c(1L, 1L, 1L),
+        dimnames = list(NULL, NULL, "accept_stat__")
+      )
+    },
+    .fit_summary = function(fit, variables = NULL, backend, ...) {
+      requested_variables <<- variables
+      data.frame(
+        variable = variables,
+        rhat = rep(1.01, length(variables)),
+        ess_bulk = rep(200, length(variables)),
+        ess_tail = rep(150, length(variables))
+      )
+    },
+    cli_alert_success = function(...) NULL,
+    .package = "dcvar"
+  )
+
+  diag <- .report_sampling_outcome(
+    object$fit, "Mock DC-VAR", chains = 2, backend = "rstan", object = object
+  )
+
+  expect_identical(requested_variables, expected_variables)
+  expect_equal(diag$max_rhat, 1.01)
+})
+
 test_that("dcvar_diagnostics handles SEM fits without stan_data$D", {
   object <- structure(
     list(

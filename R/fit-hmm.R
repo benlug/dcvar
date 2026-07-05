@@ -224,11 +224,8 @@ dcvar_hmm <- function(data, vars, K = 2,
     ...
   )
 
-  .report_sampling_outcome(fit, if (uses_engine) "Markov-switching HMM" else "HMM copula",
-                           chains = chains, backend = backend)
-
   # Wrap in S3 class
-  new_dcvar_hmm_fit(
+  out <- new_dcvar_hmm_fit(
     fit = fit,
     stan_data = stan_data,
     K = K,
@@ -257,4 +254,8 @@ dcvar_hmm <- function(data, vars, K = 2,
       seed = seed
     )
   )
+
+  .report_sampling_outcome(out$fit, if (uses_engine) "Markov-switching HMM" else "HMM copula",
+                           chains = chains, backend = backend, object = out)
+  out
 }

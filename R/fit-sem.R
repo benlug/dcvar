@@ -226,9 +226,6 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
     ...
   )
 
-  .report_sampling_outcome(fit, if (is_tv) "TV SEM copula VAR" else if (identical(method, "naive")) "Naive SEM copula VAR" else "SEM copula VAR",
-                           chains = chains, backend = backend)
-
   priors <- c(
     list(
       mu_sd = prior_mu_sd,
@@ -264,12 +261,17 @@ dcvar_sem <- function(data, indicators, J = NULL, lambda = NULL, sigma_e = NULL,
     priors = priors,
     meta = meta
   )
-  if (is_tv) {
-    return(do.call(new_dcvar_sem_tv_fit, c(common_args, list(
+  out <- if (is_tv) {
+    do.call(new_dcvar_sem_tv_fit, c(common_args, list(
       tv_phi = any_phi,
       phi_tv_mask = phi_mask,
       tv_sigma = tv_sigma
-    ))))
+    )))
+  } else {
+    do.call(new_dcvar_sem_fit, common_args)
   }
-  do.call(new_dcvar_sem_fit, common_args)
+
+  .report_sampling_outcome(out$fit, if (is_tv) "TV SEM copula VAR" else if (identical(method, "naive")) "Naive SEM copula VAR" else "SEM copula VAR",
+                           chains = chains, backend = backend, object = out)
+  out
 }

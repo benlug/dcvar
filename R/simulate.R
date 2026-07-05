@@ -334,18 +334,6 @@ simulate_dcvar <- function(n_time,
 }
 
 
-#' Internal: transform correlated standard normals to marginal quantiles
-#' @noRd
-.sim_marginal_quantile <- function(w, margins, sigma_eps, skew_direction, skew_params) {
-  D <- length(w)
-  margins_vec <- if (length(margins) == 1L) rep(margins, D) else margins
-  scales <- rep(1, D)
-  is_normal <- margins_vec == "normal"
-  if (any(is_normal)) scales[is_normal] <- sigma_eps[is_normal]
-  .sim_marginal_quantile_scaled(w, margins_vec, scales, skew_direction, skew_params)
-}
-
-
 #' Internal: scale-aware marginal quantile transform
 #'
 #' Core shared by the constant-parameter and time-varying simulators. `scales`

@@ -153,17 +153,3 @@ test_that("simulate_dcvar_multilevel centering works", {
   # Uncentered data differs from centered data
   expect_false(identical(sim_centered$data$y1, sim_uncentered$data$y1))
 })
-
-test_that(".project_if_needed returns matrix unchanged when stationary", {
-  Phi <- matrix(c(0.3, 0.1, 0.1, 0.3), 2, 2)
-  result <- dcvar:::.project_if_needed(Phi)
-  expect_equal(result, Phi)
-})
-
-test_that(".project_if_needed shrinks non-stationary matrix", {
-  Phi <- matrix(c(1.2, 0.1, 0.1, 1.2), 2, 2)
-  result <- dcvar:::.project_if_needed(Phi)
-
-  ev <- eigen(result, only.values = TRUE)$values
-  expect_true(all(Mod(ev) < 1))
-})

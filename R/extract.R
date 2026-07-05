@@ -74,9 +74,7 @@ dependence_summary.default <- function(object, ...) {
 #' Internal helper: summarise time-varying rho draws into a data frame
 #' @noRd
 .summarise_rho_draws <- function(rho_draws, probs, time_values = NULL) {
-  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
-    cli_abort("{.arg probs} must be numeric values in [0, 1].")
-  }
+  .validate_probs(probs)
 
   n_time_eff <- ncol(rho_draws)
   if (is.null(time_values)) {
@@ -207,9 +205,7 @@ dependence_summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 
 #' Internal helper: constant rho trajectory (shared by constant and multilevel)
 #' @noRd
 .rho_trajectory_constant_impl <- function(object, probs) {
-  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
-    cli_abort("{.arg probs} must be numeric values in [0, 1].")
-  }
+  .validate_probs(probs)
 
   rho_draws <- posterior::as_draws_matrix(.fit_draws(
     object$fit, "rho", backend = object$backend,
@@ -242,9 +238,7 @@ dependence_summary.dcvar_hmm_fit <- function(object, probs = c(0.025, 0.1, 0.5, 
 #' Internal helper: constant Kendall's tau summary.
 #' @noRd
 .dependence_summary_constant_impl <- function(object, probs) {
-  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
-    cli_abort("{.arg probs} must be numeric values in [0, 1].")
-  }
+  .validate_probs(probs)
 
   copula <- object$copula %||% "gaussian"
   if (identical(copula, "clayton")) {
@@ -463,9 +457,7 @@ covariate_effects.default <- function(object, ...) {
 #' @rdname covariate_effects
 #' @export
 covariate_effects.dcvar_covariate_fit <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
-  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
-    cli_abort("{.arg probs} must be numeric values in [0, 1].")
-  }
+  .validate_probs(probs)
 
   summ <- .fit_summary(
     object$fit,
@@ -1021,9 +1013,7 @@ latent_states.dcvar_sem_fit <- function(object, probs = c(0.025, 0.5, 0.975), ..
   if (identical(object$method %||% "indicator", "naive")) {
     cli_abort("{.fun latent_states} is not defined for naive SEM fits because no latent measurement model is estimated.")
   }
-  if (!is.numeric(probs) || !all(probs >= 0 & probs <= 1)) {
-    cli_abort("{.arg probs} must be numeric values in [0, 1].")
-  }
+  .validate_probs(probs)
 
   state_draws <- posterior::as_draws_matrix(.fit_draws(
     object$fit, "state", backend = object$backend,

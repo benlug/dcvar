@@ -31,6 +31,18 @@ test_that(".resolve_backend() resolves auto to rstan", {
   expect_equal(.resolve_backend("auto"), "rstan")
 })
 
+test_that(".validate_sampling_args requires scalar finite integer counts", {
+  expect_invisible(.validate_sampling_args(1, 1, 1, 0.9, 10))
+
+  expect_error(.validate_sampling_args(c(1, 2), 1, 1, 0.9, 10), "chains")
+  expect_error(.validate_sampling_args(1.5, 1, 1, 0.9, 10), "chains")
+  expect_error(.validate_sampling_args(1, NA_real_, 1, 0.9, 10), "iter_warmup")
+  expect_error(.validate_sampling_args(1, 1, Inf, 0.9, 10), "iter_sampling")
+  expect_error(.validate_sampling_args(1, 1, 1, c(0.8, 0.9), 10), "adapt_delta")
+  expect_error(.validate_sampling_args(1, 1, 1, NaN, 10), "adapt_delta")
+  expect_error(.validate_sampling_args(1, 1, 1, 0.9, 10.5), "max_treedepth")
+})
+
 test_that(".compiled_exe_path uses the correct platform suffix", {
   path <- .compiled_exe_path(tempdir(), "dcvar-model")
 

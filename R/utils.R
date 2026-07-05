@@ -35,6 +35,21 @@
   invisible(level)
 }
 
+#' Validate quantile probability arguments
+#'
+#' @param probs Numeric vector of probabilities.
+#' @param arg_name Name of the argument for error messages.
+#' @return Invisibly returns `probs`.
+#' @noRd
+.validate_probs <- function(probs, arg_name = "probs") {
+  if (!is.numeric(probs) || length(probs) == 0L ||
+      any(!is.finite(probs)) || any(probs < 0 | probs > 1)) {
+    cli_abort("{.arg {arg_name}} must be finite numeric values in [0, 1].")
+  }
+
+  invisible(probs)
+}
+
 #' Build a regex that matches a Stan output group by base name
 #'
 #' @param name Stan variable name or indexed element.
@@ -300,75 +315,17 @@
   list(mu = mu, phi_mask = phi_mask, rho = 1L, margins = margins)
 }
 
-#' Generate default TV-VAR initialization values
-#'
-#' The generic time-varying model declares the full mixed-margin parameter
-#' union plus conditionally sized random-walk containers. rstan requires every
-#' supplied init entry to match the declared dimensions exactly, so the
-#' deviation entries are zero-length when their flag is off.
-#'
-#' @param D Number of variables.
-#' @param T_obs Number of time points.
-#' @param margins Margin type (any spec; the union is always initialised).
-#' @param tv_phi Logical scalar or character selector (see
-#'   [.resolve_phi_tv_mask()]); `tv_sigma` is a logical flag.
-#' @param tv_sigma Logical; time-varying residual scales.
-#' @return A named list of initial values matching the conditionally sized
-#'   Stan parameters (zero-length where a component is off).
-#' @noRd
-.init_dcvar_tv_params <- function(D, T_obs, margins = "normal",
-                                  tv_phi = FALSE, tv_sigma = FALSE) {
-  n_eff <- T_obs - 1L
-  phi_mask <- .resolve_phi_tv_mask(tv_phi)
-  n_phi_tv <- sum(phi_mask)
-  any_phi <- n_phi_tv > 0L
-
-  base <- list(
-    mu = rnorm(D, 0, 0.1),
-    Phi = diag(0.25, D) + matrix(rnorm(D^2, 0, 0.05), D, D),
-    # Full mixed-margin union (the generic model declares every family's
-    # parameters regardless of the requested margins)
-    sigma_eps = runif(D, 0.8, 1.2),
-    eta = rnorm(D, 0, 0.3),
-    omega = runif(D, 0.5, 1.5),
-    delta = runif(D, -0.3, 0.3),
-    shape_gam = runif(D, 0.5, 2.0),
-    sigma_omega = runif(1, 0.05, 0.15),
-    z_rho_init = rnorm(1, 0, 0.1),
-    omega_raw = rnorm(n_eff, 0, 0.1)
-  )
-
-  # Only supply inits for the ACTIVE components. Inactive components are
-  # zero-sized Stan parameters; omitting them lets the sampler initialise them
-  # trivially and avoids passing a zero-extent matrix, which cmdstanr
-  # serialises to a shapeless empty array (CmdStan then aborts with a
-  # "declared (0, D); found (0)" dimension mismatch). Partial inits are
-  # accepted by both backends.
-  tv <- list()
-  if (any_phi) {
-    tv$tau_phi <- runif(n_phi_tv, 0.02, 0.08)
-    tv$phi_raw <- matrix(rnorm(n_eff * n_phi_tv, 0, 0.1), n_eff, n_phi_tv)
-  }
-  if (tv_sigma) {
-    tv$tau_sigma <- runif(D, 0.02, 0.08)
-    tv$sigma_raw <- matrix(rnorm(n_eff * D, 0, 0.1), n_eff, D)
-  }
-
-  c(base, tv)
-}
-
-
 #' Generate default initialization values for the unified dynamic engine
 #'
 #' Inits for `dcvar_dynamic.stan`, which always carries residual drift, the full
 #' mixed-margin parameter union, the covariate effects, and the conditionally
-#' sized time-varying random-walk containers. As with [.init_dcvar_tv_params()],
-#' only the ACTIVE components are supplied: inactive ones (e.g. `beta` when
-#' `P = 0`, the TV deviation containers when their flag is off) are omitted so a
-#' zero-extent matrix is never serialised (cmdstanr aborts on those). Length-1
-#' vectors are wrapped with `array(..., dim = n)` so they keep their declared
-#' shape. The sampled intercept is `z_rho_init` (the engine exposes `beta_0` as
-#' a transformed-parameter alias, so it is not an init).
+#' sized time-varying random-walk containers. Only the ACTIVE components are
+#' supplied: inactive ones (e.g. `beta` when `P = 0`, the TV deviation
+#' containers when their flag is off) are omitted so a zero-extent matrix is
+#' never serialised (cmdstanr aborts on those). Length-1 vectors are wrapped
+#' with `array(..., dim = n)` so they keep their declared shape. The sampled
+#' intercept is `z_rho_init` (the engine exposes `beta_0` as a
+#' transformed-parameter alias, so it is not an init).
 #'
 #' @param D Number of variables.
 #' @param T_obs Number of time points.

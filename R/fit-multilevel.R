@@ -193,9 +193,6 @@ dcvar_multilevel <- function(data, vars,
     ...
   )
 
-  .report_sampling_outcome(fit, if (is_tv) "TV multilevel copula VAR" else "Multilevel copula VAR",
-                           chains = chains, backend = backend)
-
   priors <- c(
     list(
       phi_bar_sd = prior_phi_bar_sd,
@@ -228,12 +225,17 @@ dcvar_multilevel <- function(data, vars,
     priors = priors,
     meta = meta
   )
-  if (is_tv) {
-    return(do.call(new_dcvar_multilevel_tv_fit, c(common_args, list(
+  out <- if (is_tv) {
+    do.call(new_dcvar_multilevel_tv_fit, c(common_args, list(
       tv_phi = any_phi,
       phi_tv_mask = phi_mask,
       tv_sigma = tv_sigma
-    ))))
+    )))
+  } else {
+    do.call(new_dcvar_multilevel_fit, common_args)
   }
-  do.call(new_dcvar_multilevel_fit, common_args)
+
+  .report_sampling_outcome(out$fit, if (is_tv) "TV multilevel copula VAR" else "Multilevel copula VAR",
+                           chains = chains, backend = backend, object = out)
+  out
 }

@@ -156,10 +156,8 @@ dcvar_constant <- function(data, vars,
     ...
   )
 
-  .report_sampling_outcome(fit, "Constant copula", chains = chains, backend = backend)
-
   # Wrap in S3 class
-  new_dcvar_constant_fit(
+  out <- new_dcvar_constant_fit(
     fit = fit,
     stan_data = stan_data,
     vars = vars,
@@ -188,4 +186,8 @@ dcvar_constant <- function(data, vars,
       seed = seed
     )
   )
+
+  .report_sampling_outcome(out$fit, "Constant copula",
+                           chains = chains, backend = backend, object = out)
+  out
 }

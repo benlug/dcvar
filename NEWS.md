@@ -1,3 +1,20 @@
+# dcvar 0.9.3
+
+## Bug fixes and maintenance
+
+- Fit constructors now preserve Stan file and cache metadata consistently across
+  constant, dynamic, HMM, covariate, multilevel, and SEM fits.
+- Extractor probability arguments are validated consistently before posterior
+  summaries are computed.
+- Removed unused internal helpers superseded by the unified dynamic engine, the
+  content-hash Stan cache, the current multilevel simulator behavior, and the
+  scale-aware simulation path.
+
+## Tests
+
+- Retargeted regression coverage from deleted internals to the live routing,
+  extractor, Stan cache, and simulation helpers.
+
 # dcvar 0.9.2
 
 ## New features

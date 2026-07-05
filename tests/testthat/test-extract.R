@@ -12,6 +12,17 @@ test_that("rho_trajectory() returns correct structure for dcvar", {
   expect_equal(rho_df$time, attr(fit$stan_data, "time_values")[-1])
 })
 
+test_that(".validate_probs rejects invalid probability vectors", {
+  expect_invisible(.validate_probs(c(0, 0.5, 1)))
+
+  expect_error(.validate_probs(numeric()), "finite numeric values")
+  expect_error(.validate_probs(NA_real_), "finite numeric values")
+  expect_error(.validate_probs(NaN), "finite numeric values")
+  expect_error(.validate_probs(Inf), "finite numeric values")
+  expect_error(.validate_probs(c(-0.1, 0.5)), "finite numeric values")
+  expect_error(.validate_probs(c(0.5, 1.1)), "finite numeric values")
+})
+
 test_that("rho_trajectory() returns correct structure for hmm", {
   skip_if_no_rstan()
 

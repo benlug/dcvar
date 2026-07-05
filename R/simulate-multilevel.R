@@ -234,12 +234,3 @@ simulate_dcvar_multilevel <- function(N = 40, n_time = 100,
   )
 }
 
-
-#' Project VAR matrix to ensure stationarity
-#' @noRd
-.project_if_needed <- function(Phi, alpha = 0.995) {
-  ev <- eigen(Phi, only.values = TRUE)$values
-  r <- max(Mod(ev))
-  if (is.na(r) || r < 1) return(Phi)
-  Phi * (alpha / r)
-}

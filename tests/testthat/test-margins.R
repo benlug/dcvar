@@ -89,22 +89,6 @@ test_that(".margin_stan_file returns correct filename for non-normal margins", {
                "constant_NCl.stan")
 })
 
-test_that(".margin_cache_key returns expected cache key", {
-  expect_equal(.margin_cache_key("constant", "normal"),
-               "constant_model")
-  expect_equal(.margin_cache_key("dcvar", "normal"),
-               "dcvar_model")
-  expect_equal(.margin_cache_key("hmm", "exponential"),
-               "hmm_EG_model")
-  expect_equal(.margin_cache_key("dcvar", "skew_normal"),
-               "dcvar_SNG_model")
-  expect_equal(.margin_cache_key("constant", "gamma"),
-               "constant_GG_model")
-  expect_equal(.margin_cache_key("constant", "normal", copula = "clayton"),
-               "constant_clayton_model")
-})
-
-
 # ---------------------------------------------------------------------------
 # Per-variable (mixed) margins
 # ---------------------------------------------------------------------------
@@ -192,21 +176,6 @@ test_that(".margin_stan_file routes mixed margins for every supported model", {
   )
 })
 
-test_that(".margin_cache_key encodes the full family vector for mixed fits", {
-  expect_equal(.margin_cache_key("constant", c("normal", "exponential")),
-               "constant_mixed12_model")
-  expect_equal(.margin_cache_key("constant", c("exponential", "gamma")),
-               "constant_mixed24_model")
-  expect_equal(.margin_cache_key("constant", c("skew_normal", "normal")),
-               "constant_mixed31_model")
-  expect_equal(.margin_cache_key("multilevel", "skew_normal"),
-               "multilevel_mixed33_model")
-  expect_equal(.margin_cache_key("sem", "gamma"),
-               "sem_mixed44_model")
-  expect_equal(.margin_cache_key("sem_naive", "gamma"),
-               "sem_naive_mixed44_model")
-})
-
 test_that(".mixed_margin_report_vars restricts each group to its own dims", {
   specs <- .mixed_margin_report_vars(c("normal", "exponential"))
   expect_equal(specs$sigma_eps, "sigma_eps[1]")
@@ -217,8 +186,6 @@ test_that(".mixed_margin_report_vars restricts each group to its own dims", {
 test_that("routing helpers validate family names before dispatching", {
   # Two distinct but invalid families must not silently route to the mixed model.
   expect_error(.margin_stan_file("constant", c("not_a_margin", "also_bad")),
-               "must be one of")
-  expect_error(.margin_cache_key("constant", c("bad", "worse")),
                "must be one of")
   expect_error(dcvar_stan_path("constant", margins = c("not_a_margin", "x")),
                "must be one of")

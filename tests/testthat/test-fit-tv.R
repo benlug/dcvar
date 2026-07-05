@@ -12,12 +12,6 @@ test_that("dcvar_tv public paths stay compatible with prepared TV data", {
   expect_identical(.margin_stan_file("dcvar_tv", c("gamma", "gamma")), "dcvar_tv_mixed.stan")
   expect_error(.margin_stan_file("dcvar_tv", "normal", copula = "clayton"), "Gaussian")
 
-  expect_identical(
-    .margin_cache_key("dcvar_tv", c("normal", "exponential")),
-    "dcvar_tv_mixed12_model"
-  )
-  expect_identical(.margin_cache_key("dcvar_tv", "normal"), "dcvar_tv_mixed11_model")
-
   path <- dcvar_stan_path("dcvar_tv")
   expect_true(file.exists(path))
   expect_match(path, "dcvar_tv_mixed\\.stan$")
@@ -94,34 +88,6 @@ test_that("prepare_dcvar_data validates the TV flags", {
   expect_error(prepare_dcvar_data(df, c("y1", "y2"), tv_phi = c(TRUE, TRUE)), "tv_phi")
   expect_error(prepare_dcvar_data(df, c("y1", "y2"), tv_phi = TRUE,
                                   prior_tau_phi_rate = -1), "prior_tau_phi_rate")
-})
-
-test_that(".init_dcvar_tv_params sizes the walk containers by flag", {
-  i_both <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = TRUE, tv_sigma = TRUE)
-  expect_length(i_both$tau_phi, 4)
-  expect_identical(dim(i_both$phi_raw), c(39L, 4L))
-  expect_length(i_both$tau_sigma, 2)
-  expect_identical(dim(i_both$sigma_raw), c(39L, 2L))
-  # Full union initialised regardless of margins
-  expect_length(i_both$shape_gam, 2)
-  expect_length(i_both$omega_raw, 39)
-
-  # Inactive components are omitted entirely (not zero-sized), so the default
-  # init never hands the sampler a zero-extent matrix (which cmdstanr cannot
-  # serialise back to the declared 2D shape).
-  i_phi <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = TRUE, tv_sigma = FALSE)
-  expect_null(i_phi$tau_sigma)
-  expect_null(i_phi$sigma_raw)
-
-  i_sig <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = FALSE, tv_sigma = TRUE)
-  expect_null(i_sig$tau_phi)
-  expect_null(i_sig$phi_raw)
-
-  # AR selector: 2 active coefficients -> 2 walk columns
-  i_ar <- .init_dcvar_tv_params(2, 40, "normal", tv_phi = "ar", tv_sigma = FALSE)
-  expect_length(i_ar$tau_phi, 2)
-  expect_identical(dim(i_ar$phi_raw), c(39L, 2L))
-  expect_null(i_ar$sigma_raw)
 })
 
 # --- Smoke fit: structure, extractors, diagnostics name pin -----------------

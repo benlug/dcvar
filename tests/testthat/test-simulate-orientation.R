@@ -17,7 +17,7 @@ likelihood_copula_z <- function(eps, margin, skew, shape = 1) {
   stats::qnorm(u)
 }
 
-test_that(".sim_marginal_quantile preserves copula orientation for all skew_direction combinations", {
+test_that(".sim_marginal_quantile_scaled preserves copula orientation for all skew_direction combinations", {
   set.seed(42)
   n <- 20000
   rho <- 0.6
@@ -31,7 +31,7 @@ test_that(".sim_marginal_quantile preserves copula orientation for all skew_dire
       eps <- vapply(
         seq_len(n),
         function(i) {
-          .sim_marginal_quantile(c(w1[i], w2[i]), margin, c(1, 1), skew, skew_params)
+          .sim_marginal_quantile_scaled(c(w1[i], w2[i]), rep(margin, 2), c(1, 1), skew, skew_params)
         },
         numeric(2)
       )

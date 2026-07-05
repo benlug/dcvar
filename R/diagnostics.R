@@ -401,8 +401,9 @@ dcvar_diagnostics.default <- function(object, ...) {
 #' Internal: report post-sampling diagnostics to the user
 #' @noRd
 .report_sampling_outcome <- function(fit, model_label, chains = NA_integer_,
-                                     rhat_threshold = 1.10, backend = "rstan") {
-  diag <- .sampling_diagnostics_from_fit(fit, backend = backend)
+                                     rhat_threshold = 1.10, backend = "rstan",
+                                     object = NULL) {
+  diag <- .sampling_diagnostics_from_fit(fit, backend = backend, object = object)
   issues <- character()
 
   if (diag$n_divergent > 0) {

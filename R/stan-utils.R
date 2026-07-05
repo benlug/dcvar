@@ -101,19 +101,24 @@ dcvar_stan_path <- function(model = c("dcvar", "dcvar_tv", "dcvar_dynamic",
 #' @noRd
 .validate_sampling_args <- function(chains, iter_warmup, iter_sampling,
                                     adapt_delta, max_treedepth) {
-  if (!is.numeric(chains) || chains < 1) {
+  is_positive_integer_scalar <- function(x) {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && x >= 1 && x == floor(x)
+  }
+
+  if (!is_positive_integer_scalar(chains)) {
     cli_abort("{.arg chains} must be a positive integer, got {.val {chains}}.")
   }
-  if (!is.numeric(iter_warmup) || iter_warmup < 1) {
+  if (!is_positive_integer_scalar(iter_warmup)) {
     cli_abort("{.arg iter_warmup} must be a positive integer, got {.val {iter_warmup}}.")
   }
-  if (!is.numeric(iter_sampling) || iter_sampling < 1) {
+  if (!is_positive_integer_scalar(iter_sampling)) {
     cli_abort("{.arg iter_sampling} must be a positive integer, got {.val {iter_sampling}}.")
   }
-  if (!is.numeric(adapt_delta) || adapt_delta <= 0 || adapt_delta >= 1) {
+  if (!is.numeric(adapt_delta) || length(adapt_delta) != 1L ||
+      !is.finite(adapt_delta) || adapt_delta <= 0 || adapt_delta >= 1) {
     cli_abort("{.arg adapt_delta} must be in (0, 1), got {.val {adapt_delta}}.")
   }
-  if (!is.numeric(max_treedepth) || max_treedepth < 1) {
+  if (!is_positive_integer_scalar(max_treedepth)) {
     cli_abort("{.arg max_treedepth} must be a positive integer, got {.val {max_treedepth}}.")
   }
   invisible(TRUE)

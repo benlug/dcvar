@@ -262,9 +262,6 @@ dcvar <- function(data, vars, time_var = "time",
     ...
   )
 
-  .report_sampling_outcome(fit, if (is_tv) "TV DC-VAR" else "DC-VAR",
-                           chains = chains, backend = backend)
-
   priors <- c(
     list(
       mu_sd = prior_mu_sd,
@@ -288,7 +285,7 @@ dcvar <- function(data, vars, time_var = "time",
   )
 
   # Wrap in S3 class
-  if (is_tv) {
+  out <- if (is_tv) {
     new_dcvar_tv_fit(
       fit = fit,
       stan_data = stan_data,
@@ -316,4 +313,8 @@ dcvar <- function(data, vars, time_var = "time",
       meta = meta
     )
   }
+
+  .report_sampling_outcome(out$fit, if (is_tv) "TV DC-VAR" else "DC-VAR",
+                           chains = chains, backend = backend, object = out)
+  out
 }

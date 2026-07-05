@@ -301,9 +301,7 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
     ...
   )
 
-  .report_sampling_outcome(fit, "Covariate DC-VAR", chains = chains, backend = backend)
-
-  new_dcvar_covariate_fit(
+  out <- new_dcvar_covariate_fit(
     fit = fit,
     stan_data = stan_data,
     vars = vars,
@@ -337,4 +335,8 @@ dcvar_covariate <- function(data, vars, covariates, time_var = "time",
     ),
     dynamic_engine = uses_engine
   )
+
+  .report_sampling_outcome(out$fit, "Covariate DC-VAR",
+                           chains = chains, backend = backend, object = out)
+  out
 }

@@ -11,6 +11,7 @@
 ^\.lintr$
 ^data-raw$
 ^RStan-CRAN-plan\.md$
+^SEM-causal-effects-plan\.md$
 ^vignettes/dcvar-walkthrough\.qmd$
 ^vignettes/\.quarto
 ^vignettes/dcvar-walkthrough_cache

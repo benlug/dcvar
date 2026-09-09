@@ -1,0 +1,190 @@
+---
+title: "Bayesian causal SEM with ordinal indicators"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bayesian causal SEM with ordinal indicators}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(dcvar)
+```
+
+`dcvar_causal_sem()` fits four causal structural equation models with Stan.
+Each row contains one independent person. Each model contains two treatment
+groups and one latent variable with three ordinal indicators.
+
+| Model | Latent variable | Effects |
+| --- | --- | --- |
+| `latent_covariate` | Covariate | ATE and treatment interaction |
+| `latent_outcome` | Outcome | ATE and treatment interaction |
+| `latent_mediator` | Mediator after treatment | ATE, ADE, and AIE |
+| `latent_mediator_baseline` | Mediator before treatment | ATE, ADE, and AIE |
+
+ATE is the average treatment effect. ADE is the average direct effect under
+the adjustment used in the SEM study. AIE is ATE minus ADE. A causal
+interpretation requires the assumptions of the study design. The Bayes
+estimator does not establish those assumptions from the data.
+
+## Fit the four models
+
+The simulator returns data, true parameters, true effects, and a list of fit
+arguments. A scalar `n` gives the total sample size. A vector gives the control
+and treatment group sizes. The simulator generates data on the identified
+factor scale. Its fit arguments set `standardize = FALSE`.
+
+```{r simulate}
+model_names <- c("latent_covariate", "latent_outcome",
+                 "latent_mediator", "latent_mediator_baseline")
+simulations <- setNames(lapply(model_names, function(model) {
+  simulate_dcvar_causal_sem(n = c(100, 100), model = model, seed = 42)
+}), model_names)
+lapply(simulations, function(sim) sim$effects)
+```
+
+The following complete workflow fits each model. RStan is the default backend.
+Set `backend = "cmdstanr"` to use an installed CmdStan toolchain.
+
+```{r fit, eval=FALSE}
+fits <- lapply(simulations, function(sim) {
+  do.call(dcvar_causal_sem, c(sim$args, list(
+    seed = 42, chains = 4, iter_warmup = 1000, iter_sampling = 1000
+  )))
+})
+lapply(fits, causal_effects)
+lapply(fits, dcvar_diagnostics)
+```
+
+For your own data, assign columns to model roles. A latent role names the
+factor instead of a data column. `indicators` maps that name to three columns.
+The columns must be ordered factors with three to five declared levels.
+Retain the same levels in both groups, including levels with no observations
+in one group. Data preparation reports missing values and role conflicts.
+It does not remove persons or categories.
+
+```{r explicit}
+sim <- simulations$latent_covariate
+prepared <- prepare_causal_sem_data(
+  data = sim$data, model = "latent_covariate", treatment = "x",
+  control = 0, treated = 1, outcome = "y", covariate = "xi",
+  indicators = list(xi = c("u1", "u2", "u3")), standardize = FALSE
+)
+prepared$meta$n_group
+prepared$stan_data$K
+```
+
+The latent outcome model uses a factor name for `outcome` and a column for
+`covariate`. Both mediation models require `mediator`, `mediator_baseline`, and
+`outcome_baseline`. The latent role is `mediator` in the first mediation model
+and `mediator_baseline` in the second.
+
+```{r roles}
+lapply(simulations, function(sim) sim$roles)
+```
+
+## Measurement and scale
+
+The measurement model uses an ordinal probit likelihood. Loadings and
+thresholds are equal across groups. The first loading is one. The marginal
+factor mean in the control group is zero. Control item residual SDs are one.
+Treatment item residual SDs are free. Each endogenous factor has a free
+structural residual variance.
+
+The factor unit comes from these restrictions. It is not the unit of a sum
+score. It does not require the simulation loadings or thresholds. A comparison
+with effects from another parameterization needs a common factor scale.
+
+By default, the fit standardizes manifest continuous columns across both
+groups. It stores the center and scale for each role in `fit$meta$scales`.
+`causal_effects()` returns effects in the input outcome units. Interactions
+also use the input covariate units. Latent outcomes use the identified factor
+unit. `coef()` and parameter summaries use the internal model scale.
+
+## Define the target population
+
+The default target weights are `c(0.5, 0.5)`. They assign equal weight to the
+control and treatment populations. This target matches the balanced study
+design. It need not match the sample proportions in another data set.
+
+```{r effects, eval=FALSE}
+fit <- fits$latent_covariate
+causal_effects(fit)
+causal_effects(fit, target_weights = c(0.7, 0.3))
+causal_effects(fit, covariate_values = c(-1, 0, 1))
+effect_draws <- causal_effects(fit, summary = FALSE)
+posterior::as_draws_matrix(effect_draws)[1:4, ]
+```
+
+Changing weights changes the target population. It does not fit the model
+again. The effect function combines group parameters within each posterior
+draw. It retains the dependence between all parameters in a draw.
+
+For mediation, ADE adjusts both groups at the same weighted baseline means
+and the same weighted unconditional mediator mean. ATE integrates each group's
+mediator regression at the common baseline means. AIE is their difference.
+With group-specific paths, a product of two path means does not give these
+effects. ADE is also different from a natural direct effect.
+
+## Priors and checks
+
+The default priors use normal distributions for paths, intercepts, and free
+loadings. SDs have positive normal priors. Treatment item SDs have lognormal
+priors. Ordered thresholds have normal priors restricted to their order.
+The baseline correlation uses an LKJ prior. See `?prepare_causal_sem_data` for
+the parameter names and defaults.
+
+Use prior simulation to examine the implied outcomes and category counts.
+You can change the prior parameters through `priors`.
+
+```{r prior}
+prior_sim <- simulate_dcvar_causal_sem(
+  n = c(100, 100), model = "latent_outcome", parameter_prior = TRUE,
+  priors = list(beta_sd = 0.5), seed = 12
+)
+lapply(prior_sim$data[c("u1", "u2", "u3")], table)
+```
+
+Prior draws can generate a constant indicator. The simulator retains that
+draw. The data contract rejects globally constant indicators. A calibration
+study must count rejected data sets and must not replace them silently.
+
+Inspect `dcvar_diagnostics()` before interpreting effects. The output includes
+R-hat, effective sample size, divergences, tree depth, energy diagnostics,
+and a separate table for the effects. `incomplete_diagnostics` flags unavailable
+values. A small headline R-hat does not clear this flag.
+Increase sampling when the Monte Carlo
+error is too large. Investigate persistent divergences or poor mixing.
+
+The sampler conditions the person factor on continuous outcomes when present.
+It then applies the ordinal likelihood. This exact normal factorization reduces
+dependence during sampling. Prior sampling uses the structural factor prior.
+`fit$sampling$factor_parameterization` records the method.
+
+```{r predictions, eval=FALSE}
+fit <- fits$latent_mediator
+dcvar_diagnostics(fit)
+predict(fit, type = "outcome", summary = TRUE)
+item_draws <- predict(fit, type = "indicators")
+latent_draws <- predict(fit, type = "latent")
+```
+
+Replicates draw new person factors. They preserve each model's measurement
+structure. The outcome model conditions on the supplied manifest covariate.
+The latent mediator model conditions on the supplied baselines. The latent
+mediator baseline model conditions on the outcome baseline and generates a new
+mediator baseline and mediator. The latent covariate model generates both the
+covariate and the outcome.
+
+`predict()` returns integer codes for indicator replicates. Use
+`fit$meta$levels` to recover category labels. Compare category proportions and
+joint response patterns with the observed data. The current prediction method
+uses the fit data. It does not accept new persons.
+
+The four models assume normal structural distributions. Copulas in the
+original study generate data for tests of misspecification. They are not extra
+likelihood options in this interface. Development scripts in
+`data-raw/causal-sem` run calibration, recovery, and a separate VITA pilot.
+A future LOO method must integrate out the person factor for each complete
+person. Conditional item likelihoods are not a substitute for that calculation.

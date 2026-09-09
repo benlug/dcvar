@@ -8,6 +8,12 @@
 #' tree depth warnings, Rhat, and effective sample size.
 #' The convergence headline is computed from sampled parameters only and
 #' excludes generated quantities and deterministic transformed outputs.
+#' Causal SEM fits also include derived effects in the headline. They report
+#' separate parameter and effect diagnostics, relative Monte Carlo error,
+#' and energy diagnostics for each chain.
+#' Their `incomplete_diagnostics` flag identifies missing or nonfinite
+#' convergence, effect precision, or energy values. Headline values summarize
+#' the available values and do not replace this flag.
 #'
 #' @param object A fitted model object.
 #' @param ... Additional arguments (unused).

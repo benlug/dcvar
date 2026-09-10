@@ -1,6 +1,6 @@
 Package: dcvar
 Title: Dynamic Copula VAR Models for Time-Varying Dependence
-Version: 0.9.3
+Version: 0.10.0
 Authors@R:
     person("Benedikt", "Lugauer", , "benedikt.lugauer@uni-leipzig.de",
            role = c("aut", "cre"))
@@ -10,7 +10,8 @@ Description: Fits Bayesian copula vector autoregressive models for bivariate
     estimation with 'Stan' through 'rstan' or 'cmdstanr', posterior
     summaries, diagnostics, trajectory extraction, fitted and predictive
     summaries, and approximate leave-one-out cross-validation model
-    comparison for supported fits. For Bayesian computation and model
+    comparison for supported fits. It also fits causal structural equation
+    models with ordinal indicators for two treatment groups. For Bayesian computation and model
     comparison, see Carpenter et al. (2017)
     <doi:10.18637/jss.v076.i01> and Vehtari, Gelman and Gabry (2017)
     <doi:10.1007/s11222-016-9696-4>.

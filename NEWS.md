@@ -1,3 +1,15 @@
+# dcvar 0.10.0
+
+- `dcvar_causal_sem()` fits four Bayesian causal SEM models with ordinal
+  indicators. The models cover a latent covariate, latent outcome, latent
+  mediator, and latent mediator baseline.
+- `causal_effects()` computes ATE, interaction, ADE, and AIE as applicable.
+  It preserves joint posterior draws and records target weights and units.
+- `prepare_causal_sem_data()` checks roles, categories, and group codes.
+  `simulate_dcvar_causal_sem()` provides known effects and prior simulation.
+- Causal fits provide posterior draws, parameter summaries, effect diagnostics,
+  and predictions with new person factors. RStan and CmdStanR are supported.
+
 # dcvar 0.9.3
 
 ## Bug fixes and maintenance

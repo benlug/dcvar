@@ -2,7 +2,7 @@
 # Trajectory Generation Functions
 # ============================================================================
 
-#' Internal: validate a rho scalar in [-1, 1]
+#' Internal: validate a rho scalar in `[-1, 1]`
 #' @noRd
 .trajectory_validate_rho_scalar <- function(x, arg_name) {
   if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x < -1 || x > 1) {
@@ -10,7 +10,7 @@
   }
 }
 
-#' Internal: validate a rho level vector in [-1, 1]
+#' Internal: validate a rho level vector in `[-1, 1]`
 #' @noRd
 .trajectory_validate_rho_levels <- function(x, arg_name) {
   if (!is.numeric(x) || length(x) != 3L || any(!is.finite(x)) || any(x < -1 | x > 1)) {

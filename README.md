@@ -31,6 +31,10 @@ Two further families, a multilevel version for panel data and a
 structural-equation version for latent processes, are provided as experimental
 extensions.
 
+The package also fits four Bayesian causal SEM models for independent persons.
+These models use two treatment groups and three ordinal indicators for one
+latent covariate, outcome, mediator, or mediator baseline.
+
 ## Installation
 
 dcvar uses [`rstan`](https://mc-stan.org/rstan/) as its default backend.
@@ -135,8 +139,8 @@ families.
 
 ## Estimation and checks
 
-Fitted and one-step-ahead predicted values are available for every fitted
-model. For multilevel fits these are specific to each unit; for
+Fitted and one-step-ahead predicted values are available for the time-series
+models. For multilevel fits these are specific to each unit; for
 structural-equation fits they cover both the latent states (`type = "link"`)
 and the observed indicators (`type = "response"`).
 
@@ -157,11 +161,36 @@ The package also includes a constant Clayton-copula baseline, a multilevel
 model with exponential margins, and naive structural-equation score models that
 were used in the accompanying simulation studies.
 
+## Bayesian causal SEM
+
+`dcvar_causal_sem()` fits the four causal models from the ordinal SEM study.
+Each model uses an ordinal probit measurement model and normal structural
+errors. The models estimate shared loadings and thresholds. They allow
+treatment-specific paths, structural variances, and item residual SDs.
+
+```r
+sim <- simulate_dcvar_causal_sem(
+  n = c(100, 100), model = "latent_mediator", seed = 42
+)
+fit <- do.call(dcvar_causal_sem, c(sim$args, list(seed = 42)))
+causal_effects(fit)
+dcvar_diagnostics(fit)
+```
+
+The model choices are `"latent_covariate"`, `"latent_outcome"`,
+`"latent_mediator"`, and `"latent_mediator_baseline"`. `causal_effects()`
+calculates the study's effects for every posterior draw. The default target
+weights are equal across groups. `predict()` generates replicated outcomes
+and ordinal indicators with new person factors. The
+[causal SEM vignette](vignettes/causal-sem.Rmd) explains roles, factor scales,
+priors, target weights, and the direct effect definition.
+
 ## Documentation
 
 - Getting started vignette: [vignettes/getting-started.Rmd](vignettes/getting-started.Rmd)
 - Model comparison vignette: [vignettes/model-comparison.Rmd](vignettes/model-comparison.Rmd)
 - Simulation tools vignette: [vignettes/simulation-tools.Rmd](vignettes/simulation-tools.Rmd)
+- Causal SEM vignette: [vignettes/causal-sem.Rmd](vignettes/causal-sem.Rmd)
 - Full Quarto walkthrough: [vignettes/dcvar-walkthrough.qmd](https://github.com/benlug/dcvar/blob/main/vignettes/dcvar-walkthrough.qmd)
 - Source code and issue tracker: <https://github.com/benlug/dcvar>
 

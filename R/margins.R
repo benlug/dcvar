@@ -100,7 +100,7 @@
 
 #' Reportable per-state, per-dimension scale/shape variables for the switching HMM
 #'
-#' Like [.mixed_margin_report_vars()] but lifted to the engine's 2D-indexed
+#' Like `.mixed_margin_report_vars()` but lifted to the engine's 2D-indexed
 #' `[m, d]` layout: maps each margin config `m` (state when margins switch, else
 #' the shared config) and dimension to the interpretable scale/shape variable for
 #' its family (e.g. `sigma_exp[m, d]` for an exponential dimension).

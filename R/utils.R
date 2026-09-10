@@ -262,7 +262,7 @@
 #' names. `rho` is mandatory (it is the `ordered[K]` label-switching anchor): a
 #' selector that switches other components without `rho` is rejected, and a
 #' selector that switches nothing is rejected (use [dcvar_constant()]). Phi
-#' granularity reuses [.resolve_phi_tv_mask()].
+#' granularity reuses `.resolve_phi_tv_mask()`.
 #'
 #' @param switch The user's `switch` argument.
 #' @return A named list with `mu` (0/1), `phi_mask` (named length-4 integer),
@@ -331,7 +331,7 @@
 #' @param T_obs Number of time points.
 #' @param margins Margin spec (any; the union is always initialised).
 #' @param tv_phi Logical scalar or character selector (see
-#'   [.resolve_phi_tv_mask()]).
+#'   `.resolve_phi_tv_mask()`).
 #' @param tv_sigma Logical; time-varying residual scales.
 #' @param P Number of covariates (0 omits `beta`).
 #' @param zero_init_eta Logical; whether `eta[1]` is fixed at zero (sets the
@@ -454,7 +454,7 @@
 #'
 #' @param D Number of variables.
 #' @param K Number of hidden states.
-#' @param switch_spec Resolved spec from [.resolve_switch_spec()].
+#' @param switch_spec Resolved spec from `.resolve_switch_spec()`.
 #' @return A named list of initial values matching the engine's parameters.
 #' @noRd
 .init_hmm_switching_params <- function(D, K, switch_spec) {

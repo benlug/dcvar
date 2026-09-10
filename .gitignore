@@ -13,6 +13,15 @@ src/*.so
 src/*.dll
 *-test-local.log
 
+# Local planning documents
+/*-plan.md
+/PLAN.md
+/PLANS.md
+/.codex/plans/
+
+# Local causal SEM validation output
+/data-raw/causal-sem/results/
+
 # CmdStan in-place compilation artifacts left beside bundled .stan sources
 # (a standalone cmdstan_model() compile drops an extensionless executable and
 # a .hpp next to the model). Keep only the .stan sources.

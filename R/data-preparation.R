@@ -251,7 +251,7 @@
 
 #' Internal: add the per-dimension family array for multilevel/SEM mixed models
 #'
-#' Like [.add_margin_stan_data()] but without `sigma_eps_prior` (the multilevel
+#' Like `.add_margin_stan_data()` but without `sigma_eps_prior` (the multilevel
 #' and SEM models parameterise the normal innovation scale through their own
 #' `prior_sigma_sd`, not an exponential rate).
 #' @noRd
